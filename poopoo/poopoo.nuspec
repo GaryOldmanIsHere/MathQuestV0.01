@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>poopoo</id>
+    <version>1.0.0</version>
+    <packageSourceUrl>https://github.com/GaryOldmanIsHere/MathQuestV0.01</packageSourceUrl>
+    <owners>GaryOldmanIsHere</owners>
+    <title>Poopoo</title>
+    <authors>GaryOldmanIsHere</authors>
+    <projectUrl>https://github.com/GaryOldmanIsHere/MathQuestV0.01</projectUrl>
+    <tags>poopoo PLG</tags>
+    <summary>Poopoo - Noah System Package</summary>
+    <description>
+    Chocolatey package for Poopoo (Noah System 4.16.3.6646).
+    This package downloads and installs the Noah System software with silent installation support.
+    </description>
+    <licenseUrl>https://opensource.org/licenses/MIT</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <releaseNotes>Initial release v1.0.0</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

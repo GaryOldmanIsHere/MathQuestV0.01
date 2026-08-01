@@ -29,7 +29,7 @@ export interface BattleResult {
   levelUps: Map<number, number>;
 }
 
-function elementBonus(att: RowAttack, target: Character): number {
+export function elementBonus(att: RowAttack, target: Character): number {
   // Holy scourges the undead; a light elemental rock-paper otherwise ignored.
   if (att.element === 'holy' && (target.classId === 'skeleton' || target.classId === 'ghost')) return 1.8;
   return 1;

@@ -9,6 +9,7 @@ TypeScript, running entirely in the browser. All art and text are original.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
+npm test         # run the simulation test suite
 npm run build    # type-check + production bundle into dist/
 ```
 
@@ -62,6 +63,7 @@ src/
     character.ts   stat derivation, exp, promotion gates, alignment drift
     squad.ts       formation grid, march speed, auto-placement
     battle.ts      engagement simulator; returns an animatable event log
+    pathing.ts     road-network routing and retreat
     state.ts       campaign state and starting scenario
   data/
     classes.ts     the class tree: stats, growths, row attacks, promotions
@@ -83,6 +85,28 @@ pure functions over game state and emit an event log that `BattleScene` merely
 animates. Sprites are authored as small ASCII templates in `gfx/pixels.ts` and
 palette-swapped per class into canvas textures at boot, so the whole game ships
 without a single binary asset.
+
+## Tests
+
+`npm test` runs 51 tests over the simulation core — the rules, not the
+rendering. They cover the parts that are easy to break silently: that a
+member's column really does select their attack and strike count, that the
+front rank is struck before the back and combat spills backward once it falls,
+that promotions gate on level, charisma, and alignment independently (a
+chaotic Fighter is locked out of Knight but can reach Berserker), that
+alignment drifts in the right direction and stays in bounds, that a squad
+marches at its slowest member's pace, and that road routing only ever walks
+real links.
+
+A few structural tests guard the class tree itself: every promotion points at
+a class that exists, stays within its gender line, never drops a tier, forms no
+cycles, and every non-monster class is reachable from a tier-1 root. These
+catch data-entry mistakes in `classes.ts` that no amount of playtesting would
+reliably surface.
+
+The suite was mutation-checked rather than trusted on a green run — deliberately
+breaking the holy-damage bonus and the front-rank targeting rule each produced
+failures, which is what confirmed those tests were actually testing something.
 
 ## Balance knobs
 

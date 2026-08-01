@@ -6,6 +6,7 @@ import { squadMemberIds, squadMoveType, moveSpeed } from '../core/squad';
 import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/ui';
 import { CLASS_ART } from '../gfx/pixels';
 import { rng } from '../data/names';
+import { findPath, retreatNode } from '../core/pathing';
 
 const MAP_H = 560; // playfield height; bottom strip is the HUD
 
@@ -168,30 +169,7 @@ export class OverworldScene extends Phaser.Scene {
   // ---------------- movement ----------------
 
   private bfsPath(from: number, to: number): number[] {
-    const st = getState();
-    if (from === to) return [];
-    const prev = new Map<number, number>();
-    const q = [from];
-    const seen = new Set([from]);
-    while (q.length) {
-      const cur = q.shift()!;
-      for (const nxt of st.nodes.find((n) => n.id === cur)!.links) {
-        if (seen.has(nxt)) continue;
-        seen.add(nxt);
-        prev.set(nxt, cur);
-        if (nxt === to) {
-          const path = [to];
-          let p = to;
-          while (prev.has(p)) {
-            p = prev.get(p)!;
-            if (p !== from) path.unshift(p);
-          }
-          return path;
-        }
-        q.push(nxt);
-      }
-    }
-    return [];
+    return findPath(getState().nodes, from, to);
   }
 
   private orderMarch(sq: Squad, targetId: number): void {
@@ -345,9 +323,8 @@ export class OverworldScene extends Phaser.Scene {
         const lostAsAttacker = side === 'attackerId' && payload.winner === 'defender';
         const lostAsDefender = side === 'defenderId' && payload.winner === 'attacker';
         if (lostAsAttacker || lostAsDefender) {
-          const node = st.nodes.find((n) => n.id === sq.nodeId)!;
-          const backId = node.links[0];
-          this.orderMarch(sq, backId);
+          const backId = retreatNode(st.nodes, sq.nodeId);
+          if (backId !== null) this.orderMarch(sq, backId);
         }
       }
     }

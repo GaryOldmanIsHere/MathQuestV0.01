@@ -13,6 +13,8 @@ interface FighterView {
   char: Character;
   sprite: Phaser.GameObjects.Image;
   hpFill: Phaser.GameObjects.Rectangle;
+  /** everything that should fade out with the sprite when the unit falls */
+  trappings: Phaser.GameObjects.GameObject[];
   baseX: number;
   baseY: number;
   facing: 1 | -1;
@@ -39,16 +41,23 @@ export class BattleScene extends Phaser.Scene {
     this.views.clear();
     const { width: W, height: H } = this.scale;
 
-    // battlefield backdrop
-    this.add.rectangle(W / 2, H / 2, W, H, 0x1a2416);
+    // Battlefield backdrop: a full grass field with only sparse darker patches.
+    // The combatants have to read clearly against it, so the ground stays quiet.
+    for (let y = 0; y < H; y += 16) {
+      for (let x = 0; x < W; x += 16) {
+        this.add.image(x + 8, y + 8, 'tile-grass');
+      }
+    }
     for (let y = 0; y < H; y += 16) {
       for (let x = 0; x < W; x += 16) {
         const h = Math.abs(Math.sin(x * 3.7 + y * 9.1) * 43758.5) % 1;
-        if (h > 0.5) this.add.image(x + 8, y + 8, 'tile-grass').setAlpha(0.85);
+        if (h > 0.88) this.add.image(x + 8, y + 8, 'tile-forest').setAlpha(0.55);
       }
     }
-    this.add.rectangle(W / 2, 40, W, 80, 0x101820, 0.75);
-    this.add.rectangle(W / 2, H - 30, W, 60, 0x101820, 0.75);
+    // vignette so the centre of the field carries the eye
+    this.add.rectangle(W / 2, H / 2, W, H, 0x0c1408, 0.22);
+    this.add.rectangle(W / 2, 40, W, 80, 0x101820, 0.85);
+    this.add.rectangle(W / 2, H - 30, W, 60, 0x101820, 0.85);
 
     this.add.text(30, 18, this.headline(this.attacker), TEXT_STYLE);
     this.add.text(W - 30, 18, this.headline(this.defender), TEXT_STYLE).setOrigin(1, 0);
@@ -110,21 +119,26 @@ export class BattleScene extends Phaser.Scene {
       // front column is nearest the center line
       const x = cx + facing * (col - 1) * 70;
       const y = cy + (r - 1) * 95;
-      this.add.rectangle(x, y + 14, 58, 12, 0x000000, 0.28).setDepth(1);
       if (id === null) continue;
       const char = st.chars.get(id)!;
       if (char.hp <= 0) continue;
+      // ground shadow, only under a combatant who is actually standing there
+      const shadow = this.add.ellipse(x, y + 16, 46, 12, 0x000000, 0.3).setDepth(1);
       const palette = classOf(char.classId).palette;
       const sprite = this.add.image(x, y - 12, `unit-${palette}`).setScale(3.4).setDepth(10);
       sprite.setFlipX(!isLeft);
-      this.add.rectangle(x, y + 26, 44, 5, 0x101020).setDepth(11);
+      const hpBack = this.add.rectangle(x, y + 26, 44, 5, 0x101020).setDepth(11);
       const hpFill = this.add.rectangle(x - 22, y + 26, 44, 5, 0x58c858).setOrigin(0, 0.5).setDepth(12);
       hpFill.width = 44 * (char.hp / char.stats.hp);
-      this.add
+      const label = this.add
         .text(x, y + 34, `${char.name} L${char.level}`, { ...SMALL_STYLE, fontSize: '9px', stroke: '#101020', strokeThickness: 3 })
         .setOrigin(0.5)
         .setDepth(11);
-      this.views.set(char.id, { char, sprite, hpFill, baseX: x, baseY: y - 12, facing });
+      this.views.set(char.id, {
+        char, sprite, hpFill,
+        trappings: [hpBack, hpFill, label, shadow],
+        baseX: x, baseY: y - 12, facing,
+      });
     }
   }
 
@@ -163,8 +177,10 @@ export class BattleScene extends Phaser.Scene {
           seen.add(ev.targetIds[k]);
           this.floatNumber(tv.baseX + jitter, tv.baseY - 30 - (k % 3) * 10, `${isHeal ? '+' : ''}${ev.amounts[k]}`, isHeal ? '#90e090' : '#f0e090');
           if (!isHeal) {
-            tv.sprite.setTintFill(0xffffff);
-            this.time.delayedCall(90, () => tv.sprite.clearTint());
+            // multiply tint rather than fill: the unit still reads as itself
+            // while it flashes, instead of blanking to a white silhouette
+            tv.sprite.setTint(0xff7a6a);
+            this.time.delayedCall(110, () => tv.sprite.clearTint());
           }
           const ratio = Math.max(0, tv.char.hp / tv.char.stats.hp);
           tv.hpFill.width = 44 * ratio;
@@ -174,6 +190,7 @@ export class BattleScene extends Phaser.Scene {
           const kv = this.views.get(koId);
           if (kv) {
             this.tweens.add({ targets: kv.sprite, alpha: 0, angle: 90, duration: 380 });
+            this.tweens.add({ targets: kv.trappings, alpha: 0, duration: 380 });
             this.floatNumber(kv.baseX, kv.baseY - 46, 'KO!', '#e05a48');
           }
         }

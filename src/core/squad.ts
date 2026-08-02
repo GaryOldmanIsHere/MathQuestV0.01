@@ -25,8 +25,8 @@ export function makeSquad(
     nodeId,
     x,
     y,
-    targetNodeId: null,
-    pathNodes: [],
+    targetX: null,
+    targetY: null,
     moving: false,
   };
 }

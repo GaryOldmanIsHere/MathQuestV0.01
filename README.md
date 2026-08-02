@@ -15,13 +15,22 @@ npm run build    # type-check + production bundle into dist/
 
 ## What's implemented
 
-**Overworld (real-time march).** A node-and-road strategic map with a player
-HQ, enemy castle, towns, and forts. Select a squad and click a stronghold to
-issue a march order; squads move continuously along roads at the pace of their
-slowest member. Arriving uncontested at a stronghold liberates it and flips its
-flag. Owned strongholds generate income each day. Enemy squads march on your
-territory on their own initiative, while garrisons hold their forts. Taking
-Castle Verlaine wins the campaign; losing Fort Melchor ends it.
+**Overworld (free real-time march).** An open strategic map with a player HQ,
+enemy castle, towns, and forts. Select a squad and click *anywhere* — squads
+march in a straight line to any point you pick, not along a fixed network.
+Clicks landing near a stronghold snap onto it so capturing stays easy to aim.
+A squad that halts within an uncontested stronghold's radius liberates it and
+flips its flag; owned strongholds generate income each day. Enemy squads pick
+the nearest player holding and drive straight at it, while garrisons hold their
+forts. Taking Castle Verlaine wins the campaign; losing Fort Melchor ends it.
+
+**Terrain that costs time, never access.** Nothing on the map is impassable —
+you can always go anywhere — but the ground decides how fast you get there.
+Roads are quickest, open plain is the baseline, and forest, mountain, and water
+each slow a march progressively. Flying squads ignore the ground entirely,
+which is what finally makes the flying movement type worth having. Because the
+renderer draws from the very same terrain grid the movement code charges
+against, what you read off the map is always exactly what you pay.
 
 **Auto-battle with 3x3 formations.** When opposing squads meet on the map the
 engagement resolves automatically. Each squad fields up to five members on a
@@ -30,9 +39,11 @@ middle, or back — which in turn decides which attack they use and how many
 times it lands. A knight in front swings twice; an archer gains a third shot
 from the back rank; clerics only heal from the rear. Combatants act in agility
 order, attacks target the enemy's nearest live rank first, and the side dealing
-more damage wins the clash and pushes the loser back along the road. Wiped
-enemy squads are destroyed; wiped player squads rout home to the keep at low
-strength.
+more damage wins the clash and drives the loser back onto its own nearest
+holding. Because squads move freely, engagements happen wherever two forces
+meet — you can intercept a march in open country, and be intercepted yourself.
+Wiped enemy squads are destroyed; wiped player squads rout home to the keep at
+low strength.
 
 **Class structure and promotion tree.** 37 classes across the male line
 (Fighter → Knight/Berserker/Ninja/Wizard/Phalanx/Fencer/Beast Tamer/Doll
@@ -63,7 +74,8 @@ src/
     character.ts   stat derivation, exp, promotion gates, alignment drift
     squad.ts       formation grid, march speed, auto-placement
     battle.ts      engagement simulator; returns an animatable event log
-    pathing.ts     road-network routing and retreat
+    terrain.ts     terrain grid, road stamping, per-tile movement costs
+    movement.ts    free-form marching, stronghold occupancy, retreat
     state.ts       campaign state and starting scenario
   data/
     classes.ts     the class tree: stats, growths, row attacks, promotions
@@ -88,15 +100,22 @@ without a single binary asset.
 
 ## Tests
 
-`npm test` runs 51 tests over the simulation core — the rules, not the
+`npm test` runs 72 tests over the simulation core — the rules, not the
 rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,
 that promotions gate on level, charisma, and alignment independently (a
 chaotic Fighter is locked out of Knight but can reach Berserker), that
-alignment drifts in the right direction and stays in bounds, that a squad
-marches at its slowest member's pace, and that road routing only ever walks
-real links.
+alignment drifts in the right direction and stays in bounds, and that a squad
+marches at its slowest member's pace.
+
+Movement and terrain get their own coverage: that a squad heads straight for an
+arbitrary point rather than drifting along an axis, that it converges on its
+destination instead of oscillating around it, that orders off the edge of the
+map are clamped, that clicks near a stronghold snap onto it while clicks in
+open country stay exactly where they landed, that no terrain is ever
+impassable, that roads beat plain and rough ground is slower, and that fliers
+ignore the ground.
 
 A few structural tests guard the class tree itself: every promotion points at
 a class that exists, stays within its gender line, never drops a tier, forms no
@@ -104,13 +123,17 @@ cycles, and every non-monster class is reachable from a tier-1 root. These
 catch data-entry mistakes in `classes.ts` that no amount of playtesting would
 reliably surface.
 
-The suite was mutation-checked rather than trusted on a green run — deliberately
-breaking the holy-damage bonus and the front-rank targeting rule each produced
-failures, which is what confirmed those tests were actually testing something.
+The suite is mutation-checked rather than trusted on a green run. Deliberately
+breaking the holy-damage bonus, front-rank targeting, road stamping, flier
+terrain immunity, and movement normalisation each produced failures, which is
+what confirms those tests are actually testing something. Two early tests were
+caught passing for the wrong reasons this way and rewritten.
 
 ## Balance knobs
 
 Class stats, growths, row attacks, and promotion requirements all live in
 `src/data/classes.ts`. Damage and healing formulas are in `src/core/battle.ts`;
-march speeds are in `src/core/squad.ts`; the campaign map and starting armies
-are in `src/core/state.ts`.
+base march speeds are in `src/core/squad.ts`; terrain movement costs and the
+road bonus are in `TERRAIN_SPEED` in `src/core/terrain.ts`; capture and snap
+radii are in `src/core/movement.ts`; the campaign map and starting armies are
+in `src/core/state.ts`.

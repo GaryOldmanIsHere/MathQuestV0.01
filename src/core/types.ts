@@ -77,12 +77,13 @@ export interface Squad {
   //    6     7     8
   grid: (number | null)[];
   leaderId: number;
-  // Overworld position/state
-  nodeId: number; // current or last stronghold node
+  // Overworld position/state. Squads move freely: a destination is an
+  // arbitrary map point, not a stronghold or a step along a road.
+  nodeId: number; // last stronghold occupied, for AI and rally purposes
   x: number;
   y: number;
-  targetNodeId: number | null;
-  pathNodes: number[]; // remaining path
+  targetX: number | null;
+  targetY: number | null;
   moving: boolean;
 }
 
@@ -93,6 +94,11 @@ export interface MapNode {
   y: number;
   kind: 'hq-player' | 'hq-enemy' | 'town' | 'fort';
   owner: 'player' | 'enemy' | 'neutral';
+  /**
+   * Strongholds this one is joined to by road. Roads no longer gate movement —
+   * squads may march anywhere — they only lay down faster ground and draw the
+   * map's road network.
+   */
   links: number[];
 }
 

@@ -6,9 +6,13 @@ import { squadMemberIds, squadMoveType, moveSpeed } from '../core/squad';
 import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/ui';
 import { CLASS_ART } from '../gfx/pixels';
 import { rng } from '../data/names';
-import { findPath, retreatNode } from '../core/pathing';
-
-const MAP_H = 560; // playfield height; bottom strip is the HUD
+import {
+  haltSquad, orderTo, retreatTarget, snapOrder, stepToward, strongholdAt,
+} from '../core/movement';
+import type { Terrain } from '../core/terrain';
+import {
+  buildTerrainGrid, COLS, MAP_H, ROWS, speedMultiplierAt, terrainAtTile, TILE,
+} from '../core/terrain';
 
 interface SquadView {
   sprite: Phaser.GameObjects.Image;
@@ -29,6 +33,7 @@ export class OverworldScene extends Phaser.Scene {
   private aiTimer = 0;
   private dayTimer = 0;
   private nodeFlags = new Map<number, Phaser.GameObjects.Image>();
+  private terrain: Terrain[] = [];
 
   constructor() {
     super('Overworld');
@@ -39,9 +44,9 @@ export class OverworldScene extends Phaser.Scene {
     this.views.clear();
     this.selected = null;
     this.battleActive = false;
+    this.terrain = buildTerrainGrid(st.nodes);
 
-    this.drawTerrain();
-    this.drawRoads();
+    this.drawTerrain(); // roads are part of the terrain grid now
     this.drawNodes();
 
     this.selectRing = this.add.circle(0, 0, 20).setStrokeStyle(2, 0xf0e090).setVisible(false);
@@ -57,19 +62,17 @@ export class OverworldScene extends Phaser.Scene {
       this.scene.launch('Organize');
     }, 95);
 
-    // map click -> issue march order
+    // Map click: selecting your own squad takes priority, otherwise the click
+    // is a march order to that exact point — anywhere on the map.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (p.y >= MAP_H || this.battleActive) return;
-      const node = this.nodeAt(p.x, p.y);
-      if (node && this.selected && st.phase === 'playing') {
-        this.orderMarch(this.selected, node.id);
+      if (p.y >= MAP_H || this.battleActive || st.phase !== 'playing') return;
+      const sq = this.squadAt(p.x, p.y);
+      if (sq && sq.side === 'player' && sq !== this.selected) {
+        this.selected = sq;
+        this.hintText.setText(`${sq.name} — click anywhere to march.`);
         return;
       }
-      const sq = this.squadAt(p.x, p.y);
-      if (sq && sq.side === 'player') {
-        this.selected = sq;
-        this.hintText.setText(`${sq.name} — click a stronghold to march.`);
-      }
+      if (this.selected) this.orderMarch(this.selected, p.x, p.y);
     });
 
     // fan out squads that share a starting stronghold
@@ -92,40 +95,22 @@ export class OverworldScene extends Phaser.Scene {
 
   // ---------------- terrain & nodes ----------------
 
+  /**
+   * Draw the ground straight from the terrain grid the movement code charges
+   * against, so what the player reads off the map is exactly what they pay.
+   */
   private drawTerrain(): void {
-    for (let y = 0; y < MAP_H; y += 16) {
-      for (let x = 0; x < 800; x += 16) {
-        // deterministic hash picks patches of forest/mountain/water
-        const h = Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
-        let key = 'tile-grass';
-        if (y < 80 && h > 0.3) key = 'tile-mountain';
-        else if (x > 600 && y > 420 && h > 0.35) key = 'tile-water';
-        else if (h > 0.82) key = 'tile-forest';
-        else if (h < 0.06) key = 'tile-forest';
-        this.add.image(x + 8, y + 8, key).setDepth(0);
-      }
-    }
-  }
-
-  private drawRoads(): void {
-    const st = getState();
-    const g = this.add.graphics().setDepth(1);
-    g.lineStyle(6, 0x9a8a68, 1);
-    const drawn = new Set<string>();
-    for (const n of st.nodes) {
-      for (const l of n.links) {
-        const key = [Math.min(n.id, l), Math.max(n.id, l)].join('-');
-        if (drawn.has(key)) continue;
-        drawn.add(key);
-        const m = st.nodes.find((x) => x.id === l)!;
-        g.lineBetween(n.x, n.y, m.x, m.y);
-      }
-    }
-    g.lineStyle(2, 0xb0a080, 1);
-    for (const n of st.nodes) {
-      for (const l of n.links) {
-        const m = st.nodes.find((x) => x.id === l)!;
-        if (m.id > n.id) g.lineBetween(n.x, n.y, m.x, m.y);
+    const tileFor: Record<Terrain, string> = {
+      plain: 'tile-grass',
+      forest: 'tile-forest',
+      mountain: 'tile-mountain',
+      water: 'tile-water',
+      road: 'tile-road',
+    };
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const t = terrainAtTile(this.terrain, col, row);
+        this.add.image(col * TILE + TILE / 2, row * TILE + TILE / 2, tileFor[t]).setDepth(0);
       }
     }
   }
@@ -168,44 +153,54 @@ export class OverworldScene extends Phaser.Scene {
 
   // ---------------- movement ----------------
 
-  private bfsPath(from: number, to: number): number[] {
-    return findPath(getState().nodes, from, to);
-  }
-
-  private orderMarch(sq: Squad, targetId: number): void {
-    const path = this.bfsPath(sq.nodeId, targetId);
-    if (path.length === 0 && sq.nodeId !== targetId) return;
-    sq.pathNodes = path;
-    sq.targetNodeId = targetId;
-    sq.moving = path.length > 0;
+  /** March to any point on the map. Clicks near a stronghold snap onto it. */
+  private orderMarch(sq: Squad, x: number, y: number): void {
+    const st = getState();
+    const dest = snapOrder(st.nodes, x, y);
+    orderTo(sq, dest.x, dest.y);
     if (sq.side === 'player') {
-      const st = getState();
-      this.hintText.setText(`${sq.name} marches to ${st.nodes.find((n) => n.id === targetId)!.name}.`);
+      const node = strongholdAt(st.nodes, dest.x, dest.y);
+      this.hintText.setText(
+        node ? `${sq.name} marches on ${node.name}.` : `${sq.name} marches into open country.`,
+      );
+      this.pingOrder(dest.x, dest.y);
     }
   }
 
   private stepSquad(sq: Squad, dt: number): void {
     const st = getState();
-    if (!sq.moving || sq.pathNodes.length === 0) return;
-    const next = st.nodes.find((n) => n.id === sq.pathNodes[0])!;
+    if (!sq.moving || sq.targetX === null || sq.targetY === null) return;
+
     const chars = squadMemberIds(sq).map((id) => st.chars.get(id)!);
-    const speed = moveSpeed(squadMoveType(chars));
-    const d = Phaser.Math.Distance.Between(sq.x, sq.y, next.x, next.y);
-    if (d < 2) {
-      sq.x = next.x;
-      sq.y = next.y;
-      sq.nodeId = next.id;
-      sq.pathNodes.shift();
-      if (sq.pathNodes.length === 0) {
-        sq.moving = false;
-        sq.targetNodeId = null;
-        this.settle(sq, next);
-      }
-      this.tryCapture(sq, next);
-    } else {
-      sq.x += ((next.x - sq.x) / d) * speed * dt;
-      sq.y += ((next.y - sq.y) / d) * speed * dt;
+    const mt = squadMoveType(chars);
+    // Terrain under the squad's feet sets the pace; fliers are unimpeded.
+    const terrainFactor = speedMultiplierAt(this.terrain, sq.x, sq.y, mt === 'fly');
+    const distance = moveSpeed(mt) * terrainFactor * dt;
+
+    const next = stepToward(sq.x, sq.y, sq.targetX, sq.targetY, distance);
+    sq.x = next.x;
+    sq.y = next.y;
+    if (!next.arrived) return;
+
+    haltSquad(sq);
+    const node = strongholdAt(st.nodes, sq.x, sq.y);
+    if (node) {
+      sq.nodeId = node.id;
+      this.settle(sq, node);
+      this.tryCapture(sq, node);
     }
+  }
+
+  /** Brief marker where a march order was issued, so the click reads. */
+  private pingOrder(x: number, y: number): void {
+    const ring = this.add.circle(x, y, 6).setStrokeStyle(2, 0xf0e090).setDepth(40);
+    this.tweens.add({
+      targets: ring,
+      radius: 20,
+      alpha: 0,
+      duration: 500,
+      onComplete: () => ring.destroy(),
+    });
   }
 
   /**
@@ -245,23 +240,24 @@ export class OverworldScene extends Phaser.Scene {
     const st = getState();
     const roamers = st.squads.filter((s) => s.side === 'enemy' && !s.moving);
     for (const sq of roamers) {
-      const node = st.nodes.find((n) => n.id === sq.nodeId)!;
-      // garrison holds its fort unless its node was taken
-      const isGarrison = node.kind === 'hq-enemy' || (node.kind === 'fort' && node.owner === 'enemy');
-      if (isGarrison) continue;
-      // march toward nearest player-owned node
+      // A garrison sits on its own fort and holds it.
+      const here = strongholdAt(st.nodes, sq.x, sq.y);
+      if (here && here.owner === 'enemy' && (here.kind === 'hq-enemy' || here.kind === 'fort')) continue;
+
+      // Otherwise strike for the closest player holding — straight there, since
+      // the enemy is no more bound to the roads than the player is.
       const targets = st.nodes.filter((n) => n.owner === 'player');
       if (targets.length === 0) continue;
       let best: MapNode | null = null;
-      let bestLen = Infinity;
+      let bestDist = Infinity;
       for (const t of targets) {
-        const len = this.bfsPath(sq.nodeId, t.id).length;
-        if (len > 0 && len < bestLen) {
-          bestLen = len;
+        const d = Phaser.Math.Distance.Between(sq.x, sq.y, t.x, t.y);
+        if (d < bestDist) {
+          bestDist = d;
           best = t;
         }
       }
-      if (best && rng() < 0.6) this.orderMarch(sq, best.id);
+      if (best && rng() < 0.6) this.orderMarch(sq, best.x, best.y);
     }
   }
 
@@ -311,20 +307,20 @@ export class OverworldScene extends Phaser.Scene {
           // routed home: survivors crawl back to HQ at low strength
           const hq = st.nodes.find((n) => n.kind === 'hq-player')!;
           sq.nodeId = hq.id;
-          sq.pathNodes = [];
-          sq.moving = false;
+          haltSquad(sq);
           this.settle(sq, hq);
           for (const c of members) c.hp = Math.max(1, Math.floor(c.stats.hp * 0.25));
           this.toast(`${sq.name} routed! They regroup at the keep.`, '#e0b060');
         }
       } else {
         for (const c of members) if (c.hp <= 0) c.hp = 1; // KO'd members limp on
-        // loser gets pushed back toward a linked node
+        // The beaten side gives ground, falling back on its own nearest holding.
         const lostAsAttacker = side === 'attackerId' && payload.winner === 'defender';
         const lostAsDefender = side === 'defenderId' && payload.winner === 'attacker';
         if (lostAsAttacker || lostAsDefender) {
-          const backId = retreatNode(st.nodes, sq.nodeId);
-          if (backId !== null) this.orderMarch(sq, backId);
+          const foe = st.squads.find((o) => o.id === payload[side === 'attackerId' ? 'defenderId' : 'attackerId']);
+          const away = retreatTarget(st.nodes, sq.side, sq.x, sq.y, foe?.x ?? sq.x, foe?.y ?? sq.y);
+          orderTo(sq, away.x, away.y);
         }
       }
     }

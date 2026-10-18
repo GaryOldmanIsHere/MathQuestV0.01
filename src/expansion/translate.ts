@@ -3,6 +3,7 @@ import type {
 } from '../core/types';
 import { genderCompatible } from '../core/types';
 import type { Dataset } from '../data/registry';
+import type { ItemDef } from '../core/items';
 import type { SnesClass, SowClass } from './sources';
 
 // Translates the classes of two other games into Ogre Battle 64's model and
@@ -721,6 +722,37 @@ export function expandDataset(
     addedRoutes++;
   }
 
+  // The items those class changes spend. Where the dataset already has an
+  // item of the name (Ogre Battle 64's Royal Crown), that one serves; the
+  // rest become key items, sold by shops of a high enough rank and found
+  // among the spoils of battle.
+  const items: Record<string, ItemDef> = { ...base.items };
+  const known = new Set(Object.values(items).map((i) => normName(i.name)));
+  for (const c of Object.values(classes)) {
+    for (const p of c.promotesTo) {
+      if (!p.item) continue;
+      const target = classes[p.classId];
+      const id = normName(p.item);
+      if (known.has(id)) {
+        const own = Object.values(items).find((i) => normName(i.name) === id && i.source === 'expansion');
+        if (own && !own.desc?.includes(target.name)) own.desc += ` Or into ${target.name}.`;
+        continue;
+      }
+      known.add(id);
+      const slug = p.item.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      items[items[slug] ? `${slug}-key` : slug] = {
+        id: items[slug] ? `${slug}-key` : slug,
+        name: p.item,
+        kind: 'key',
+        price: [0, 400, 900, 1800, 2800][target.tier],
+        rank: Math.min(8, target.tier * 2),
+        forSale: true,
+        desc: `Spent on a class change into ${target.name}.`,
+        source: 'expansion',
+      };
+    }
+  }
+
   // A class the player can only reach through enemy-only classes is enemy-only too.
   for (let changed = true; changed;) {
     changed = false;
@@ -737,6 +769,7 @@ export function expandDataset(
   return {
     dataset: {
       classes,
+      items,
       spells: base.spells,
       source: base.source,
       label: `${base.label} + expansion`,

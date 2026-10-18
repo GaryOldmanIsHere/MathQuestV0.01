@@ -35,3 +35,34 @@ export function rng(): number {
 export function pick<T>(arr: T[]): T {
   return arr[Math.floor(rng() * arr.length)];
 }
+
+const given = new Set<string>();
+
+/**
+ * A name nobody in the campaign has yet. Once a pool is spent, names repeat
+ * with a numeral ("Una II"), so no two soldiers ever share one.
+ */
+export function freshName(pool: string[]): string {
+  const unused = pool.filter((n) => !given.has(n));
+  let name = unused.length ? pick(unused) : pick(pool);
+  for (let n = 2; given.has(name); n++) name = `${name.replace(/ [IVX]+$/, '')} ${roman(n)}`;
+  given.add(name);
+  return name;
+}
+
+/** Mark a name as taken (named heroes), so no recruit is given it. */
+export function claimName(name: string): void {
+  given.add(name);
+}
+
+/** Forget every name given: a new campaign. */
+export function resetNames(): void {
+  given.clear();
+}
+
+function roman(n: number): string {
+  const table: [number, string][] = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+  let out = '';
+  for (const [v, s] of table) while (n >= v) { out += s; n -= v; }
+  return out;
+}

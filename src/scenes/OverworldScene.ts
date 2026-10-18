@@ -3,6 +3,9 @@ import { getState } from '../core/state';
 import type { MapNode, Squad } from '../core/types';
 import { classOf } from '../data/registry';
 import { moveSpeed, squadMemberIds, squadType, SQUAD_TYPE_LABEL } from '../core/squad';
+import { addLoot, rollLoot } from '../core/items';
+import { restSquads } from '../core/camp';
+import { itemOf } from '../data/registry';
 import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/ui';
 import { rng } from '../data/names';
 import {
@@ -65,8 +68,12 @@ export class OverworldScene extends Phaser.Scene {
     // is a march order to that exact point — anywhere on the map.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.y >= MAP_H || this.battleActive || st.phase !== 'playing') return;
-      const sq = this.squadAt(p.x, p.y);
-      if (sq && sq.side === 'player' && sq !== this.selected) {
+      // Squads stacked on one spot (the keep, at the start) are picked in
+      // turn: each click on the stack selects the next of them.
+      const stack = st.squads.filter((s) => s.side === 'player' && Phaser.Math.Distance.Between(p.x, p.y, s.x, s.y) < 22);
+      if (stack.length && !(stack.length === 1 && stack[0] === this.selected)) {
+        const at = this.selected ? stack.indexOf(this.selected) : -1;
+        const sq = stack[(at + 1) % stack.length];
         this.selected = sq;
         const type = squadType(squadMemberIds(sq).map((id) => st.chars.get(id)!));
         this.hintText.setText(`${sq.name} (${SQUAD_TYPE_LABEL[type]}) — click anywhere to march.`);
@@ -135,20 +142,6 @@ export class OverworldScene extends Phaser.Scene {
       if (Phaser.Math.Distance.Between(x, y, n.x, n.y) < 26) return n;
     }
     return null;
-  }
-
-  private squadAt(x: number, y: number): Squad | null {
-    const st = getState();
-    let best: Squad | null = null;
-    let bestD = 22;
-    for (const sq of st.squads) {
-      const d = Phaser.Math.Distance.Between(x, y, sq.x, sq.y);
-      if (d < bestD) {
-        bestD = d;
-        best = sq;
-      }
-    }
-    return best;
   }
 
   // ---------------- movement ----------------
@@ -302,7 +295,10 @@ export class OverworldScene extends Phaser.Scene {
       if (wiped) {
         if (sq.side === 'enemy') {
           st.squads.splice(st.squads.indexOf(sq), 1);
-          this.toast(`${sq.name} destroyed!`, '#90e090');
+          const loot = rollLoot(members);
+          addLoot(loot, st.inventory, st);
+          const found = loot.items.map((id) => itemOf(id).name);
+          this.toast(`${sq.name} destroyed! Spoils: ${[`${loot.goth} Goth`, ...found].join(', ')}`, '#90e090');
         } else {
           // routed home: survivors crawl back to HQ at low strength
           const hq = st.nodes.find((n) => n.kind === 'hq-player')!;
@@ -313,7 +309,7 @@ export class OverworldScene extends Phaser.Scene {
           this.toast(`${sq.name} routed! They regroup at the keep.`, '#e0b060');
         }
       } else {
-        for (const c of members) if (c.hp <= 0) c.hp = 1; // KO'd members limp on
+        // The fallen stay down until revived, or until their squad rests at its keep.
         // The beaten side gives ground, falling back on its own nearest holding.
         const lostAsAttacker = side === 'attackerId' && payload.winner === 'defender';
         const lostAsDefender = side === 'defenderId' && payload.winner === 'attacker';
@@ -405,6 +401,7 @@ export class OverworldScene extends Phaser.Scene {
       st.day++;
       const income = st.nodes.filter((n) => n.owner === 'player').length * 50;
       st.goth += income;
+      restSquads(st);
     }
 
     // sync views

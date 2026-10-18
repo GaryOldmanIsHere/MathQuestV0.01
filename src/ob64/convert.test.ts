@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Ob64Attack, Ob64Class, Ob64Data } from './decode';
+import type { Ob64Item } from './decode';
 import {
-  buildSpellBook, convertDataset, inferAlignmentWindow, inferStatGates, isRosterClass, toRowAttack,
+  buildSpellBook, convertConsumables, convertDataset, convertItems, inferAlignmentWindow, inferEquipRules,
+  inferStatGates, isRosterClass, toRowAttack,
 } from './convert';
 
 // Synthetic Ogre Battle 64 tables, shaped like the decoder's output. The few
@@ -197,3 +199,71 @@ describe('class definitions', () => {
     expect(Object.values(ds.classes).every((c) => c.source === 'ob64')).toBe(true);
   });
 });
+
+describe('items', () => {
+  const ZERO = { physical: 0, wind: 0, flame: 0, earth: 0, water: 0, virtue: 0, bane: 0 };
+  const item = (id: number, name: string, over: Partial<Ob64Item>): Ob64Item => ({
+    id, name, type: 1, element: 0, rank: 1, price: 20,
+    bonus: { str: 0, int: 0, agi: 0, dex: 0, vit: 0, men: 0, luk: 0 }, resist: { ...ZERO }, flags: [0, 0, 0, 0, 0],
+    ...over,
+  });
+
+  it('keeps the game\'s numbers and names the type', () => {
+    const { defs } = convertItems([item(1, 'Short Sword', { bonus: { str: 3, int: 0, agi: 0, dex: 0, vit: 0, men: 0, luk: 0 } })]);
+    expect(defs[0]).toMatchObject({ id: 'short-sword', type: 'sword', price: 20, rank: 1, bonus: { str: 3 }, forSale: true });
+  });
+
+  it('reads the not-for-sale bit, the slaying bits and the element', () => {
+    const { defs } = convertItems([
+      item(1, 'Fafnir', { element: 0, flags: [0, 0, 0, 0x01, 0] }),
+      item(2, 'Blessed Sword', { element: 5, flags: [0, 0, 0, 0x10, 0] }),
+      item(3, 'Knoevlfer', { rank: 0, flags: [0, 0, 0x80, 0, 0] }),
+      item(4, 'Tempest', { type: 23, element: 7, price: 50000 }),
+    ]);
+    expect(defs[0].slays).toEqual(['dragon']);
+    expect(defs[1]).toMatchObject({ element: 'virtue', slays: ['undead'] });
+    expect(defs[2].forSale).toBe(false);
+    expect(defs[3]).toMatchObject({ type: 'book', element: undefined, forSale: false });
+  });
+
+  it('gives each supply an effect, and leaves out what has none yet', () => {
+    const out = convertConsumables([
+      { id: 1, name: 'Heal Leaf', category: 0, flag: 0, price: 10, target: 1, usage: 7 },
+      { id: 3, name: 'Heal Pack', category: 0, flag: 0, price: 120, target: 2, usage: 7 },
+      { id: 9, name: 'Sword Emblem', category: 1, flag: 0, price: 2550, target: 1, usage: 7 },
+      { id: 35, name: "Dragon's Scale", category: 4, flag: 1, price: 640, target: 0, usage: 0 },
+    ]);
+    expect(out.map((i) => i.name)).toEqual(['Heal Leaf', 'Heal Pack', 'Sword Emblem']);
+    expect(out[1]).toMatchObject({ kind: 'supply', target: 'squad', forSale: true });
+    expect(out[2]).toMatchObject({ kind: 'relic', forSale: false, effect: { stats: { str: 4 } } });
+  });
+
+  it('infers what a class may wear from what the game dresses it in', () => {
+    // A Knight: sword, plate, kite shield, helm.
+    expect(inferEquipRules(['sword', 'heavy', 'greatshield', 'helm'], false)).toEqual({
+      weapon: ['sword'], body: ['heavy', 'medium', 'light'], offhand: ['greatshield', 'shield', 'accessory'],
+      head: ['helm', 'hat', 'accessory'],
+    });
+    // A Wizard: staff, robe, book, amulet.
+    expect(inferEquipRules(['staff', 'robe', 'book', 'accessory'], false)).toMatchObject({
+      body: ['robe', 'clothing'], offhand: ['book', 'accessory'], head: ['hat', 'accessory'],
+    });
+    // A monster with an accessory only, and one with nothing at all.
+    expect(inferEquipRules([undefined, undefined, undefined, 'accessory'], true)?.head).toEqual(['accessory']);
+    expect(inferEquipRules([undefined, undefined, undefined, undefined], true)).toBeUndefined();
+  });
+
+  it('dresses each class in its default gear', () => {
+    const data: Ob64Data = {
+      source: { sha1: 'x', title: 't' }, elements: [], attacks: ATTACKS,
+      classes: [cls(0, 'None'), cls(1, 'Fighter', { equipment: [1, 0, 0, 0] })],
+      items: [item(1, 'Short Sword', {})],
+      consumables: [],
+    };
+    const ds = convertDataset(data);
+    expect(ds.classes.fighter.defaultGear).toEqual({ weapon: 'short-sword' });
+    expect(ds.classes.fighter.equip?.weapon).toEqual(['sword']);
+    expect(ds.items['short-sword']).toBeDefined();
+  });
+});
+

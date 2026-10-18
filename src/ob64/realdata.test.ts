@@ -95,3 +95,40 @@ describe.skipIf(!present)('the expansion on extracted Ogre Battle 64 data', () =
     expect(fighter.promotesTo.length).toBeGreaterThan(15);
   });
 });
+
+describe.skipIf(!present)('the equipment on extracted Ogre Battle 64 data', () => {
+  const raw = present ? (JSON.parse(readFileSync(PATH, 'utf8')) as Ob64Data) : null;
+  const ds = raw ? withExpansion(convertDataset(raw)) : null;
+
+  it('reads all 277 pieces of equipment and the supplies', () => {
+    expect(raw!.items).toHaveLength(277);
+    expect(raw!.items![0]).toMatchObject({ name: 'Short Sword', type: 1, price: 20, bonus: { str: 3 } });
+    expect(raw!.consumables![0]).toMatchObject({ name: 'Heal Leaf', price: 10, target: 1 });
+  });
+
+  it('dresses the Fighter and the Wizard as the game does', () => {
+    expect(ds!.classes.fighter.defaultGear).toEqual({
+      weapon: 'short-sword', body: 'chain-mail', offhand: 'round-shield', head: 'iron-helm',
+    });
+    expect(ds!.classes.wizard.defaultGear).toEqual({
+      weapon: 'scipplay-staff', body: 'robe', offhand: 'spellbook', head: 'amulet',
+    });
+  });
+
+  it('lets every class wear its own default gear', () => {
+    for (const c of Object.values(ds!.classes)) {
+      for (const [slot, id] of Object.entries(c.defaultGear ?? {})) {
+        const item = ds!.items[id!];
+        expect(item, `${c.name}: ${id}`).toBeDefined();
+        expect(c.equip![slot as 'weapon'], `${c.name} ${slot} ${item.name}`).toContain(item.type);
+      }
+    }
+  });
+
+  it('marks the dragon slayers', () => {
+    const slays = (n: string) => Object.values(ds!.items).find((i) => i.name === n)?.slays;
+    expect(slays('Fafnir')).toContain('dragon');
+    expect(slays('Blessed Sword')).toContain('undead');
+    expect(slays('Short Sword')).toBeUndefined();
+  });
+});

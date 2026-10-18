@@ -1,4 +1,6 @@
 import type { ClassDef, Element, RowAttack, SpellKind } from '../core/types';
+import type { ItemDef } from '../core/items';
+import { ITEMS } from './items';
 import { CLASSES } from './classes';
 import { withExpansion } from '../expansion';
 
@@ -13,6 +15,8 @@ export type SpellBook = Record<SpellKind, Partial<Record<Element, RowAttack>>>;
 
 export interface Dataset {
   classes: Record<string, ClassDef>;
+  /** Equipment, supplies, relics and key items. */
+  items: Record<string, ItemDef>;
   spells: SpellBook | null;
   source: 'ob64' | 'builtin';
   label: string;
@@ -21,6 +25,7 @@ export interface Dataset {
 /** The built-in originals alone, without the expansion. */
 export const ORIGINALS: Dataset = {
   classes: CLASSES,
+  items: ITEMS,
   spells: null,
   source: 'builtin',
   label: 'Palatinus originals',
@@ -58,6 +63,26 @@ export function classOf(id: string): ClassDef {
 
 export function allClasses(): ClassDef[] {
   return Object.values(active.classes);
+}
+
+export function hasItemDef(id: string): boolean {
+  return id in active.items;
+}
+
+export function itemOf(id: string): ItemDef {
+  const i = active.items[id];
+  if (!i) throw new Error(`Unknown item: ${id}`);
+  return i;
+}
+
+export function allItems(): ItemDef[] {
+  return Object.values(active.items);
+}
+
+/** An item by its name, however it is spelled or spaced. */
+export function findItemByName(name: string): ItemDef | undefined {
+  const n = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return allItems().find((i) => i.name.toLowerCase().replace(/[^a-z0-9]/g, '') === n);
 }
 
 /** The spell a caster of `element` casts for a slot of `kind`, if the dataset defines one. */

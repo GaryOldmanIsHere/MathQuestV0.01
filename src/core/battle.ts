@@ -3,6 +3,7 @@ import { classOf, resolveSpell } from '../data/registry';
 import { grantExp, shiftAlignment } from './character';
 import { memberRow, squadMemberIds } from './squad';
 import { rng } from '../data/names';
+import { effectiveResist, effectiveStats, familyOf, weaponOf } from './items';
 
 // One Ogre Battle engagement: every combatant acts once in agility order,
 // attack shape determined by their row on the 3x3 grid. The side that dealt
@@ -29,18 +30,34 @@ export interface BattleResult {
   levelUps: Map<number, number>;
 }
 
+/** 50 resistance is neutral; each point below makes a hit 2% stronger, each point above 2% weaker. */
+function resistMultiplier(resist: number): number {
+  return Math.max(0.25, Math.min(2, 1 + (50 - resist) / 50));
+}
+
 /**
- * How hard an attack lands given the target's class resistance to its element
- * (physical for unelemented blows). 50 is neutral; each point below makes the
- * hit 2% stronger and each point above 2% weaker, so the undead's low Virtue
- * resistance turns holy magic into a scourge. The resistances are the game's;
- * this scaling is provisional until the battle formula itself is decoded.
+ * How hard an attack lands given the target's resistance to its element
+ * (physical for unelemented blows), the target's class resistances with its
+ * gear's added. So the undead's low Virtue resistance turns holy magic into a
+ * scourge, and a Flame Shield blunts a Fireball. The resistances are the
+ * game's; this scaling is provisional until the battle formula is decoded.
+ *
+ * A blow struck with an elemental weapon is half steel, half element: it
+ * lands by the average of the two resistances. A weapon made to slay what
+ * the target is (dragons, the undead) strikes half again as hard.
  */
-export function elementBonus(att: RowAttack, target: Character): number {
+export function elementBonus(att: RowAttack, target: Character, actor?: Character): number {
+  const resist = effectiveResist(target);
   // Drakonite (the dragons' own element) has no resistance column; it lands as physical.
   const key: ResistKey = att.element && att.element !== 'drakonite' ? att.element : 'physical';
-  const resist = classOf(target.classId).resist[key] ?? 50;
-  return Math.max(0.25, Math.min(2, 1 + (50 - resist) / 50));
+  let mult = resistMultiplier(resist[key]);
+  const weapon = actor && (att.type === 'melee' || att.type === 'ranged') ? weaponOf(actor) : null;
+  if (weapon?.element && weapon.element !== 'drakonite' && !att.element) {
+    mult = (mult + resistMultiplier(resist[weapon.element])) / 2;
+  }
+  const family = familyOf(classOf(target.classId));
+  if (weapon?.slays && family && weapon.slays.includes(family)) mult *= 1.5;
+  return mult;
 }
 
 /**
@@ -56,15 +73,17 @@ export function resolveAttack(attack: RowAttack, caster: Character): RowAttack {
 }
 
 function damageOf(att: RowAttack, actor: Character, target: Character): number {
-  const offense = att.type === 'magic' || att.type === 'heal' ? actor.stats.int : actor.stats.str;
-  const defense = att.type === 'magic' ? target.stats.men : target.stats.vit;
+  const a = effectiveStats(actor);
+  const t = effectiveStats(target);
+  const offense = att.type === 'magic' || att.type === 'heal' ? a.int : a.str;
+  const defense = att.type === 'magic' ? t.men : t.vit;
   const raw = offense * att.power - defense * 0.55;
   const spread = 0.85 + rng() * 0.3;
-  return Math.max(1, Math.floor(raw * spread * elementBonus(att, target)));
+  return Math.max(1, Math.floor(raw * spread * elementBonus(att, target, actor)));
 }
 
 function healOf(att: RowAttack, actor: Character): number {
-  return Math.max(2, Math.floor(actor.stats.int * att.power * (0.9 + rng() * 0.2)));
+  return Math.max(2, Math.floor(effectiveStats(actor).int * att.power * (0.9 + rng() * 0.2)));
 }
 
 /** Live enemies, nearest column first (enemies' front rank is hit first). */
@@ -86,7 +105,7 @@ export function simulateBattle(
           char,
           squad: side.squad,
           row: memberRow(side.squad, id),
-          cell: side.squad.grid.indexOf(id),
+          cell: side.squad.grid.indexOf(id), // a large unit's rear cell
         };
       })
       .filter((c) => c.char.hp > 0);
@@ -98,7 +117,7 @@ export function simulateBattle(
   const expGained = new Map<number, number>();
   const levelUps = new Map<number, number>();
 
-  const order = [...atk, ...def].sort((a, b) => b.char.stats.agi - a.char.stats.agi);
+  const order = [...atk, ...def].sort((a, b) => effectiveStats(b.char).agi - effectiveStats(a.char).agi);
 
   for (const actor of order) {
     if (actor.char.hp <= 0) {

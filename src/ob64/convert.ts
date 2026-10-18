@@ -2,7 +2,9 @@ import type {
   ClassDef, Element, Gender, GateStat, Lineage, PromotionReq, Row, RowAttack, SpellKind, Stats,
 } from '../core/types';
 import type { Dataset, SpellBook } from '../data/registry';
-import type { Ob64Attack, Ob64Class, Ob64Data } from './decode';
+import type { Ob64Attack, Ob64Class, Ob64Consumable, Ob64Data, Ob64Item } from './decode';
+import type { EquipRules, Gear, ItemDef, ItemEffect, ItemType, Slot } from '../core/items';
+import { deriveEquipRules, slotsFor } from '../core/items';
 
 // Turns the tables decoded from the ROM into Palatinus class definitions.
 //
@@ -197,7 +199,134 @@ function describe(c: Ob64Class, tier: number, element: Element | undefined): str
   return parts.join(' ');
 }
 
+/** The game's equipment type numbers. */
+const ITEM_TYPE: Record<number, ItemType> = {
+  1: 'sword', 2: 'greatsword', 3: 'rapier', 4: 'axe', 5: 'hammer', 7: 'spear', 8: 'whip', 9: 'claw',
+  10: 'bow', 11: 'mace', 12: 'staff', 13: 'doll', 24: 'fan',
+  14: 'shield', 15: 'greatshield', 23: 'book',
+  16: 'light', 17: 'medium', 18: 'heavy', 19: 'robe', 20: 'clothing',
+  21: 'helm', 22: 'hat', 25: 'accessory',
+};
+
+function uniqueIds<T extends { id: number; name: string }>(list: T[]): Map<number, string> {
+  const out = new Map<number, string>();
+  const taken = new Set<string>();
+  for (const x of list) {
+    let id = slugify(x.name);
+    if (taken.has(id)) id = `${id}-${x.id}`;
+    taken.add(id);
+    out.set(x.id, id);
+  }
+  return out;
+}
+
+/**
+ * The ROM's equipment as Palatinus items. Bonuses, resistances, element,
+ * rank and price are the game's. Which flag bits mean "no shop sells this"
+ * (+0x1A bit 7) and "slays dragons" / "slays the undead" (+0x1B bits 0 and
+ * 4) is inferred from the items that carry them: every Fafnir, Balmung,
+ * Sword of Tiamat and Gram has the first, every Virtue weapon the second.
+ */
+export function convertItems(items: Ob64Item[]): { defs: ItemDef[]; ids: Map<number, string> } {
+  const ids = uniqueIds(items);
+  const defs: ItemDef[] = [];
+  for (const it of items) {
+    const type = ITEM_TYPE[it.type];
+    if (!type) continue;
+    const bonus = Object.fromEntries(Object.entries(it.bonus).filter(([, v]) => v !== 0));
+    const resist = Object.fromEntries(Object.entries(it.resist).filter(([, v]) => v !== 0));
+    const slays: ('dragon' | 'undead')[] = [];
+    if (it.flags[3] & 0x01) slays.push('dragon');
+    if (it.flags[3] & 0x10) slays.push('undead');
+    defs.push({
+      id: ids.get(it.id)!,
+      name: it.name,
+      kind: 'gear',
+      type,
+      element: ELEMENT_AT[it.element] && it.element <= 6 ? ELEMENT_AT[it.element] : undefined,
+      rank: it.rank,
+      price: it.price,
+      // Element 7 marks the four great spell tomes (Tempest, Annihilation...), never sold.
+      forSale: it.rank > 0 && !(it.flags[2] & 0x80) && it.element !== 7,
+      bonus,
+      resist,
+      slays: slays.length ? slays : undefined,
+      source: 'ob64',
+    });
+  }
+  return { defs, ids };
+}
+
+/**
+ * What each supply and relic does. The game's own effect code has not been
+ * located, so these are Palatinus's readings of the names, at magnitudes of
+ * its own choosing; the target (one unit or a squad) is the ROM's.
+ */
+const CONSUMABLE_EFFECT: Record<string, ItemEffect> = {
+  'Heal Leaf': { heal: 0.35 }, 'Heal Seed': { heal: 0.75 }, 'Heal Pack': { heal: 0.5 },
+  'Power Fruit': { heal: 0.25 }, 'Angel Fruit': { heal: 1 },
+  'Revive Stone': { revive: 0.5 }, 'Altar of Resurrection': { revive: 1 },
+  'Quit Gate': { rally: true },
+  'Champion Statuette': { level: 1 }, 'Cup of Life': { stats: { hp: 10 } },
+  'Sword Emblem': { stats: { str: 4 } }, 'Bracer of Protection': { stats: { vit: 4 } },
+  'Crown of Intellect': { stats: { int: 4 } }, 'Mirror of Soul': { stats: { men: 4 } },
+  'Stone of Quickness': { stats: { agi: 4 } }, 'Crystal of Precision': { stats: { dex: 4 } },
+  'Scroll of Discipline': { ali: 10 }, 'Urn of Chaos': { ali: -10 },
+  'Goblet of Destiny': { luk: 5 }, 'Flag of Unity': { unify: 10 },
+};
+
+export function convertConsumables(list: Ob64Consumable[]): ItemDef[] {
+  const ids = uniqueIds(list);
+  const out: ItemDef[] = [];
+  for (const c of list) {
+    const effect = CONSUMABLE_EFFECT[c.name];
+    if (!effect) continue; // tactics and story items: not yet part of the game
+    const relic = c.category === 1;
+    out.push({
+      id: `use-${ids.get(c.id)!}`,
+      name: c.name,
+      kind: relic ? 'relic' : 'supply',
+      price: c.price,
+      rank: relic ? 3 : c.price < 60 ? 1 : c.price < 150 ? 2 : c.price < 600 ? 3 : 5,
+      forSale: !relic,
+      target: c.target === 1 ? 'unit' : 'squad',
+      effect,
+      source: 'ob64',
+    });
+  }
+  return out;
+}
+
+/**
+ * What a class may wear, inferred from what the game dresses it in: the
+ * code that decides it is in an overlay not yet decompressed. A class keeps
+ * to its starting weapon's type; heavier armour admits the lighter; a large
+ * shield admits the small; a helm admits a hat; anyone may wear accessories.
+ */
+export function inferEquipRules(defaults: (ItemType | undefined)[], monster: boolean): EquipRules | undefined {
+  const [weapon, body, off, head] = defaults;
+  if (!weapon && !body && !off && !head) return undefined;
+  const bodies: Record<string, ItemType[]> = {
+    heavy: ['heavy', 'medium', 'light'], medium: ['medium', 'light'], light: ['light', 'clothing'],
+    robe: ['robe', 'clothing'], clothing: off === 'book' ? ['robe', 'clothing'] : ['clothing'],
+  };
+  const offhands: Record<string, ItemType[]> = {
+    greatshield: ['greatshield', 'shield', 'accessory'], shield: ['shield', 'accessory'], book: ['book', 'accessory'],
+  };
+  const heads: Record<string, ItemType[]> = { helm: ['helm', 'hat', 'accessory'], hat: ['hat', 'accessory'] };
+  return {
+    weapon: weapon && ITEM_WEAPONS.has(weapon) ? [weapon] : [],
+    body: body ? bodies[body] ?? [body] : [],
+    offhand: off ? offhands[off] ?? ['accessory'] : ['accessory'],
+    head: head ? heads[head] ?? (monster ? ['accessory'] : ['hat', 'accessory']) : monster ? ['accessory'] : ['hat', 'accessory'],
+  };
+}
+
+const ITEM_WEAPONS = new Set<ItemType>(['sword', 'greatsword', 'rapier', 'axe', 'hammer', 'spear', 'whip', 'claw', 'bow', 'mace', 'staff', 'doll', 'fan']);
+
 export function convertDataset(data: Ob64Data): Dataset {
+  const gear = convertItems(data.items ?? []);
+  const typeOfItem = new Map((data.items ?? []).map((i) => [i.id, ITEM_TYPE[i.type]]));
   const roster = data.classes.filter(isRosterClass);
   const inRoster = new Set(roster.map((c) => c.id));
   const book = buildSpellBook(data.attacks);
@@ -290,10 +419,31 @@ export function convertDataset(data: Ob64Data): Dataset {
       playable: recruitable(c),
       source: 'ob64',
     };
+    // The record's four items go where their type says; an accessory in the
+    // third place is worn in the off hand, in the fourth on the head. (A few
+    // story classes keep armour in the third place.)
+    const worn: Partial<Gear> = {};
+    const types: Partial<Record<Slot, ItemType>> = {};
+    c.equipment.forEach((n, pos) => {
+      const type = n > 0 && n < 0xffff ? typeOfItem.get(n) : undefined;
+      if (!type) return;
+      const fits = slotsFor(type);
+      const slot = fits.length === 1 ? fits[0] : pos === 2 ? 'offhand' : 'head';
+      if (worn[slot]) return;
+      worn[slot] = gear.ids.get(n);
+      types[slot] = type;
+    });
+    const rules = inferEquipRules([types.weapon, types.body, types.offhand, types.head], gender === 'X');
+    classes[id].equip = rules ?? deriveEquipRules(classes[id]);
+    if (Object.keys(worn).length) classes[id].defaultGear = worn;
   }
+
+  const items: Record<string, ItemDef> = {};
+  for (const i of [...gear.defs, ...convertConsumables(data.consumables ?? [])]) items[i.id] = i;
 
   return {
     classes,
+    items,
     spells: book,
     source: 'ob64',
     label: `Ogre Battle 64 (${data.source.sha1.slice(0, 8)})`,

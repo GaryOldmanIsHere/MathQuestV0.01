@@ -47,6 +47,8 @@ disassembly from the [OB64 recompilation project](https://github.com/lfarroco/og
 | Each row's attack and hit count | Each element's spell family (a Wizard of Earth casts Acid Vapor; of Flame, Fireball) from the shape of the attack table | How resistances scale damage, until the battle formula is decoded |
 | 159 attacks: category, element, target, effect | Story and boss classes, kept out of the player's tree by where they sit in the table | |
 | Level gates, lineage, and the level-up roll (growth + 0–2 per stat, capped at 999) | | |
+| 277 pieces of equipment: type, element, rank, price, STR/INT/AGI/DEX/VIT/MEN/LUK bonuses, physical and six elemental resistances | Each class's default gear, from its record's four item ids | What each class may wear: the code that decides it sits in an overlay not yet decompressed, so the rule is read off each class's default gear (keep to its weapon type; heavier armour admits the lighter; anyone wears accessories) |
+| 44 supplies, relics and key items: category, price, one unit or a squad | Which flag bits mean "no shop sells this", "slays dragons", "slays the undead", from the items that carry them | What each supply and relic does, and how much: read from the names (a Heal Leaf heals, a Sword Emblem raises STR) at Palatinus's own magnitudes |
 
 With the data loaded, Ogre Battle 64's own rules apply: units grow as whichever
 class their lineage says they were at each level, a class change keeps a unit's
@@ -112,6 +114,51 @@ names and routes only; none of either site's writing is copied, and the
 descriptions in game are Palatinus's own. `npm run scrape:expansion`
 regenerates them, pausing between requests.
 
+## Equipment, items, elements and large units
+
+**Gear.** Every unit has the four places Ogre Battle 64's class records give
+it: a weapon, body armour, an off hand (a shield or a book, or an accessory)
+and a head (a helm or a hat, or an accessory). A new unit comes dressed: in
+Ogre Battle 64 mode exactly as the game dresses its class (a Fighter in a
+Short Sword, Chain Mail, Round Shield and Iron Helm), otherwise in the best
+plain gear a recruit of its tier would own. Gear adds to the stats a unit
+fights with and to its resistances; the sheet shows both, with the bonus
+beside each stat. Two-handed weapons (greatswords, hammers, bows) leave no
+hand for a shield. A class change sheds whatever the new class cannot use
+back into the inventory. Monsters wear accessories only.
+
+**Elements in combat.** A unit's resistance to an attack's element is its
+class's plus its gear's, so a Flame Shield blunts a Fireball and armour blunts
+a sword. A blow struck with an elemental weapon lands half as steel, half as
+its element. Weapons made to slay dragons or the undead strike them half again
+as hard.
+
+**Large units.** Dragons, golems, hellhounds and other great beasts stand in
+two cells side by side and fill two of a squad's five places. They fight from
+their foremost cell, act once a round, and are drawn once, across both cells,
+in the formation and in battle.
+
+**Supplies, relics and key items.** Supplies heal one unit or a whole squad,
+revive the fallen, or carry a squad home. Relics raise a stat, Luck, a level
+or alignment for good. Key items open the class changes that call for them
+(the SNES game's *Virus*, *Blood Kiss*, *Undead Ring*...) and are spent on
+them. The Organize screen's *Items* panel uses them on the selected unit.
+
+**The shop.** *Shop* sells supplies, weapons, armour and key items. Its stock
+grows with the strongholds the army holds; shops buy back at half price.
+
+**The fallen and rest.** A unit knocked out in battle stays down until it is
+revived or its squad rests at the keep. A squad halted on one of its own
+strongholds recovers some HP each day.
+
+**Spoils.** Destroying an enemy squad pays Goth by the fallen's levels, and
+now and then a supply, a piece of gear, a relic or a key item.
+
+Without a ROM, Palatinus has its own catalogue of 164 items (145 pieces of
+gear, 7 supplies, 12 relics) with original
+names, on the same ranks and in the same shape, scaled to the built-in
+classes.
+
 ## What's implemented
 
 **Overworld (free real-time march).** An open strategic map with a player HQ,
@@ -160,10 +207,13 @@ honorable and raises it, while preying on the weak lowers it. Since promotions
 read alignment, how you fight determines which classes open up.
 
 **Organize screen.** Browse your squads, reposition members on the formation
-grid, and read a full character sheet — stats, alignment, kills, the attack
-they use in each row, and every promotion the class offers with its
-requirements, highlighted green when the character qualifies, paged when a
-class has more routes than fit. The squad's type heads its formation panel.
+grid, and read a full character sheet in three tabs: *Status* (stats with gear
+bonuses, alignment, Luck, resistances, the attack each row makes), *Gear* (the
+four places and what to put in them) and *Class* (every promotion the class
+offers with its requirements, highlighted green when the character
+qualifies, paged when there are many). The squad's type heads its formation
+panel; its places used, the treasury and the shop rank sit below. *Shop*,
+*Items* and *Recruit* open in the right-hand panel.
 
 ## Layout
 
@@ -172,6 +222,8 @@ src/
   core/         pure simulation, no Phaser
     types.ts       shared types, grid/row mapping, elements and resistances
     character.ts   lineage, stat generation and level-up rolls, class change, alignment
+    items.ts       gear and its rules, effective stats and resistances, supplies, shop, spoils
+    camp.ts        rest at strongholds, the fallen rising at the keep, a squad carried home
     squad.ts       formation grid, march speed, auto-placement
     battle.ts      engagement simulator; returns an animatable event log
     terrain.ts     terrain grid, road stamping, per-tile movement costs
@@ -179,6 +231,7 @@ src/
     state.ts       campaign state and starting scenario
   data/
     classes.ts     the built-in class tree: stats, growths, row attacks, promotions
+    items.ts       the built-in item catalogue
     registry.ts    the active dataset (built-in or extracted); every class lookup goes here
     expansion/     the scraped class facts the expansion translates
     names.ts       name pools and the seeded RNG
@@ -188,7 +241,7 @@ src/
     index.ts       withExpansion(): the expansion, applied
   ob64/
     decode.ts      reads Ogre Battle 64's class, attack and element tables from a ROM
-    convert.ts     turns them into Palatinus classes: roster, promotions, spells, gates
+    convert.ts     turns them into Palatinus classes and items: roster, promotions, spells, gates, gear
 tools/
   extract-ob64.ts  `npm run extract:ob64`: verifies the dump, writes public/ob64/
   scrape-expansion.ts `npm run scrape:expansion`: the two class sources, as facts
@@ -212,7 +265,7 @@ without a single binary asset.
 
 ## Tests
 
-`npm test` runs 151 tests (142 without extracted ROM data) over the simulation core — the rules, not the
+`npm test` runs 203 tests (190 without extracted ROM data) over the simulation core — the rules, not the
 rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,
@@ -270,13 +323,40 @@ type's ground. Each of these was mutation-checked; two guards that the real
 data never exercises (loops, and either-gender classes refusing monsters)
 survived at first, and now have tests of their own.
 
+Equipment and items have their own suites. Gear goes where its type says and
+only on classes that may wear it; equipping moves items to and from the
+inventory and fails without the item in hand; a two-handed weapon sets down
+the shield and refuses one beside it; bonuses add to the stats a unit fights
+with but not its own; resistances add and stay within 0..100; armour blunts
+blows, an elemental weapon strikes half with its element, and a slaying
+weapon strikes its quarry half again as hard and nothing else. Supplies heal
+only up to the maximum, revive only the fallen, reach a whole squad when
+they should, and spend nothing when they would do nothing; relics last;
+a banner draws a squad toward its leader from either side and no further.
+The shop stocks by rank, charges, and buys back at half. Class changes that
+call for an item open only with it in hand, spend it, and shed gear the new
+class cannot use. Large units take two cells and two places, fight from their
+foremost cell, act once, and cannot be set over another unit or past the
+fifth place. Squads rest only on their own strongholds, the fallen rise only
+at the keep, and no two soldiers share a name until a pool runs dry. The
+decoder reads a synthetic item and consumable table; on real data, all 277
+items read, the Fighter and Wizard are dressed as the game dresses them, every
+class can wear its own default gear, and the dragon slayers are marked.
+Twenty-nine mutations of this code were tried; six survived the first suite
+(the resistance cap, the banner's direction, placement past the fifth place,
+rest on an enemy stronghold, the fallen rising away from the keep, names
+reused too early), and each now has a test that catches it.
+
 ## Balance knobs
 
 Class stats, growths, row attacks, and promotion requirements all live in
 `src/data/classes.ts`. Damage and healing formulas are in `src/core/battle.ts`;
 base march speeds and squad-type rules are in `src/core/squad.ts`;
 translation weights are in `src/expansion/translate.ts`; recruit costs are in
-`src/scenes/OrganizeScene.ts`; terrain movement costs and the
+`src/scenes/OrganizeScene.ts`; the built-in items are in `src/data/items.ts`,
+supply effects for the extracted data in `CONSUMABLE_EFFECT` in
+`src/ob64/convert.ts`, and the slaying bonus, shop ranks, spoils and resale
+price in `src/core/items.ts`; rest and revival rates are in `src/core/camp.ts`; terrain movement costs and the
 road bonus are in `TERRAIN_SPEED` and `MARCH_TERRAIN` in `src/core/terrain.ts`; capture and snap
 radii are in `src/core/movement.ts`; the campaign map and starting armies are
 in `src/core/state.ts`.

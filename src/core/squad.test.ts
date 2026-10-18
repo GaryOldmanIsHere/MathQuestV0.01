@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { autoPlace, makeSquad, marchOf, memberRow, moveSpeed, squadMemberIds, squadType } from './squad';
+import {
+  autoPlace, cellsOf, footprint, makeSquad, marchOf, memberRow, moveSpeed, placeAt, placesUsed, SQUAD_PLACES, squadMemberIds, squadType,
+} from './squad';
+import { simulateBattle } from './battle';
 import { classOf } from '../data/registry';
 import { makeCharacter } from './character';
 import type { Character } from './types';
@@ -105,5 +108,72 @@ describe('squad type', () => {
     expect(moveSpeed('lightCav')).toBeGreaterThan(moveSpeed('heavy'));
     expect(moveSpeed('light')).toBe(moveSpeed('heavy'));
     expect(moveSpeed('heavy')).toBeGreaterThan(moveSpeed('slow'));
+  });
+});
+
+describe('large units', () => {
+  const fresh = () => makeSquad('player', [], makeCharacter('fighter', 1), 0, 0, 0, 'large');
+
+  it('stand in two cells side by side and count as two of five places', () => {
+    const sq = fresh();
+    const golem = makeCharacter('golem', 5);
+    expect(autoPlace(sq, golem)).toBe(true);
+    const cells = cellsOf(sq, golem.id);
+    expect(cells).toHaveLength(2);
+    expect(Math.floor(cells[0] / 3)).toBe(Math.floor(cells[1] / 3)); // same grid row
+    expect(Math.abs(cells[0] - cells[1])).toBe(1);
+    expect(placesUsed(sq)).toBe(2);
+    expect(squadMemberIds(sq)).toEqual([golem.id]); // once, though in two cells
+  });
+
+  it('fill a squad by places, not heads', () => {
+    const sq = fresh();
+    expect(autoPlace(sq, makeCharacter('golem', 5))).toBe(true);
+    expect(autoPlace(sq, makeCharacter('golem', 5))).toBe(true);
+    expect(autoPlace(sq, makeCharacter('fighter', 5))).toBe(true);
+    expect(placesUsed(sq)).toBe(SQUAD_PLACES);
+    expect(autoPlace(sq, makeCharacter('fighter', 5))).toBe(false);
+    const sq2 = fresh();
+    for (let i = 0; i < 4; i++) autoPlace(sq2, makeCharacter('fighter', 5));
+    expect(autoPlace(sq2, makeCharacter('golem', 5))).toBe(false); // one place left, needs two
+    const free = sq2.grid.indexOf(null);
+    expect(placeAt(sq2, makeCharacter('fighter', 5), free)).toBe(true); // the fifth place
+    const next = sq2.grid.indexOf(null);
+    expect(placeAt(sq2, makeCharacter('fighter', 5), next)).toBe(false); // an empty cell, but no sixth place
+  });
+
+  it('fight from their foremost cell', () => {
+    const sq = fresh();
+    const golem = makeCharacter('golem', 5);
+    expect(placeAt(sq, golem, 4)).toBe(true); // mid and front of the middle row
+    expect(cellsOf(sq, golem.id)).toEqual([4, 5]);
+    expect(memberRow(sq, golem.id)).toBe('front');
+    expect(placeAt(sq, golem, 3)).toBe(true); // moved back a column
+    expect(cellsOf(sq, golem.id)).toEqual([3, 4]);
+    expect(memberRow(sq, golem.id)).toBe('mid');
+  });
+
+  it('cannot be set down over someone else', () => {
+    const sq = fresh();
+    const f = makeCharacter('fighter', 5);
+    placeAt(sq, f, 5);
+    expect(placeAt(sq, makeCharacter('golem', 5), 4)).toBe(false);
+    expect(footprint(2, 2)).toEqual([1, 2]); // on the front edge it reaches back
+  });
+
+  it('act once a round in battle, though they stand in two cells', () => {
+    const chars = new Map<number, Character>();
+    const golem = makeCharacter('golem', 9);
+    const lead = makeCharacter('fighter', 9);
+    for (const c of [golem, lead]) chars.set(c.id, c);
+    const ours = makeSquad('player', [], lead, 0, 0, 0, 'ours');
+    autoPlace(ours, lead);
+    autoPlace(ours, golem);
+    const foe = makeCharacter('knight', 30);
+    chars.set(foe.id, foe);
+    const theirs = makeSquad('enemy', [{ char: foe, cell: 5 }], foe, 0, 0, 0, 'theirs');
+    const result = simulateBattle({ squad: ours, chars }, { squad: theirs, chars });
+    const turns = result.events.filter((e) => (e.kind === 'act' || e.kind === 'skip') && e.actorId === golem.id);
+    expect(turns).toHaveLength(1);
   });
 });

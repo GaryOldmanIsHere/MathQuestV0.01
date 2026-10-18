@@ -1,4 +1,7 @@
 import type { Character, MapNode, Squad } from './types';
+import type { Inventory } from './items';
+import { starterInventory } from './items';
+import { claimName, resetNames } from '../data/names';
 import { makeCharacter } from './character';
 import { autoPlace, makeSquad } from './squad';
 
@@ -9,6 +12,8 @@ export interface GameState {
   squads: Squad[];
   nodes: MapNode[];
   goth: number; // treasury
+  /** Gear, supplies and key items held by the army, by item id. */
+  inventory: Inventory;
   day: number;
   phase: 'playing' | 'victory' | 'defeat';
 }
@@ -30,7 +35,12 @@ function nodePos(nodes: MapNode[], id: number): { x: number; y: number } {
   return { x: n.x, y: n.y };
 }
 
+/** The campaign's named heroes: no recruit is ever given one of these names. */
+const HEROES = ['Aldric', 'Brienne', 'Falk', 'Oswin'];
+
 export function newCampaign(): GameState {
+  resetNames();
+  HEROES.forEach(claimName);
   const nodes: MapNode[] = NODE_DEFS.map((d) => ({
     ...d,
     owner: d.kind === 'hq-player' ? 'player' : d.kind === 'town' && d.id <= 2 ? 'neutral' : 'enemy',
@@ -75,8 +85,8 @@ export function newCampaign(): GameState {
     [leader,
       reg(makeCharacter('fighter', 5, { ali: 35 })),
       reg(makeCharacter('ninja', 5, { ali: 25 })),
-      reg(makeCharacter('amazon', 4, { ali: 44 })),
-      reg(makeCharacter('cleric', 5, { ali: 62 })),
+      // A large beast: it fills two of the squad's five places.
+      reg(makeCharacter('hellhound', 5, { ali: 35 })),
     ].forEach((c) => autoPlace(sq, c));
     squads.push(sq);
   }
@@ -98,21 +108,22 @@ export function newCampaign(): GameState {
   // --- Enemy legion ---
   const enemyAt = (nodeId: number, name: string, roster: [string, number][]) => {
     const pos = nodePos(nodes, nodeId);
-    const members = roster.map(([cls, lv]) => reg(makeCharacter(cls, lv)));
+    const members = roster.map(([cls, lv]) => makeCharacter(cls, lv));
     const sq = makeSquad('enemy', [], members[0], nodeId, pos.x, pos.y, name);
-    members.forEach((c) => autoPlace(sq, c));
+    for (const c of members) if (autoPlace(sq, c)) reg(c);
     squads.push(sq);
   };
 
   enemyAt(3, 'Highcliff Garrison', [['knight', 6], ['fighter', 4], ['fighter', 4], ['wizard', 6]]);
   enemyAt(6, 'Stonegate Watch', [['phalanx', 7], ['fighter', 5], ['skeleton', 5], ['witch', 7]]);
-  enemyAt(7, 'Ash Raiders', [['berserker', 6], ['hellhound', 5], ['hellhound', 5], ['sorceress', 6]]);
+  // Large beasts and golems fill two of a squad's five places.
+  enemyAt(7, 'Ash Raiders', [['berserker', 6], ['hellhound', 5], ['sorceress', 6], ['fighter', 5]]);
   enemyAt(4, 'Border Patrol', [['soldier', 5], ['militia', 4], ['bowman', 4], ['medic', 4]]);
   enemyAt(5, 'Risen Host', [['risen-knight', 8], ['risen-soldier', 6], ['risen-archer', 6], ['risen-archmage', 7]]);
-  enemyAt(8, 'Verlaine Guard', [['black-knight', 9], ['golem', 7], ['ghost', 6], ['wizard', 7], ['cleric', 6]]);
+  enemyAt(8, 'Verlaine Guard', [['black-knight', 9], ['golem', 7], ['ghost', 6], ['wizard', 7]]);
   enemyAt(8, 'Dragon Wing', [['wyvern', 7], ['dragon-tamer', 7], ['archer', 6]]);
 
-  return { chars, squads, nodes, goth: 500, day: 1, phase: 'playing' };
+  return { chars, squads, nodes, goth: 500, inventory: starterInventory(), day: 1, phase: 'playing' };
 }
 
 // singleton

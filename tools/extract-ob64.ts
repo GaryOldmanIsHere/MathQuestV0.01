@@ -52,4 +52,5 @@ writeFileSync(join(outDir, 'data.json'), JSON.stringify(data));
 
 console.log(`Extracted from ${data.source.title} (${sha1.slice(0, 8)}…):`);
 console.log(`  ${data.classes.length} classes, ${data.attacks.length} attacks, ${data.elements.length} elements`);
+console.log(`  ${data.items?.length ?? 0} pieces of equipment, ${data.consumables?.length ?? 0} consumables and key items`);
 console.log(`  -> ${join('public', 'ob64', 'data.json')} (git-ignored)`);

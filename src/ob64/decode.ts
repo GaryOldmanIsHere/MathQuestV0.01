@@ -21,6 +21,12 @@ const CLASS_STRIDE = 0x48;
 const ATTACK_TABLE_VRAM = 0x8018aa9c; // 16-byte records, id = index
 const ATTACK_STRIDE = 0x10;
 const ELEMENT_NAMES_VRAM = 0x80187bf4; // u32 string pointers
+const ITEM_TABLE_VRAM = 0x8018c42c; // 32-byte equipment records, id = index (0 = none)
+const ITEM_STRIDE = 0x20;
+// The consumables follow straight on: the equipment table's closing "None"
+// record is the consumable table's first.
+const CONSUMABLE_TABLE_VRAM = 0x8018e6ec; // 12-byte records, id = index (0 = none)
+const CONSUMABLE_STRIDE = 0x0c;
 
 export const STAT_KEYS = ['hp', 'str', 'vit', 'int', 'men', 'agi', 'dex'] as const;
 export type StatKey = (typeof STAT_KEYS)[number];
@@ -84,15 +90,69 @@ export interface Ob64Attack {
   raw: number[];
 }
 
+/**
+ * One piece of equipment. Class records name their default gear by these
+ * ids (+0x2E..+0x34), which is how the layout was confirmed: a Fighter starts
+ * with item 1, a Short Sword, a Wizard with a staff, a robe, a Spellbook and
+ * an Amulet. The stat and resistance columns read the way their values only
+ * make sense: weapons raise STR, staves INT, armour the physical column,
+ * elemental gear one element's column against its opposite's.
+ */
+export interface Ob64Item {
+  id: number;
+  name: string;
+  /**
+   * +0x04: equipment type. 1 sword, 2 two-handed sword, 3 rapier, 4 axe,
+   * 5 hammer, 7 spear, 8 whip, 9 claw, 10 bow, 11 mace, 12 staff, 13 doll,
+   * 24 fan; 14 small and 15 large shield; 16 light, 17 medium and 18 heavy
+   * armour, 19 robe, 20 clothing; 21 helm, 22 hat; 23 book; 25 accessory.
+   */
+  type: number;
+  /** +0x05: element, as the element table (0 none; 7 a spell tome; 8 none, for the plain Spellbook). */
+  element: number;
+  /** +0x06: rank (inferred: how far into the game the item is found). */
+  rank: number;
+  /** +0x08: price in Goth. */
+  price: number;
+  /** +0x0A..+0x10: STR, INT, AGI, DEX, VIT, MEN, LUK bonuses (signed). */
+  bonus: { str: number; int: number; agi: number; dex: number; vit: number; men: number; luk: number };
+  /** +0x11..+0x17: resistance bonuses in the class table's order (signed). */
+  resist: Record<ResistKey, number>;
+  /** +0x18..+0x1C: raw flag bytes; +0x1A bit 7 marks items no shop sells. */
+  flags: [number, number, number, number, number];
+}
+
+/** One consumable or key item: Heal Leaf, Revive Stone, the stat relics, story items. */
+export interface Ob64Consumable {
+  id: number;
+  name: string;
+  /** +0x04: 0 supplies, 1 stat relics, 2 map items, 3 tactics items, 4 key items. */
+  category: number;
+  /** +0x05: raw byte. */
+  flag: number;
+  /** +0x06: price in Goth. */
+  price: number;
+  /** +0x08: 1 one unit, 2 a whole squad, 3 the army (inferred from which items use it). */
+  target: number;
+  /** +0x09: raw byte (inferred: where the item can be used). */
+  usage: number;
+}
+
 export interface Ob64Data {
   source: { sha1: string; title: string };
   elements: string[];
   classes: Ob64Class[];
   attacks: Ob64Attack[];
+  items?: Ob64Item[];
+  consumables?: Ob64Consumable[];
 }
 
 function u16(b: Uint8Array, o: number): number {
   return (b[o] << 8) | b[o + 1];
+}
+
+function s8(b: Uint8Array, o: number): number {
+  return b[o] >= 0x80 ? b[o] - 0x100 : b[o];
 }
 
 function u32(b: Uint8Array, o: number): number {
@@ -201,6 +261,58 @@ export function decodeAttacks(rom: Uint8Array): Ob64Attack[] {
   return out;
 }
 
+export function decodeItems(rom: Uint8Array): Ob64Item[] {
+  const base = vramToRom(ITEM_TABLE_VRAM);
+  const out: Ob64Item[] = [];
+  // Record 0 is the empty slot; the table ends at the next record typed 0xFF.
+  for (let id = 1; ; id++) {
+    const r = base + id * ITEM_STRIDE;
+    if (r + ITEM_STRIDE > rom.length) break;
+    const name = cstringAt(rom, u32(rom, r));
+    if (name === null || rom[r + 4] === 0xff) break;
+    const resist = {} as Ob64Item['resist'];
+    RESIST_KEYS.forEach((k, i) => {
+      resist[k] = s8(rom, r + 0x11 + i);
+    });
+    out.push({
+      id,
+      name: name.trim(),
+      type: rom[r + 4],
+      element: rom[r + 5],
+      rank: rom[r + 6],
+      price: u16(rom, r + 8),
+      bonus: {
+        str: s8(rom, r + 0x0a), int: s8(rom, r + 0x0b), agi: s8(rom, r + 0x0c), dex: s8(rom, r + 0x0d),
+        vit: s8(rom, r + 0x0e), men: s8(rom, r + 0x0f), luk: s8(rom, r + 0x10),
+      },
+      resist,
+      flags: [rom[r + 0x18], rom[r + 0x19], rom[r + 0x1a], rom[r + 0x1b], rom[r + 0x1c]],
+    });
+  }
+  return out;
+}
+
+export function decodeConsumables(rom: Uint8Array): Ob64Consumable[] {
+  const base = vramToRom(CONSUMABLE_TABLE_VRAM);
+  const out: Ob64Consumable[] = [];
+  for (let id = 1; ; id++) {
+    const r = base + id * CONSUMABLE_STRIDE;
+    if (r + CONSUMABLE_STRIDE > rom.length) break;
+    const name = cstringAt(rom, u32(rom, r));
+    if (name === null) break;
+    out.push({
+      id,
+      name: name.trim(),
+      category: rom[r + 4],
+      flag: rom[r + 5],
+      price: u16(rom, r + 6),
+      target: rom[r + 8],
+      usage: rom[r + 9],
+    });
+  }
+  return out;
+}
+
 /** The internal game title from the cartridge header. */
 export function romTitle(rom: Uint8Array): string {
   let s = '';
@@ -214,5 +326,7 @@ export function decodeAll(rom: Uint8Array, sha1: string): Ob64Data {
     elements: decodeElements(rom),
     classes: decodeClasses(rom),
     attacks: decodeAttacks(rom),
+    items: decodeItems(rom),
+    consumables: decodeConsumables(rom),
   };
 }

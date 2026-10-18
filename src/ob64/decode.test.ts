@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeAttacks, decodeClasses, decodeElements } from './decode';
+import { decodeAttacks, decodeClasses, decodeConsumables, decodeElements, decodeItems } from './decode';
 
 // A synthetic cartridge laid out the way Ogre Battle 64's is: overlay B's
 // data at ROM 0x40E80 standing for RAM 0x8016AF80, with the element-name,
@@ -72,6 +72,26 @@ function build(): FakeRom {
   atk(0, '|', [0xff]);
   atk(1, 'Slash', [0, 0x0f, 1, 1, 1, 1]);
   atk(2, 'Lightning', [3, 1, 1, 1, 1, 7]);
+
+  // Equipment: 32-byte records from 0x8018C42C, record 0 empty.
+  const item = (id: number, name: string, bytes: Record<number, number>) => {
+    const base = rom(0x8018c42c) + id * 0x20;
+    r.u32(base, r.str(name));
+    for (const [off, v] of Object.entries(bytes)) r.u8(base + Number(off), v);
+  };
+  item(0, 'None', { 4: 0xff, 5: 0xff });
+  item(1, 'Short Sword', { 4: 1, 6: 1, 8: 0, 9: 20, 0x0a: 3 });
+  // A wind shield: DEF +8, wind -3, earth +8, sold nowhere, and a dragon ward.
+  item(2, 'Electric Shield', { 4: 14, 5: 1, 6: 3, 8: 0, 9: 150, 0x11: 8, 0x12: 0xfd, 0x14: 8, 0x1a: 0x80, 0x1b: 0x01 });
+  item(3, 'None', { 4: 0xff, 5: 0xff }); // closes the table
+  // Consumables: 12-byte records straight after, record 0 empty.
+  const use = (id: number, name: string, bytes: number[]) => {
+    const base = rom(0x8018e6ec) + id * 0x0c;
+    r.u32(base, r.str(name));
+    bytes.forEach((v, i) => r.u8(base + 4 + i, v));
+  };
+  use(1, 'Heal Leaf', [0, 0, 0, 10, 1, 7]);
+  use(2, 'Sword Emblem', [1, 0, 0x09, 0xf6, 1, 7]);
   return r;
 }
 
@@ -126,5 +146,32 @@ describe('ROM table decoding', () => {
   it('decodes an attack\'s category, element, target and effect', () => {
     const lightning = decodeAttacks(r.bytes)[2];
     expect(lightning).toMatchObject({ name: 'Lightning', category: 3, element: 1, target: 1, effect: 1 });
+  });
+});
+
+describe('item table decoding', () => {
+  const r = build();
+
+  it('reads equipment until the closing record, skipping the empty slot', () => {
+    expect(decodeItems(r.bytes).map((i) => i.name)).toEqual(['Short Sword', 'Electric Shield']);
+  });
+
+  it('decodes type, rank, price and signed bonuses', () => {
+    expect(decodeItems(r.bytes)[0]).toMatchObject({ id: 1, type: 1, rank: 1, price: 20, bonus: { str: 3, int: 0 } });
+  });
+
+  it('decodes the seven resistance columns as signed bytes, and the flags', () => {
+    const shield = decodeItems(r.bytes)[1];
+    expect(shield.resist).toEqual({ physical: 8, wind: -3, flame: 0, earth: 8, water: 0, virtue: 0, bane: 0 });
+    expect(shield.element).toBe(1);
+    expect(shield.flags[2]).toBe(0x80);
+    expect(shield.flags[3]).toBe(0x01);
+  });
+
+  it('reads consumables: category, price and target', () => {
+    expect(decodeConsumables(r.bytes)).toEqual([
+      { id: 1, name: 'Heal Leaf', category: 0, flag: 0, price: 10, target: 1, usage: 7 },
+      { id: 2, name: 'Sword Emblem', category: 1, flag: 0, price: 2550, target: 1, usage: 7 },
+    ]);
   });
 });

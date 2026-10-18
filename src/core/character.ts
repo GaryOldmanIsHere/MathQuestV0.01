@@ -1,7 +1,8 @@
 import type { Character, ClassDef, Element, Gender, GateStat, PromotionReq, Stats } from './types';
 import { genderCompatible } from './types';
-import { classOf } from '../data/registry';
-import { FEMALE_NAMES, MALE_NAMES, MONSTER_NAMES, pick, rng } from '../data/names';
+import { classOf, findItemByName } from '../data/registry';
+import { defaultGearFor, shedForbiddenGear, type Inventory } from './items';
+import { claimName, FEMALE_NAMES, freshName, MALE_NAMES, MONSTER_NAMES, pick, rng } from '../data/names';
 
 let nextCharId = 1;
 
@@ -86,7 +87,7 @@ export function makeCharacter(classId: string, level: number, opts?: {
   const namePool = gender === 'M' ? MALE_NAMES : gender === 'F' ? FEMALE_NAMES : MONSTER_NAMES;
   return {
     id: nextCharId++,
-    name: opts?.name ?? pick(namePool),
+    name: opts?.name ? (claimName(opts.name), opts.name) : freshName(namePool),
     classId: actualId,
     gender,
     level,
@@ -95,6 +96,7 @@ export function makeCharacter(classId: string, level: number, opts?: {
     ali: opts?.ali ?? def.startAlignment ?? 30 + Math.floor(rng() * 40),
     element: opts?.element ?? def.element ?? pick(RECRUIT_ELEMENTS),
     stats,
+    gear: defaultGearFor(def),
     hp: stats.hp,
     kills: 0,
   };
@@ -127,10 +129,21 @@ export function grantExp(c: Character, amount: number): number {
   return ups;
 }
 
-export function meetsReq(c: Character, req: PromotionReq): boolean {
+/** The item a class change spends, if the dataset has it. */
+export function routeItemId(req: PromotionReq): string | null {
+  return req.item ? findItemByName(req.item)?.id ?? null : null;
+}
+
+/**
+ * Whether a unit may take a class change. A route that spends an item needs
+ * that item in the inventory given; without an inventory it stays shut.
+ */
+export function meetsReq(c: Character, req: PromotionReq, inv?: Inventory): boolean {
   if (!genderCompatible(c.gender, classOf(req.classId).gender)) return false;
-  // Items arrive in Phase 2; until then a route that consumes one stays shut.
-  if (req.item) return false;
+  if (req.item) {
+    const id = routeItemId(req);
+    if (!inv || !id || !inv[id]) return false;
+  }
   if (c.level < req.level) return false;
   for (const [k, min] of Object.entries(req.stats ?? {}) as [GateStat, number][]) {
     if (c.stats[k] < min) return false;
@@ -140,8 +153,8 @@ export function meetsReq(c: Character, req: PromotionReq): boolean {
   return true;
 }
 
-export function availablePromotions(c: Character): PromotionReq[] {
-  return classOf(c.classId).promotesTo.filter((req) => meetsReq(c, req));
+export function availablePromotions(c: Character, inv?: Inventory): PromotionReq[] {
+  return classOf(c.classId).promotesTo.filter((req) => meetsReq(c, req, inv));
 }
 
 /** Every class change this character's class offers that their gender can take. */
@@ -151,12 +164,20 @@ export function allPromotions(c: Character): PromotionReq[] {
 
 /**
  * Class change. In Ogre Battle 64 a unit keeps its own stats and only its
- * future growth changes; the built-in classes re-derive stats instead.
+ * future growth changes; the built-in classes re-derive stats instead. An
+ * item the route calls for is spent, and gear the new class cannot use
+ * goes back to the inventory.
  */
-export function promote(c: Character, classId: string): void {
+export function promote(c: Character, classId: string, inv?: Inventory): void {
   const req = classOf(c.classId).promotesTo.find((r) => r.classId === classId);
-  if (!req || !meetsReq(c, req)) throw new Error(`${c.name} cannot become ${classId}`);
+  if (!req || !meetsReq(c, req, inv)) throw new Error(`${c.name} cannot become ${classId}`);
+  const spend = routeItemId(req);
+  if (spend && inv) {
+    inv[spend]--;
+    if (inv[spend] <= 0) delete inv[spend];
+  }
   c.classId = classId;
+  if (inv) shedForbiddenGear(c, inv);
   if (classOf(classId).source !== 'ob64') {
     c.stats = statsAt(classId, c.level);
     c.hp = c.stats.hp;

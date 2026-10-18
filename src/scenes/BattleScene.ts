@@ -4,6 +4,7 @@ import type { BattleEvent } from '../core/battle';
 import { simulateBattle } from '../core/battle';
 import type { Character, Squad } from '../core/types';
 import { classOf } from '../data/registry';
+import { cellsOf, squadMemberIds } from '../core/squad';
 import { drawPanel, FONT, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/ui';
 
 // Plays back one engagement: two 3x3 formations face each other and the
@@ -112,20 +113,21 @@ export class BattleScene extends Phaser.Scene {
     const cx = isLeft ? W / 2 - 190 : W / 2 + 190;
     const cy = H / 2 + 10;
     const facing: 1 | -1 = isLeft ? 1 : -1;
-    for (let cell = 0; cell < 9; cell++) {
-      const id = sq.grid[cell];
-      const col = cell % 3; // 0 back, 1 mid, 2 front
-      const r = Math.floor(cell / 3);
+    for (const id of squadMemberIds(sq)) {
+      const cells = cellsOf(sq, id);
+      // A large unit stands across two cells: draw it once, between them.
+      const col = cells.reduce((s, c) => s + (c % 3), 0) / cells.length; // 0 back .. 2 front
+      const r = Math.floor(cells[0] / 3);
       // front column is nearest the center line
       const x = cx + facing * (col - 1) * 70;
       const y = cy + (r - 1) * 95;
-      if (id === null) continue;
+      const large = cells.length > 1;
       const char = st.chars.get(id)!;
       if (char.hp <= 0) continue;
       // ground shadow, only under a combatant who is actually standing there
-      const shadow = this.add.ellipse(x, y + 16, 46, 12, 0x000000, 0.3).setDepth(1);
+      const shadow = this.add.ellipse(x, y + 16, large ? 110 : 46, 12, 0x000000, 0.3).setDepth(1);
       const palette = classOf(char.classId).palette;
-      const sprite = this.add.image(x, y - 12, `unit-${palette}`).setScale(3.4).setDepth(10);
+      const sprite = this.add.image(x, y - (large ? 18 : 12), `unit-${palette}`).setScale(large ? 4.4 : 3.4).setDepth(10);
       sprite.setFlipX(!isLeft);
       const hpBack = this.add.rectangle(x, y + 26, 44, 5, 0x101020).setDepth(11);
       const hpFill = this.add.rectangle(x - 22, y + 26, 44, 5, 0x58c858).setOrigin(0, 0.5).setDepth(12);
@@ -137,7 +139,7 @@ export class BattleScene extends Phaser.Scene {
       this.views.set(char.id, {
         char, sprite, hpFill,
         trappings: [hpBack, hpFill, label, shadow],
-        baseX: x, baseY: y - 12, facing,
+        baseX: x, baseY: y - (large ? 18 : 12), facing,
       });
     }
   }

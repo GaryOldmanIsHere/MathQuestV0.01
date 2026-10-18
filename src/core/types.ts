@@ -1,5 +1,7 @@
 // Core shared types for the strategy layer and battle simulation.
 
+import type { EquipRules, Gear } from './items';
+
 /** M and F are gendered human lines, X monsters and demi-humans, A a human class open to either. */
 export type Gender = 'M' | 'F' | 'X' | 'A';
 
@@ -112,6 +114,10 @@ export interface ClassDef {
   source: 'ob64' | 'builtin';
   /** The game a class was taken from, where that is not the dataset itself. */
   origin?: 'snes' | 'sow';
+  /** What gear the class can use; derived from its weapon and role when not given. */
+  equip?: EquipRules;
+  /** What a fresh unit of the class carries (Ogre Battle 64's class records name it). */
+  defaultGear?: Partial<Gear>;
 }
 
 export interface Character {
@@ -124,7 +130,9 @@ export interface Character {
   luk: number; // luck 0-100
   ali: number; // alignment 0 (chaotic) - 100 (lawful)
   element: Element;
+  /** Base stats; gear adds to them (see effectiveStats). */
   stats: Stats;
+  gear: Gear;
   hp: number; // current hp
   kills: number;
 }

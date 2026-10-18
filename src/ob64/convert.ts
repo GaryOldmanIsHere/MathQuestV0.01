@@ -418,6 +418,7 @@ export function convertDataset(data: Ob64Data): Dataset {
       startLuck: c.luck,
       playable: recruitable(c),
       source: 'ob64',
+      ob64Id: c.id,
     };
     // The record's four items go where their type says; an accessory in the
     // third place is worn in the off hand, in the fourth on the head. (A few

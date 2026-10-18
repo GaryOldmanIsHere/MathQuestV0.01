@@ -14,7 +14,9 @@
     "scrape:expansion": "tsx tools/scrape-expansion.ts"
   },
   "dependencies": {
-    "phaser": "^3.85.0"
+    "@types/three": "^0.185.0",
+    "phaser": "^3.85.0",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

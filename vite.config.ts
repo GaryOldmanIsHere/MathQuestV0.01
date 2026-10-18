@@ -8,5 +8,9 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      // The two engines in chunks of their own, cached apart from the game.
+      output: { manualChunks: { phaser: ['phaser'], three: ['three'] } },
+    },
   },
 });

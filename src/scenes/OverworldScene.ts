@@ -7,13 +7,14 @@ import { addLoot, rollLoot } from '../core/items';
 import { restSquads } from '../core/camp';
 import { itemOf } from '../data/registry';
 import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/ui';
+import { unitIcon } from '../gfx/unitIcon';
 import { rng } from '../data/names';
 import {
   haltSquad, orderTo, retreatTarget, snapOrder, stepToward, strongholdAt,
 } from '../core/movement';
 import type { Terrain } from '../core/terrain';
 import {
-  buildTerrainGrid, COLS, MAP_H, ROWS, speedMultiplierAt, terrainAtTile, TILE,
+  buildTerrainGrid, COLS, MAP_H, ROWS, speedMultiplierAt, terrainAtPoint, terrainAtTile, TILE,
 } from '../core/terrain';
 
 interface SquadView {
@@ -278,7 +279,9 @@ export class OverworldScene extends Phaser.Scene {
     attacker.moving = false;
     defender.moving = false;
     this.scene.pause();
-    this.scene.launch('Battle', { attackerId: attacker.id, defenderId: defender.id });
+    // The battlefield takes the ground the squads meet on.
+    const field = terrainAtPoint(this.terrain, (attacker.x + defender.x) / 2, (attacker.y + defender.y) / 2);
+    this.scene.launch('Battle', { attackerId: attacker.id, defenderId: defender.id, field });
   }
 
   private onBattleDone(payload: { attackerId: number; defenderId: number; winner: string }): void {
@@ -349,7 +352,7 @@ export class OverworldScene extends Phaser.Scene {
     const ring = this.add
       .circle(sq.x, sq.y + 6, 13, sq.side === 'player' ? 0x4a6ae0 : 0xd04838, 0.45)
       .setDepth(9);
-    const sprite = this.add.image(sq.x, sq.y, `unit-${palette}`).setScale(2).setDepth(10);
+    const sprite = unitIcon(this, sq.x, sq.y, palette, 32).setDepth(10);
     const hpBar = this.add.rectangle(sq.x, sq.y - 22, 26, 4, 0x101020).setDepth(11);
     const hpFill = this.add.rectangle(sq.x - 13, sq.y - 22, 26, 4, 0x58c858).setOrigin(0, 0.5).setDepth(12);
     const label = this.add

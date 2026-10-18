@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { convertDataset } from './convert';
 import type { Ob64Data } from './decode';
 import { withExpansion } from '../expansion';
+import { LOOKS } from '../expansion/looks';
+import { buildClips } from './sprites';
+import { unpackBundle } from './spritePack';
 
 // Integrity checks on the data extracted from a real ROM. They run only where
 // `npm run extract:ob64` has been run: CI has no ROM, and must not.
@@ -130,5 +133,46 @@ describe.skipIf(!present)('the equipment on extracted Ogre Battle 64 data', () =
     expect(slays('Fafnir')).toContain('dragon');
     expect(slays('Blessed Sword')).toContain('undead');
     expect(slays('Short Sword')).toBeUndefined();
+  });
+});
+
+const SPRITES = 'public/ob64/sprites/manifest.json';
+const spritesPresent = existsSync(SPRITES);
+
+describe.skipIf(!spritesPresent)('extracted Ogre Battle 64 sprites', () => {
+  const manifest = spritesPresent
+    ? (JSON.parse(readFileSync(SPRITES, 'utf8')) as { version: number; classes: Record<string, ({ bundle: number; variant: number } | null)[]> })
+    : null;
+  const bundle = (n: number) => unpackBundle(new Uint8Array(readFileSync(`public/ob64/sprites/b${n}.bin`)), n);
+
+  it('dresses Fighter and Lycanthrope from one bundle, as variants', () => {
+    expect(manifest!.classes[2]).toEqual([{ bundle: 3, variant: 0 }, { bundle: 4, variant: 0 }, { bundle: 3, variant: 1 }, { bundle: 4, variant: 1 }]);
+    expect(manifest!.classes[3]![1]).toEqual({ bundle: 4, variant: 2 });
+  });
+
+  it('gives each pose a palette and marks the weapon', () => {
+    const b = bundle(11);
+    expect(new Set(b.posePalettes).size).toBeGreaterThan(3);
+    expect(b.posePalettes.every((p) => p < b.palettes.length)).toBe(true);
+    expect(b.poseKinds[0]).toBe(1);
+    expect(b.poses[0].frames.length).toBeGreaterThan(b.poses[1].frames.length);
+  });
+
+  it('has the art every translated class borrows', () => {
+    for (const [id, n] of Object.entries(LOOKS)) {
+      expect(manifest!.classes[n]?.some((r) => r), `${id} -> ${n}`).toBe(true);
+    }
+  });
+
+  it('builds every animation for every class with art', () => {
+    const seen = new Set<string>();
+    for (const row of Object.values(manifest!.classes)) {
+      for (const r of row) {
+        if (!r || seen.has(`${r.bundle}:${r.variant}`)) continue;
+        seen.add(`${r.bundle}:${r.variant}`);
+        const { clips } = buildClips(bundle(r.bundle), r.variant);
+        expect(clips.idle.frames.length, `bundle ${r.bundle}`).toBeGreaterThan(0);
+      }
+    }
   });
 });

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { drawPanel, makeButton, FONT } from '../gfx/ui';
 import { resetState } from '../core/state';
 import { allClasses, datasetLabel, datasetSource } from '../data/registry';
+import { unitIcon } from '../gfx/unitIcon';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -23,8 +24,7 @@ export class TitleScene extends Phaser.Scene {
     // A parade of the active roster: the originals, or the classes extracted from the ROM.
     const parade = allClasses().filter((c) => c.playable).slice(0, 36);
     parade.forEach((c, i) => {
-      const spr = this.add.image(40 + (i % 12) * 62, H - 92 + Math.floor(i / 12) * 46, `unit-${c.palette}`);
-      spr.setScale(2).setAlpha(0.9);
+      unitIcon(this, 40 + (i % 12) * 62, H - 92 + Math.floor(i / 12) * 46, c.palette, 32).setAlpha(0.9);
     });
 
     this.add

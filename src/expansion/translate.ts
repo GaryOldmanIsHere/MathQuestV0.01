@@ -5,6 +5,7 @@ import { genderCompatible } from '../core/types';
 import type { Dataset } from '../data/registry';
 import type { ItemDef } from '../core/items';
 import type { SnesClass, SowClass } from './sources';
+import { LOOKS } from './looks';
 
 // Translates the classes of two other games into Ogre Battle 64's model and
 // grafts them onto whichever dataset is active, as extra classes and extra
@@ -584,6 +585,7 @@ export function expandDataset(
       preferredRow: prefersBack ? 'back' : 'front',
       sprite: spriteFor(s.name, false),
       palette: `x-${id}`,
+      spriteOf: LOOKS[id],
       resist: snesResist(s, norms),
       size: s.large ? 2 : 1,
       element: monster ? monsterElement(attacks, march) : undefined,
@@ -658,6 +660,7 @@ export function expandDataset(
       preferredRow: backRow ? 'back' : 'front',
       sprite: spriteFor(c.name, march === 'heavyCav' || march === 'lightCav'),
       palette: `x-${id}`,
+      spriteOf: LOOKS[id],
       resist: sowResist(c, kind, element, menRatio),
       size: c.traits.includes('Colossal') ? 2 : 1,
       element: monster ? element ?? monsterElement(attacks, march) : undefined,

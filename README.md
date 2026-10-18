@@ -2,7 +2,9 @@
 
 A playable real-time strategy RPG in the tradition of the late-90s "march your
 squads across a liberation map" tactics games. Built with Phaser 3 +
-TypeScript, running entirely in the browser. All art and text are original.
+TypeScript, with battles staged in 3D by Three.js, running entirely in the
+browser. All art and text in this repository are original; Ogre Battle 64's
+own art appears only when extracted locally from your own ROM (below).
 
 ## Running it
 
@@ -27,7 +29,7 @@ The title screen confirms it with *Class data: Ogre Battle 64 (d26b14be) +
 expansion · 190 classes*: the game's 106, plus the expansion below.
 
 **What stays on your machine.** The extractor reads your ROM and writes
-`public/ob64/data.json`. That folder is git-ignored and must stay that way: it
+`public/ob64/data.json` and the unit sprites in `public/ob64/sprites/`. That folder is git-ignored and must stay that way: it
 is copyrighted game data, and this repository only ever contains the code that
 reads it. The ROM dump itself is ignored too. Note that `npm run build` copies
 `public/` into `dist/`, so don't publish a build made while the data is
@@ -48,6 +50,7 @@ disassembly from the [OB64 recompilation project](https://github.com/lfarroco/og
 | 159 attacks: category, element, target, effect | Story and boss classes, kept out of the player's tree by where they sit in the table | |
 | Level gates, lineage, and the level-up roll (growth + 0–2 per stat, capped at 999) | | |
 | 277 pieces of equipment: type, element, rank, price, STR/INT/AGI/DEX/VIT/MEN/LUK bonuses, physical and six elemental resistances | Each class's default gear, from its record's four item ids | What each class may wear: the code that decides it sits in an overlay not yet decompressed, so the rule is read off each class's default gear (keep to its weapon type; heavier armour admits the lighter; anyone wears accessories) |
+| Every class's unit sprites: each pose image, palette, cell and animation script, seen from the front and from behind, in player and enemy colours | Which bundle and variant draw each class, from the table the battle code reads; which poses are weapons and which palette each takes, from the bundle's own pose table | Which of a weapon pose's looks goes with which weapon: not found yet, so a unit carries its class's own |
 | 44 supplies, relics and key items: category, price, one unit or a squad | Which flag bits mean "no shop sells this", "slays dragons", "slays the undead", from the items that carry them | What each supply and relic does, and how much: read from the names (a Heal Leaf heals, a Sword Emblem raises STR) at Palatinus's own magnitudes |
 
 With the data loaded, Ogre Battle 64's own rules apply: units grow as whichever
@@ -159,6 +162,55 @@ gear, 7 supplies, 12 relics) with original
 names, on the same ranks and in the same shape, scaled to the built-in
 classes.
 
+## Ogre Battle 64's sprites and the 3D battle
+
+Battles are staged in a real 3D scene: the two squads face each other on
+ground themed by where they met (grass, a road, forest, rocky hills or a
+river bank, with trees and rocks to match), and a camera that sweeps down
+onto the field, swings in on whoever acts, and pulls back when the clash is
+done. The units are
+billboards, flat drawings that always face the camera, standing on that 3D
+field, as Ogre Battle 64 itself draws them.
+
+With the sprites extracted, each unit is drawn in Ogre Battle 64's own art:
+every animation the game gives it (breathing at rest, walking, its melee
+attacks with the blow landing on the game's own frame, casting, flinching,
+falling) and both of the game's views of it, from the front for the army
+facing left and from behind for the army facing right, as the game's diagonal
+battle camera shows them. The player's squads wear the player's colours, the
+enemy's theirs. Dragons and other great beasts, which the game draws little
+bigger than a man, are enlarged. Menus, the map and the title use each
+class's standing pose. The translated classes borrow the art of their nearest
+Ogre Battle 64 kin (`src/expansion/looks.ts`): a Samurai dresses as a Fencer,
+a Fire Giant as a Giant. Without the sprites, everything is drawn in
+Palatinus's own pixel art, with its animations made by moving and tinting the
+one drawing.
+
+**How the sprites are stored, as decoded.** Every unit's art is a *bundle*
+in the game's asset store, listed in a master table of 208 bundles. A bundle
+holds:
+
+* a table of *cells*, each one drawing of the unit made of several pose
+  images placed relative to its feet;
+* a table of *animation scripts*: show a cell for so many ticks, move, the
+  blow lands here, go on to another script;
+* a pose table saying which poses are bodies, which weapons, and which
+  palette each takes;
+* the palettes;
+* the poses themselves, as "UT" containers of 8-bit colour-indexed frames
+  with 4-bit alpha masks, later frames stored as differences from earlier
+  ones.
+
+One bundle dresses several classes: a body pose's frames come in pairs, the
+first class in player and enemy colours, then the next. The Fighter and the
+Lycanthrope share one, and so do the Hawkman, the Vultan and the Raven. A
+weapon pose holds a frame per weapon look.
+
+A class table beside the battle code gives, per class and side, the bundle
+seen from behind, the one from the front, and the variant. The extractor
+copies each bundle out as stored, still compressed (13 MB for the 137 in
+use), and the browser unpacks a bundle when a battle first needs it.
+
 ## What's implemented
 
 **Overworld (free real-time march).** An open strategic map with a player HQ,
@@ -180,7 +232,7 @@ renderer draws from the very same terrain grid the movement code charges
 against, what you read off the map is always exactly what you pay.
 
 **Auto-battle with 3x3 formations.** When opposing squads meet on the map the
-engagement resolves automatically. Each squad fields up to five members on a
+engagement resolves automatically, and plays out on the 3D battlefield. Each squad fields up to five members on a
 3x3 grid, and the *column* a member occupies decides their battle row — front,
 middle, or back — which in turn decides which attack they use and how many
 times it lands. A knight in front swings twice; an archer gains a third shot
@@ -239,13 +291,21 @@ src/
     sources.ts     the shape of the scraped SNES and Symphony of War class facts
     translate.ts   turns them into classes and routes on the active dataset
     index.ts       withExpansion(): the expansion, applied
+    looks.ts       which Ogre Battle 64 class's art each translated class wears
   ob64/
     decode.ts      reads Ogre Battle 64's class, attack and element tables from a ROM
     convert.ts     turns them into Palatinus classes and items: roster, promotions, spells, gates, gear
-tools/
-  extract-ob64.ts  `npm run extract:ob64`: verifies the dump, writes public/ob64/
-  scrape-expansion.ts `npm run scrape:expansion`: the two class sources, as facts
+    lz.ts          the game's asset store and its LZ compression
+    sprites.ts     unit sprite bundles: pose images, palettes, cells, animation scripts, the class table
+    spritePack.ts  one bundle as stored, packed into a file the browser fetches
+  gfx3d/
+    stage.ts       the Three.js battlefield: ground, billboard units, camera shots, effects
+    layout.ts      where each squad member stands, and the camera's shots
+    sprites.ts     what the stage needs from a unit's art; sets built from one still drawing
+    ob64Sprites.ts loads the extracted sprites: portraits at boot, animated sets per battle
+    unitArt.ts     a unit's battle art: Ogre Battle 64's if extracted, else the pixel art
   gfx/
+    unitIcon.ts    a class's standing figure for menus and the map, whichever art it has
     pixels.ts      pixel sprite templates, per-class palettes, stand-in art for the rest
     terrain.ts     procedural terrain tiles and stronghold icons
     ui.ts          menu panel styling
@@ -253,8 +313,12 @@ tools/
     BootScene      loads extracted data if present, renders all textures
     TitleScene
     OverworldScene march orders, capture, enemy AI, encounter detection
-    BattleScene    plays back the simulated engagement
+    BattleScene    plays back the simulated engagement on the 3D stage
     OrganizeScene  formation editing and promotions
+tools/
+  extract-ob64.ts  `npm run extract:ob64`: verifies the dump, writes public/ob64/
+  scrape-expansion.ts `npm run scrape:expansion`: the two class sources, as facts
+  png.ts           a minimal PNG writer for the portrait atlas
 ```
 
 The simulation in `src/core/` has no Phaser dependency — battles resolve as
@@ -265,7 +329,7 @@ without a single binary asset.
 
 ## Tests
 
-`npm test` runs 203 tests (190 without extracted ROM data) over the simulation core — the rules, not the
+`npm test` runs 239 tests (222 without extracted ROM data) over the simulation core — the rules, not the
 rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,
@@ -347,6 +411,22 @@ Twenty-nine mutations of this code were tried; six survived the first suite
 rest on an enemy stronghold, the fallen rising away from the keep, names
 reused too early), and each now has a test that catches it.
 
+The sprite decoder runs on bundles built by hand to the documented formats:
+colour and mask frames rebuilt from their differences (both halves of a mask
+byte), drawn through a palette with the mask's alpha; each pose's kind and
+palette read from the pose table, and a table for the wrong number of poses
+ignored; a body dressed by its variant while the weapon keeps its player
+look; cells with signed offsets and mirroring, each part in its own palette,
+faint texels left out; scripts read, played on into the script they link to,
+and the blow marked on its own frame only; the Soldier's stand-ins replaced
+by the other side's art, recoloured, or left out; and a packed bundle
+unpacking to what the ROM holds. Ten mutations were tried; three survived at
+first and now have tests. On real data, Fighter and Lycanthrope share a
+bundle as variants, a bundle's poses take several palettes and its weapon is
+marked, every translated class's borrowed art exists, and every class's
+animations build. The stage's layout and camera, and the choice of which view
+to show and which frame plays when, are tested without a browser.
+
 ## Balance knobs
 
 Class stats, growths, row attacks, and promotion requirements all live in
@@ -359,4 +439,8 @@ supply effects for the extracted data in `CONSUMABLE_EFFECT` in
 price in `src/core/items.ts`; rest and revival rates are in `src/core/camp.ts`; terrain movement costs and the
 road bonus are in `TERRAIN_SPEED` and `MARCH_TERRAIN` in `src/core/terrain.ts`; capture and snap
 radii are in `src/core/movement.ts`; the campaign map and starting armies are
-in `src/core/state.ts`.
+in `src/core/state.ts`. The battle's spacing and camera shots are in
+`src/gfx3d/layout.ts`; Ogre Battle 64 sprites' size and the beasts'
+enlargement are `PIXELS_PER_UNIT` and `LARGE_SCALE` in
+`src/gfx3d/ob64Sprites.ts`, and their animation speed is `TICK_MS` in
+`src/ob64/sprites.ts`.

@@ -278,3 +278,21 @@ describe('playing the new classes', () => {
     expect(classOf('swordfighter').origin).toBe('sow');
   });
 });
+
+describe('the translated classes\' Ogre Battle 64 looks', () => {
+  it('give every translated class the art of an Ogre Battle 64 class', () => {
+    const translated = allClasses().filter((c) => c.origin === 'snes' || c.origin === 'sow');
+    for (const c of translated) {
+      expect(c.spriteOf, c.id).toBeGreaterThanOrEqual(1);
+      expect(c.spriteOf, c.id).toBeLessThanOrEqual(164);
+    }
+  });
+
+  it('dresses large classes as large Ogre Battle 64 beasts', () => {
+    // Dragons, giants, golems and the like: classes 56..80 and 164.
+    const big = (n: number) => (n >= 56 && n <= 80) || n === 164;
+    for (const c of allClasses().filter((x) => x.size === 2 && (x.origin === 'snes' || x.origin === 'sow'))) {
+      expect(big(c.spriteOf!), c.id).toBe(true);
+    }
+  });
+});

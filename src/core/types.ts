@@ -118,6 +118,10 @@ export interface ClassDef {
   equip?: EquipRules;
   /** What a fresh unit of the class carries (Ogre Battle 64's class records name it). */
   defaultGear?: Partial<Gear>;
+  /** The class's number in Ogre Battle 64's class table, for its sprites. */
+  ob64Id?: number;
+  /** An Ogre Battle 64 class whose sprites this class borrows (translated classes). */
+  spriteOf?: number;
 }
 
 export interface Character {

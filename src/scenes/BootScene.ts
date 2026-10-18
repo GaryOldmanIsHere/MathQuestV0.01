@@ -4,6 +4,7 @@ import { buildTerrainTextures } from '../gfx/terrain';
 import { allClasses, installDataset } from '../data/registry';
 import { convertDataset } from '../ob64/convert';
 import { withExpansion } from '../expansion';
+import { loadOb64Sprites } from '../gfx3d/ob64Sprites';
 import type { Ob64Data } from '../ob64/decode';
 
 export class BootScene extends Phaser.Scene {
@@ -12,7 +13,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
-    loadExtractedData().finally(() => {
+    loadExtractedData().then(() => loadOb64Sprites(this)).finally(() => {
       buildUnitTextures(this);
       buildClassTextures(this, allClasses());
       buildTerrainTextures(this);

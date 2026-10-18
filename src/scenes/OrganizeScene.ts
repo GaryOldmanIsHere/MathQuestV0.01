@@ -15,6 +15,7 @@ import {
 import type { ItemDef, Slot } from '../core/items';
 import { rallyHome } from '../core/camp';
 import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, TITLE_STYLE } from '../gfx/ui';
+import { unitIcon } from '../gfx/unitIcon';
 
 // Army organization: reposition members on the 3x3 grid, read and change a
 // unit's gear, promote it through the class tree, use and sell items, buy
@@ -150,7 +151,7 @@ export class OrganizeScene extends Phaser.Scene {
       const x = xs.reduce((a, b) => a + b, 0) / xs.length;
       const { y } = at(cells[0]);
       const large = cells.length > 1;
-      const sprite = this.track(this.add.image(x, y - (large ? 14 : 10), `unit-${classOf(c.classId).palette}`).setScale(large ? 3.6 : 2.6));
+      const sprite = this.track(unitIcon(this, x, y - (large ? 14 : 10), classOf(c.classId).palette, large ? 58 : 42));
       if (c.hp <= 0) sprite.setAlpha(0.35).setAngle(90);
       this.track(this.add.text(x, y + 26, c.hp <= 0 ? `${c.name} (fallen)` : c.name, {
         ...SMALL_STYLE, fontSize: '9px', color: c.hp <= 0 ? '#c08080' : '#c8c8d8',
@@ -228,7 +229,7 @@ export class OrganizeScene extends Phaser.Scene {
       return;
     }
     const def = classOf(c.classId);
-    this.track(this.add.image(X + 16, 96, `unit-${def.palette}`).setScale(3.2));
+    this.track(unitIcon(this, X + 16, 96, def.palette, 50));
     this.track(this.add.text(X + 44, 72, c.name, TEXT_STYLE));
     this.text(X + 44, 90, `${def.name}  Lv ${c.level}`, '#c8b458');
     const tags = [cap(c.element), def.size === 2 ? 'Large' : '', SQUAD_TYPE_LABEL[marchOf(def)]].filter(Boolean).join(' · ');
@@ -358,7 +359,7 @@ export class OrganizeScene extends Phaser.Scene {
         this.message = `${c.name} is now a ${target.name}.`;
         this.refresh();
       } : undefined);
-      this.track(this.add.image(X + 12, y + 14, `unit-${target.palette}`).setScale(1.3));
+      this.track(unitIcon(this, X + 12, y + 14, target.palette, 22));
       this.text(X + 26, y + 2, target.name, ok ? '#c0f0c0' : '#a8acc0', 10);
       this.text(X + 26, y + 15, reqs, '#8890a8', 9);
       if (ok) this.text(X + 200, y + 3, 'PROMOTE', '#f0e090', 9);
@@ -479,7 +480,7 @@ export class OrganizeScene extends Phaser.Scene {
         this.message = `${recruit.name} the ${def.name} joins ${sq.name}.`;
         this.refresh();
       } : undefined);
-      this.track(this.add.image(X + 18, y + 22, `unit-${def.palette}`).setScale(2));
+      this.track(unitIcon(this, X + 18, y + 22, def.palette, 34));
       this.text(X + 40, y + 4, def.name, ok ? '#e0e8f8' : '#8890a8', 11);
       const from = def.origin === 'snes' ? 'Ogre Battle (SNES)' : def.origin === 'sow' ? 'Symphony of War' : def.source === 'ob64' ? 'Ogre Battle 64' : 'Palatinus';
       this.text(X + 40, y + 19, `${SQUAD_TYPE_LABEL[marchOf(def)]} · ${from}`, '#8890a8', 9);

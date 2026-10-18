@@ -13,6 +13,26 @@ export const CAPTURE_RADIUS = 28;
 /** Clicking this close to a stronghold snaps the order onto it. */
 export const SNAP_RADIUS = 30;
 
+/** Opposing squads this close to each other meet in battle. */
+export const ENGAGE_RADIUS = 18;
+
+/** A hostile squad this close to a stronghold keeps it from being taken. */
+export const CONTEST_RADIUS = 30;
+
+/**
+ * Where the `index`th squad to halt at a stronghold stands, from its
+ * centre: the first on it, the rest in rings close about it. Every place is
+ * near enough that the squad holds the stronghold, counts against anyone
+ * taking it, and meets in battle an enemy who marches onto it. (How the map
+ * draws them is its own affair.)
+ */
+export function settleOffset(index: number): Point {
+  if (index <= 0) return { x: 0, y: 0 };
+  const angle = -Math.PI / 2 + ((index - 1) % 6) * (Math.PI / 3);
+  const radius = 11 + Math.floor((index - 1) / 6) * 5;
+  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+}
+
 export interface Point {
   x: number;
   y: number;

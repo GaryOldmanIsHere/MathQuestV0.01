@@ -70,14 +70,21 @@ function fractal(col: number, row: number, scale: number, salt: number): number 
   return smoothNoise(col, row, scale, salt) * 0.7 + smoothNoise(col, row, scale / 2.5, salt + 9) * 0.3;
 }
 
+/** Where the river runs across the row at height y: down from the northern range, winding south past the keep. */
+export function riverX(y: number): number {
+  return 172 + Math.sin(y / 55) * 34 + Math.sin(y / 23) * 9;
+}
+
 /**
  * The natural landscape, before roads are laid over it: a range of
- * mountains along the north with foothills reaching south, a lake in the
- * south-east, and woods in clumps across the rest.
+ * mountains along the north with foothills reaching south, a river winding
+ * down the west past the keep, a lake in the south-east, and woods in
+ * clumps across the rest, thicker in the west.
  */
 export function baseTerrainAt(col: number, row: number): Terrain {
   const x = col * TILE;
   const y = row * TILE;
+  if (y > 64 && Math.abs(x + TILE / 2 - riverX(y + TILE / 2)) < 18) return 'water';
   // The northern range thins toward its southern edge.
   if (fractal(col, row, 5, 1) > 0.25 + Math.max(0, (y - 40) / 90)) return 'mountain';
   // Foothills: scattered high ground in the north half.
@@ -85,7 +92,7 @@ export function baseTerrainAt(col: number, row: number): Terrain {
   // The lake, its shore wandering.
   const lake = Math.hypot((x - 720) / 150, (y - 520) / 110);
   if (lake + (fractal(col, row, 3, 3) - 0.5) * 0.5 < 1) return 'water';
-  if (fractal(col, row, 6, 4) > 0.6) return 'forest';
+  if (fractal(col, row, 6, 4) > (x < 330 ? 0.5 : 0.6)) return 'forest';
   return 'plain';
 }
 

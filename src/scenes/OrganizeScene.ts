@@ -51,8 +51,9 @@ export class OrganizeScene extends Phaser.Scene {
   create(): void {
     const st = getState();
     const { width: W, height: H } = this.scale;
-    this.add.rectangle(W / 2, H / 2, W, H, 0x0c1024, 0.97);
-    this.add.text(W / 2, 28, 'ORGANIZE  ARMY', TITLE_STYLE).setOrigin(0.5);
+    // The map waits behind, darkened: the army is organized in the field.
+    this.add.rectangle(W / 2, H / 2, W, H, 0x060a1c, 0.74);
+    this.add.text(W / 2, 28, 'ORGANIZE  ARMY', { ...TITLE_STYLE, stroke: '#05081a', strokeThickness: 4 }).setOrigin(0.5);
 
     drawPanel(this, 16, 56, 180, 460);
     this.add.text(30, 68, 'SQUADS', { ...SMALL_STYLE, color: '#c8b458' });
@@ -151,14 +152,14 @@ export class OrganizeScene extends Phaser.Scene {
       const x = xs.reduce((a, b) => a + b, 0) / xs.length;
       const { y } = at(cells[0]);
       const large = cells.length > 1;
-      const sprite = this.track(unitIcon(this, x, y - (large ? 14 : 10), classOf(c.classId).palette, large ? 58 : 42));
+      const sprite = this.track(unitIcon(this, x, y - (large ? 6 : 4), classOf(c.classId).palette, large ? 74 : 60));
       if (c.hp <= 0) sprite.setAlpha(0.35).setAngle(90);
-      this.track(this.add.text(x, y + 26, c.hp <= 0 ? `${c.name} (fallen)` : c.name, {
+      this.track(this.add.text(x, y + 30, c.hp <= 0 ? `${c.name} (fallen)` : c.name, {
         ...SMALL_STYLE, fontSize: '9px', color: c.hp <= 0 ? '#c08080' : '#c8c8d8',
       }).setOrigin(0.5));
       if (c.id === sq.leaderId) this.track(this.add.text(xs[0] - 32, y - 34, '★', { ...SMALL_STYLE, color: '#f0e090' }));
     }
-    this.track(this.add.text(352, 376, 'Click a member, then an empty cell to move them.\nColumn decides their battle row.', {
+    this.track(this.add.text(352, 377, 'Pick a member, then an empty cell.\nIts column sets its battle row.', {
       ...SMALL_STYLE, fontSize: '10px', color: '#8890a8', align: 'center',
     }).setOrigin(0.5));
   }
@@ -229,7 +230,7 @@ export class OrganizeScene extends Phaser.Scene {
       return;
     }
     const def = classOf(c.classId);
-    this.track(unitIcon(this, X + 16, 96, def.palette, 50));
+    this.track(unitIcon(this, X + 16, 92, def.palette, 58));
     this.track(this.add.text(X + 44, 72, c.name, TEXT_STYLE));
     this.text(X + 44, 90, `${def.name}  Lv ${c.level}`, '#c8b458');
     const tags = [cap(c.element), def.size === 2 ? 'Large' : '', SQUAD_TYPE_LABEL[marchOf(def)]].filter(Boolean).join(' · ');

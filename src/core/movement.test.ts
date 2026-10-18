@@ -3,9 +3,12 @@ import {
   ARRIVE_EPS,
   CAPTURE_RADIUS,
   clampToMap,
+  CONTEST_RADIUS,
+  ENGAGE_RADIUS,
   haltSquad,
   orderTo,
   retreatTarget,
+  settleOffset,
   snapOrder,
   stepToward,
   strongholdAt,
@@ -165,3 +168,23 @@ describe('retreat', () => {
     expect(target.y).toBeLessThanOrEqual(MAP_H);
   });
 });
+
+describe('squads parked at a stronghold', () => {
+  const spots = Array.from({ length: 13 }, (_, i) => settleOffset(i));
+
+  it('stand close enough to hold it, to contest it, and to meet an enemy who marches onto it', () => {
+    for (const p of spots) {
+      const r = Math.hypot(p.x, p.y);
+      expect(r).toBeLessThan(CAPTURE_RADIUS);
+      expect(r).toBeLessThan(CONTEST_RADIUS);
+      expect(r).toBeLessThan(ENGAGE_RADIUS);
+    }
+  });
+
+  it('each have a spot of their own, the first on the centre', () => {
+    expect(spots[0]).toEqual({ x: 0, y: 0 });
+    const keys = new Set(spots.map((p) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`));
+    expect(keys.size).toBe(spots.length);
+  });
+});
+

@@ -9,7 +9,7 @@ import { ob64SpriteSet, spriteClassOf } from './ob64Sprites';
 // the march, turned the way it is going.
 
 /** How tall a leader stands on the map, in world units (a tile is one). */
-export const FIGURE_HEIGHT = 1.35;
+export const FIGURE_HEIGHT = 1.5;
 
 /** Which way a screen octant (0 right, 2 toward the camera, 4 left, 6 away) faces, or neither. */
 export function sideOf(screenOctant: number): 'left' | 'right' | null {

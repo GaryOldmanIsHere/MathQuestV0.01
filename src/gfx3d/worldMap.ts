@@ -195,6 +195,16 @@ export function panView(v: MapView, right: number, forward: number): MapView {
   });
 }
 
+/**
+ * How much larger squads are drawn when the camera stands back: true size
+ * up close, and growing past `FIGURE_FULL_AT` so that a leader stays
+ * legible from across the map, as Ogre Battle 64 keeps its map sprites.
+ */
+export const FIGURE_FULL_AT = 20;
+export function figureScale(distance: number): number {
+  return Math.max(1, distance / FIGURE_FULL_AT);
+}
+
 /** Zoom by a factor (below 1 closer), easing the camera down as it nears the ground. */
 export function zoomView(v: MapView, factor: number): MapView {
   const distance = v.distance * factor;

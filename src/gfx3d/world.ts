@@ -6,7 +6,7 @@ import type { SpriteImage } from './sprites';
 import { sharedRenderer } from './renderer';
 import type { MapView } from './worldMap';
 import {
-  clampView, heightAt, heightField, lerpView, MARGIN, mirror, OVERVIEW, screenOctant, SUB, VERTS_X, VERTS_Z, viewCamera,
+  clampView, figureScale, heightAt, heightField, lerpView, MARGIN, mirror, OVERVIEW, screenOctant, SUB, VERTS_X, VERTS_Z, viewCamera,
   WATER_LEVEL, WORLD_D, WORLD_W, zoomView,
 } from './worldMap';
 
@@ -443,6 +443,7 @@ export class WorldStage {
     });
 
     const yaw = this.shown.yaw;
+    const grow = figureScale(this.shown.distance);
     for (const s of this.squads.values()) {
       s.t += dtMs;
       const h = this.groundAt(s.x, s.y);
@@ -456,7 +457,7 @@ export class WorldStage {
         s.mat.needsUpdate = true;
       }
       const img = f.image as { width: number; height: number };
-      const scale = 1 / s.figure.pixelsPerUnit;
+      const scale = grow / s.figure.pixelsPerUnit;
       const w = img.width * scale;
       const ht = img.height * scale;
       const flip = f.mirror ? -1 : 1;
@@ -465,13 +466,14 @@ export class WorldStage {
       s.root.position.set(wx, h, wz);
       s.root.rotation.y = Math.atan2(this.camera.position.x - wx, this.camera.position.z - wz);
       s.base.position.set(wx, h + 0.04, wz);
+      s.base.scale.setScalar(grow);
       s.height = f.anchorY * scale;
     }
 
     const sel = this.selectedId !== null ? this.squads.get(this.selectedId) : undefined;
     if (sel) {
       this.selection.position.set(sel.x / TILE, this.groundAt(sel.x, sel.y) + 0.06, sel.y / TILE);
-      const k = 1 + Math.sin(this.clock / 180) * 0.06;
+      const k = (1 + Math.sin(this.clock / 180) * 0.06) * grow;
       this.selection.scale.set(k, 1, k);
     } else {
       this.selection.visible = false;

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 
-// The classic tactics-menu look: deep blue gradient panel, pale double border.
+// The menu look, after Ogre Battle 64's windows: translucent deep-blue
+// panels over the world, framed in gold with studs at the corners.
 
 export const FONT = 'Courier New, monospace';
 
@@ -35,21 +36,26 @@ export function drawPanel(
 ): Phaser.GameObjects.Graphics {
   const g = scene.add.graphics();
   g.setDepth(opts?.depth ?? 0);
-  const alpha = opts?.alpha ?? 1;
-  // gradient body (stepped bands, era-appropriate)
-  const top = Phaser.Display.Color.ValueToColor('#2a3a78');
-  const bottom = Phaser.Display.Color.ValueToColor('#101c48');
-  const bands = 8;
+  const alpha = opts?.alpha ?? 0.9;
+  // A translucent body, lighter at the top, so the world shows faintly through.
+  const top = Phaser.Display.Color.ValueToColor('#22356e');
+  const bottom = Phaser.Display.Color.ValueToColor('#0a1434');
+  const bands = 12;
   for (let i = 0; i < bands; i++) {
     const c = Phaser.Display.Color.Interpolate.ColorWithColor(top, bottom, bands - 1, i);
     g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), alpha);
     g.fillRect(x + 2, y + 2 + ((h - 4) / bands) * i, w - 4, (h - 4) / bands + 1);
   }
-  // double border
-  g.lineStyle(2, 0xe8e4d0, 1);
+  // A thin highlight under the top edge, as if lit from above.
+  g.fillStyle(0x6a82c8, 0.35 * alpha);
+  g.fillRect(x + 3, y + 3, w - 6, 1);
+  // Gold frame, a dark inner line, and studs at the corners.
+  g.lineStyle(2, 0xc8a85a, 1);
   g.strokeRect(x + 1, y + 1, w - 2, h - 2);
-  g.lineStyle(1, 0x686a8a, 1);
+  g.lineStyle(1, 0x05081a, 0.9);
   g.strokeRect(x + 3, y + 3, w - 6, h - 6);
+  g.fillStyle(0xf0d890, 1);
+  for (const [cx, cy] of [[x, y], [x + w - 4, y], [x, y + h - 4], [x + w - 4, y + h - 4]]) g.fillRect(cx, cy, 4, 4);
   return g;
 }
 
@@ -72,7 +78,7 @@ export function makeButton(
     .zone(x + w / 2, y + h / 2, w, h)
     .setDepth(depth + 2)
     .setInteractive({ useHandCursor: true });
-  zone.on('pointerover', () => text.setColor('#f0e090'));
+  zone.on('pointerover', () => text.setColor('#f0d890'));
   zone.on('pointerout', () => text.setColor('#e8e8f0'));
   zone.on('pointerdown', onClick);
   return { panel, text, zone };

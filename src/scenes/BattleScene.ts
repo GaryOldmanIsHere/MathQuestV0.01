@@ -8,7 +8,8 @@ import { classOf } from '../data/registry';
 import { weaponOf } from '../core/items';
 import { squadMemberIds } from '../core/squad';
 import { BattleStage } from '../gfx3d/stage';
-import { focusOn, placements, WIDE } from '../gfx3d/layout';
+import { frameAction, placements, WIDE } from '../gfx3d/layout';
+import { declutter } from '../gfx/declutter';
 import type { Placement } from '../gfx3d/layout';
 import { spriteSetFor } from '../gfx3d/unitArt';
 import { prepareSprites } from '../gfx3d/ob64Sprites';
@@ -142,16 +143,22 @@ export class BattleScene extends Phaser.Scene {
     const ctx = this.screen.getContext();
     ctx.drawImage(stage.canvas, 0, 0, W, H);
     this.screen.refresh();
-    for (const [id, l] of this.labels) {
+    // Each unit's strength bar and name sit under its feet, moved clear of
+    // one another where units stand close.
+    const shown = [...this.labels].flatMap(([id, l]) => {
       const p = stage.project(id);
-      if (!p) continue;
+      return p && l.name.alpha > 0 ? [{ l, p }] : [];
+    });
+    const ys = declutter(shown.map(({ l, p }) => ({ x: p.x, y: p.y, w: Math.max(40, l.name.width), h: 18 })));
+    shown.forEach(({ l, p }, k) => {
+      const y = ys[k];
       const ratio = Math.max(0, l.char.hp / l.char.stats.hp);
-      l.name.setPosition(p.x, p.y + 6);
-      l.hpBack.setPosition(p.x, p.y + 2);
-      l.hpFill.setPosition(p.x - 20, p.y + 2);
+      l.name.setPosition(p.x, y + 6);
+      l.hpBack.setPosition(p.x, y + 2);
+      l.hpFill.setPosition(p.x - 20, y + 2);
       l.hpFill.width = 40 * ratio;
       l.hpFill.fillColor = hpColor(ratio);
-    }
+    });
   }
 
   private headline(sq: Squad): string {
@@ -177,9 +184,9 @@ export class BattleScene extends Phaser.Scene {
     const place = this.places.get(ev.actorId)!;
     const attack = ev.attack;
     this.banner.setText(`${actor.name}: ${attack.name}!`);
-    stage.cut(focusOn(place), 320);
-
     const targets = [...new Set(ev.targetIds)].filter((id) => stage.has(id));
+    stage.cut(frameAction(place, targets.map((t) => this.places.get(t)!).filter(Boolean)), 320);
+
     const blow = attack.type === 'melee' || attack.type === 'ranged';
     const element: Element | 'physical' = attack.element ?? (blow ? weaponOf(actor)?.element : undefined) ?? 'physical';
     let landed = false;

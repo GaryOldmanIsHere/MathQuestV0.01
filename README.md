@@ -166,11 +166,20 @@ classes.
 
 Battles are staged in a real 3D scene: the two squads face each other on
 ground themed by where they met (grass, a road, forest, rocky hills or a
-river bank, with trees and rocks to match), and a camera that sweeps down
-onto the field, swings in on whoever acts, and pulls back when the clash is
-done. The units are
-billboards, flat drawings that always face the camera, standing on that 3D
-field, as Ogre Battle 64 itself draws them.
+river bank, with trees and rocks to match). The units are billboards, flat
+drawings that always face the camera, standing on that 3D field, as Ogre
+Battle 64 itself draws them.
+
+As in Ogre Battle 64, each formation stands on the diagonal: each row nearer
+the camera stands a step to the right of the one behind it. The camera always
+looks across the field from a little to the attackers' side, which spreads
+the rows further apart rather than lining them up, so no unit hides another.
+* **The camera** sweeps down onto the field at the start.
+* **For each action** it frames the actor together with everyone it acts on,
+  drawn back just far enough to keep them all in view.
+* **At the end** it pulls back when the clash is done.
+* **Names and strength bars** move clear of one another where units stand
+  close.
 
 With the sprites extracted, each unit is drawn in Ogre Battle 64's own art:
 every animation the game gives it (breathing at rest, walking, its melee
@@ -214,8 +223,12 @@ use), and the browser unpacks a bundle when a battle first needs it.
 ## The campaign map in 3D
 
 The campaign map is a 3D world in the manner of Ogre Battle 64's: rolling
-polygon ground under a tilted camera, with a mountain range along the north,
-woods, a lake, and roads of packed earth between strongholds. The
+polygon ground under a tilted camera. The land has:
+* a mountain range along the north;
+* a river winding down the west past the keep, crossed by the roads;
+* woods, thickest in the west;
+* a lake in the south-east;
+* roads of packed earth between strongholds. The
 strongholds are small buildings flying their owner's colours: the two
 castles with towers and a keep, forts with a stockade and a watchtower, and
 towns of cottages. A flag changes colour the moment its stronghold falls.
@@ -254,8 +267,17 @@ walks its units, in its side's colours:
 * great beasts larger.
 
 Without the sprites, the leader's pixel-art figure turns and bobs in step.
-A squad halted on a stronghold is drawn in front of the building rather
-than inside it; its place in the game doesn't change.
+* **Size:** figures grow as the camera draws back, so a leader stays legible
+  from across the whole map.
+* **At strongholds:** squads halted at a stronghold are drawn in an arc in
+  front of the building, on the camera's side. The arc spreads as the figures
+  grow, while the squads' places in the game stay close about the centre.
+* **Names:** each stronghold's name sits over its building, and squads'
+  names and strength bars move clear of each other and of the strongholds'
+  names.
+
+While a menu or a battle stands over the map, the land stays in view behind
+it and the map's names and HUD step aside.
 
 The map and the battles share one WebGL renderer. A battle only ever plays
 while the map waits, and each copies out what it drew straight away.
@@ -360,7 +382,8 @@ src/
   gfx/
     unitIcon.ts    a class's standing figure for menus and the map, whichever art it has
     pixels.ts      pixel sprite templates, per-class palettes, stand-in art for the rest
-    ui.ts          menu panel styling
+    ui.ts          menu styling: translucent panels framed in gold, after Ogre Battle 64's windows
+    declutter.ts   keeps screen labels (names over units) from sitting on one another
   scenes/
     BootScene      loads extracted data if present, renders all textures
     TitleScene
@@ -381,7 +404,7 @@ without a single binary asset.
 
 ## Tests
 
-`npm test` runs 261 tests (244 without extracted ROM data) over the simulation core — the rules, not the
+`npm test` runs 271 tests (254 without extracted ROM data) over the simulation core — the rules, not the
 rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,
@@ -496,6 +519,16 @@ Twelve mutations were tried; two survived at first (the shore fix, which
 this map happens not to need, and one direction of the yaw wrap) and now
 have tests.
 
+The polish round added its own tests:
+* **Formations:** the rows stand on the diagonal.
+* **Framing:** every action shot keeps the actor and all its targets in
+  frame, and keeps each nearer row further right on screen.
+* **Labels:** they never overlap, and fixed ones hold their place.
+* **Map figures:** they grow with the camera's distance.
+* **Parked squads:** every squad parked at a stronghold stands close enough
+  to hold it, to count against anyone taking it, and to meet an enemy who
+  marches onto it.
+
 ## Balance knobs
 
 Class stats, growths, row attacks, and promotion requirements all live in
@@ -509,10 +542,12 @@ price in `src/core/items.ts`; rest and revival rates are in `src/core/camp.ts`; 
 road bonus are in `TERRAIN_SPEED` and `MARCH_TERRAIN` in `src/core/terrain.ts`; capture and snap
 radii are in `src/core/movement.ts`; the campaign map and starting armies are
 in `src/core/state.ts`. The battle's spacing and camera shots are in
-`src/gfx3d/layout.ts`; Ogre Battle 64 sprites' size and the beasts'
+`src/gfx3d/layout.ts` (`ROW_SHEAR`, `DIAGONAL`, `WIDE`); Ogre Battle 64 sprites' size and the beasts'
 enlargement are `PIXELS_PER_UNIT` and `LARGE_SCALE` in
 `src/gfx3d/ob64Sprites.ts`, and their animation speed is `TICK_MS` in
 `src/ob64/sprites.ts`. The landscape's shapes are in `baseTerrainAt` in
 `src/core/terrain.ts`; the map's heights in `src/gfx3d/worldMap.ts`, with the
 camera's limits and opening view (`VIEW_LIMITS`, `OVERVIEW`); figures' size on
-the map is `FIGURE_HEIGHT` in `src/gfx3d/mapFigures.ts`.
+the map is `FIGURE_HEIGHT` in `src/gfx3d/mapFigures.ts`, and how much they
+grow from afar `FIGURE_FULL_AT` in `src/gfx3d/worldMap.ts`. The river's
+course is `riverX` in `src/core/terrain.ts`.

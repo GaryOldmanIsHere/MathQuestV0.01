@@ -4,7 +4,7 @@ import type { Terrain } from '../core/terrain';
 import type { Anim, SpriteFrame, SpriteSet } from './sprites';
 import { chooseView, frameAt } from './sprites';
 import type { Placement, Shot } from './layout';
-import { cameraPosition, lerpShot, WIDE } from './layout';
+import { cameraPosition, FOV, lerpShot, WIDE } from './layout';
 import { sharedRenderer } from './renderer';
 
 // The 3D battlefield. Ogre Battle 64 stands its 2D sprites on polygon
@@ -72,7 +72,7 @@ export class BattleStage {
   private shake = 0;
 
   constructor(private width: number, private height: number) {
-    this.camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 200);
+    this.camera = new THREE.PerspectiveCamera(FOV, width / height, 0.1, 200);
     this.scene.add(new THREE.HemisphereLight(0xe8f0ff, 0x506040, 1.3));
     const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
     sun.position.set(-6, 12, 8);

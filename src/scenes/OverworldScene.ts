@@ -10,10 +10,11 @@ import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/
 import { WorldStage } from '../gfx3d/world';
 import { mapFigureFor } from '../gfx3d/mapFigures';
 import { prepareSprites } from '../gfx3d/ob64Sprites';
-import { OVERVIEW, panView } from '../gfx3d/worldMap';
+import { figureScale, OVERVIEW, panView } from '../gfx3d/worldMap';
+import { declutter } from '../gfx/declutter';
 import { rng } from '../data/names';
 import {
-  haltSquad, orderTo, retreatTarget, snapOrder, stepToward, strongholdAt,
+  CONTEST_RADIUS, ENGAGE_RADIUS, haltSquad, orderTo, retreatTarget, settleOffset, snapOrder, stepToward, strongholdAt,
 } from '../core/movement';
 import type { Terrain } from '../core/terrain';
 import { buildTerrainGrid, MAP_H, speedMultiplierAt, terrainAtPoint } from '../core/terrain';
@@ -65,7 +66,7 @@ export class OverworldScene extends Phaser.Scene {
     world.setView(OVERVIEW, true);
     if (this.textures.exists('world3d')) this.textures.remove('world3d');
     this.screen = this.textures.createCanvas('world3d', W, MAP_H);
-    this.add.image(0, 0, 'world3d').setOrigin(0).setDepth(0);
+    const view3d = this.add.image(0, 0, 'world3d').setOrigin(0).setDepth(0);
     this.nodeLabels.clear();
     for (const n of st.nodes) {
       this.nodeLabels.set(n.id, this.add
@@ -129,7 +130,16 @@ export class OverworldScene extends Phaser.Scene {
       this.settle(sq, st.nodes.find((n) => n.id === sq.nodeId)!, slot);
     }
 
+    // While a menu or a battle stands over the map, only the land shows
+    // through; the map's names, bars and HUD step aside until it returns.
+    let hidden: Phaser.GameObjects.GameObject[] = [];
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => {
+      hidden = this.children.list.filter((o) => o !== view3d && (o as unknown as Phaser.GameObjects.Components.Visible).visible);
+      for (const o of hidden) (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false);
+    });
     this.events.on(Phaser.Scenes.Events.RESUME, () => {
+      for (const o of hidden) if (o.active) (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(true);
+      hidden = [];
       this.syncAll();
       this.prepareLeaders();
     });
@@ -188,8 +198,22 @@ export class OverworldScene extends Phaser.Scene {
    */
   private shownAt(sq: Squad): { x: number; y: number } {
     if (sq.moving) return { x: sq.x, y: sq.y };
-    const n = getState().nodes.find((o) => Math.abs(o.x - sq.x) < 3 && Math.abs(o.y - sq.y) < 3);
-    return n ? { x: n.x, y: n.y + 22 } : { x: sq.x, y: sq.y };
+    const st = getState();
+    const near = (s: Squad, n: MapNode) => !s.moving && Math.hypot(n.x - s.x, n.y - s.y) < 50;
+    const n = st.nodes.find((o) => near(sq, o));
+    if (!n) return { x: sq.x, y: sq.y };
+    // The squads parked at a stronghold stand in an arc in front of it, on
+    // the camera's side, spreading further as the camera draws back and
+    // their figures grow.
+    const parked = st.squads.filter((o) => near(o, n)).sort((a, b) => a.id - b.id);
+    const i = parked.indexOf(sq);
+    const view = this.world?.view;
+    const grow = figureScale(view?.distance ?? 0);
+    // The camera stands toward (sin yaw, cos yaw) on the map.
+    const toward = Math.PI / 2 - (view?.yaw ?? 0);
+    const angle = toward + (i - (parked.length - 1) / 2) * 0.62;
+    const r = (parked.length > 1 ? 30 : 22) * grow;
+    return { x: n.x + Math.cos(angle) * r, y: n.y + Math.sin(angle) * r };
   }
 
   private routeOf(sq: Squad): { x: number; y: number } | null {
@@ -274,25 +298,25 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   /**
-   * Park a squad beside its stronghold rather than on top of it, fanning out
-   * from any squads already stationed there so each stays clickable.
+   * Park a squad at its stronghold, close about any squads already
+   * stationed there, near enough to hold it and to meet an enemy who comes
+   * for it. The map draws parked squads spread out in front of the building.
    */
   private settle(sq: Squad, node: MapNode, slot?: number): void {
     const st = getState();
     const index = slot ?? st.squads.filter(
       (o) => o.id !== sq.id && !o.moving && o.nodeId === node.id,
     ).length;
-    const angle = -Math.PI / 2 + (index % 6) * (Math.PI / 3);
-    const radius = index === 0 ? 0 : 30 + Math.floor(index / 6) * 16;
-    sq.x = node.x + Math.cos(angle) * radius;
-    sq.y = node.y + Math.sin(angle) * radius;
+    const at = settleOffset(index);
+    sq.x = node.x + at.x;
+    sq.y = node.y + at.y;
   }
 
   private tryCapture(sq: Squad, node: MapNode): void {
     const st = getState();
     const hostile = sq.side === 'player' ? 'enemy' : 'player';
     const contested = st.squads.some(
-      (o) => o.side === hostile && Phaser.Math.Distance.Between(o.x, o.y, node.x, node.y) < 30,
+      (o) => o.side === hostile && Phaser.Math.Distance.Between(o.x, o.y, node.x, node.y) < CONTEST_RADIUS,
     );
     if (contested) return;
     if (node.owner !== sq.side) {
@@ -342,7 +366,7 @@ export class OverworldScene extends Phaser.Scene {
       for (const b of st.squads) {
         if (b.side !== 'enemy') continue;
         if ((this.cooldowns.get(a.id) ?? 0) > now || (this.cooldowns.get(b.id) ?? 0) > now) continue;
-        if (Phaser.Math.Distance.Between(a.x, a.y, b.x, b.y) < 18) {
+        if (Phaser.Math.Distance.Between(a.x, a.y, b.x, b.y) < ENGAGE_RADIUS) {
           this.startBattle(a, b);
           return;
         }
@@ -454,23 +478,43 @@ export class OverworldScene extends Phaser.Scene {
     this.screen.refresh();
 
     for (const n of st.nodes) {
-      const at = world.project(n.x, n.y, 0);
-      this.nodeLabels.get(n.id)?.setPosition(at.x, at.y + 10).setVisible(at.visible && at.y < MAP_H - 6);
+      // Over the building, clear of the squads parked in front of it.
+      const at = world.project(n.x, n.y, n.kind === 'town' ? 1.9 : 3.1);
+      this.nodeLabels.get(n.id)?.setPosition(at.x, at.y - 16).setVisible(at.visible && at.y > 20 && at.y < MAP_H - 6);
     }
-    for (const sq of st.squads) {
+    // Each squad's name and strength sit over its head, moved clear of one
+    // another (and of the strongholds' names) where squads gather.
+    const heads = st.squads.flatMap((sq) => {
       const v = this.views.get(sq.id);
-      if (!v) continue;
+      if (!v) return [];
       const p = this.shownAt(sq);
       const at = world.project(p.x, p.y, world.squadHeight(sq.id) + 0.15);
-      const shown = at.visible && at.y > 0 && at.y < MAP_H;
-      v.hpBar.setPosition(at.x, at.y - 4).setVisible(shown);
-      v.label.setPosition(at.x, at.y - 13).setVisible(shown);
+      return at.visible && at.y > 0 && at.y < MAP_H ? [{ sq, v, at }] : [];
+    });
+    for (const sq of st.squads) {
+      const v = this.views.get(sq.id);
+      if (v && !heads.some((h) => h.sq === sq)) [v.hpBar, v.hpFill, v.label].forEach((o) => o.setVisible(false));
+    }
+    const names = [...this.nodeLabels.values()].filter((t) => t.visible);
+    const boxes = [
+      ...heads.map(({ v, at }) => ({ x: at.x, y: at.y - 19, w: Math.max(28, v.label.width), h: 18 })),
+      ...names.map((t) => ({ x: t.x, y: t.y, w: t.width, h: t.height })),
+    ];
+    // Stronghold names hold their places: they count as already placed, being lowest.
+    const ys = declutter(boxes, 1, 6, heads.length);
+    heads.forEach(({ sq, v, at }, k) => {
+      const top = ys[k];
+      // Kept whole on screen at its edges.
+      const half = v.label.width / 2 + 2;
+      const x = Math.max(half, Math.min(W - half, at.x));
+      v.label.setPosition(x, top + 6).setVisible(true);
+      v.hpBar.setPosition(x, top + 15).setVisible(true);
       const members = squadMemberIds(sq).map((id) => st.chars.get(id)!);
       const ratio = members.reduce((s, c) => s + c.hp, 0) / Math.max(1, members.reduce((s, c) => s + c.stats.hp, 0));
-      v.hpFill.setPosition(at.x - 13, at.y - 4).setVisible(shown);
+      v.hpFill.setPosition(x - 13, top + 15).setVisible(true);
       v.hpFill.width = 26 * ratio;
       v.hpFill.fillColor = hpColor(ratio);
-    }
+    });
   }
 
   private endCampaign(result: 'victory' | 'defeat'): void {

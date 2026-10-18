@@ -3,7 +3,7 @@ import type { Terrain } from '../core/terrain';
 import { buildTerrainGrid, COLS, ROWS, TILE } from '../core/terrain';
 import { newCampaign } from '../core/state';
 import {
-  clampView, heightAt, heightField, lerpView, mirror, octant, OVERVIEW, panView, screenOctant, SUB, toMap, toWorld,
+  clampView, figureScale, FIGURE_FULL_AT, heightAt, heightField, lerpView, mirror, octant, OVERVIEW, panView, screenOctant, SUB, toMap, toWorld,
   VERTS_X, VERTS_Z, VIEW_LIMITS, viewCamera, WATER_LEVEL, WORLD_D, WORLD_W, zoomView,
 } from './worldMap';
 
@@ -133,6 +133,15 @@ describe('the map camera', () => {
     expect(lerpView(a, b, 0.5).yaw).toBeCloseTo(Math.PI, 2);
     expect(lerpView(a, b, 1).yaw).toBeCloseTo(3 + (2 * Math.PI - 6), 5);
     expect(lerpView(b, a, 0.5).yaw).toBeCloseTo(-Math.PI, 2);
+  });
+});
+
+describe('figures on the map', () => {
+  it('stand at true size up close and grow as the camera draws back', () => {
+    expect(figureScale(VIEW_LIMITS.minDistance)).toBe(1);
+    expect(figureScale(FIGURE_FULL_AT)).toBe(1);
+    expect(figureScale(OVERVIEW.distance)).toBeCloseTo(OVERVIEW.distance / FIGURE_FULL_AT);
+    expect(figureScale(VIEW_LIMITS.maxDistance)).toBeGreaterThan(figureScale(OVERVIEW.distance - 10));
   });
 });
 

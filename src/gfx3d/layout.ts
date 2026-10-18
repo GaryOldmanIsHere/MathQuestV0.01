@@ -9,8 +9,14 @@ import { cellsOf, squadMemberIds } from '../core/squad';
 // soldier's height.
 
 export const CELL_X = 1.7; // spacing between battle columns
-export const CELL_Z = 1.9; // spacing between grid rows
+export const CELL_Z = 2.4; // spacing between grid rows
 export const GAP = 1.9; // half the no man's land between the two front ranks
+/**
+ * How far each row nearer the camera stands to the right of the one behind
+ * it. Ogre Battle 64 sets its formations on the diagonal, so that a unit
+ * never stands straight behind another and hidden by it; so does this.
+ */
+export const ROW_SHEAR = 1.0;
 
 export interface Placement {
   x: number;
@@ -33,7 +39,7 @@ export function placements(sq: Squad, side: 'left' | 'right'): Map<number, Place
     const col = cells.reduce((s, c) => s + (c % 3), 0) / cells.length; // 0 back .. 2 front
     const row = Math.floor(cells[0] / 3);
     out.set(id, {
-      x: sign * (GAP + (2 - col) * CELL_X),
+      x: sign * (GAP + (2 - col) * CELL_X) + (row - 1) * ROW_SHEAR,
       z: (row - 1) * CELL_Z,
       facing: side === 'left' ? 1 : -1,
       large: cells.length > 1,
@@ -50,20 +56,50 @@ export interface Shot {
   distance: number;
 }
 
-/** The opening and resting view: the whole field from the front, a little above. */
-export const WIDE: Shot = { target: [0, 0.6, 0], azimuth: 0, elevation: 0.42, distance: 15 };
+/**
+ * Which way the camera looks across the field: always from a little to the
+ * attackers' side, as Ogre Battle 64's diagonal camera does. Seen so, each
+ * nearer row stands further right on screen, adding to the rows' shear
+ * rather than undoing it.
+ */
+export const DIAGONAL = -0.24;
+
+/** The opening and resting view: the whole field, from the diagonal, a little above. */
+export const WIDE: Shot = { target: [0, 0.6, 0], azimuth: DIAGONAL, elevation: 0.5, distance: 17 };
+
+/** The battle camera's field of view, in degrees (vertical), and the screen's shape. */
+export const FOV = 38;
+export const ASPECT = 800 / 600;
 
 /**
- * A closer view on a unit about to act: swung a little toward its own side
- * so that it and the line it faces are both in frame.
+ * A closer view on a unit about to act and the units it acts on, from the
+ * same diagonal, drawn back just far enough that all of them are in frame.
  */
-export function focusOn(p: Placement): Shot {
+export function frameAction(actor: Placement, targets: Placement[]): Shot {
+  const pts = [actor, ...targets];
+  const xs = pts.map((p) => p.x);
+  const zs = pts.map((p) => p.z);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minZ = Math.min(...zs);
+  const maxZ = Math.max(...zs);
+  const large = pts.some((p) => p.large);
+  // Wide enough for the spread across, with a body's width to spare at each
+  // side (more for great beasts), and for the spread in depth.
+  const across = maxX - minX + (large ? 4.4 : 3);
+  const half = Math.atan(Math.tan((FOV / 2) * (Math.PI / 180)) * ASPECT) * 0.8;
+  const distance = Math.min(WIDE.distance + 2, Math.max(9.5, across / 2 / Math.tan(half) + (maxZ - minZ) * 0.5 + 3));
   return {
-    target: [p.x * 0.55, 0.8, p.z * 0.6],
-    azimuth: -p.facing * 0.32,
-    elevation: 0.36,
-    distance: p.large ? 13 : 11.5,
+    target: [(minX + maxX) / 2, 0.8, (minZ + maxZ) / 2],
+    azimuth: DIAGONAL,
+    elevation: 0.42,
+    distance,
   };
+}
+
+/** A closer view on one unit about to act. */
+export function focusOn(p: Placement): Shot {
+  return frameAction(p, []);
 }
 
 export function cameraPosition(s: Shot): [number, number, number] {

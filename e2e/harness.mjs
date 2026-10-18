@@ -112,3 +112,9 @@ export async function freezeEnemies(g) {
     sc.aiTimer = -1e9;
   });
 }
+
+/** Let the enemy march again after freezeEnemies. */
+export async function thawEnemies(g) {
+  await g.mutate(() => { window.__palatinus.map.scene.aiTimer = 0; });
+}
+

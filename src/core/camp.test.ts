@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rallyHome, REST_HEAL, restSquads } from './camp';
+import { dismissMember, makeLeader, rallyHome, REST_HEAL, restSquads } from './camp';
 import { newCampaign } from './state';
 import { squadMemberIds } from './squad';
 import { freshName, resetNames } from '../data/names';
@@ -97,3 +97,37 @@ describe('names', () => {
     expect(Object.keys(newCampaign().inventory).length).toBeGreaterThan(0);
   });
 });
+
+describe('dismissing and leading', () => {
+  it('releases a member: its places free up and its gear goes to the stores', () => {
+    const st = newCampaign();
+    const sq = st.squads.find((q) => q.side === 'player')!;
+    const id = squadMemberIds(sq).find((m) => m !== sq.leaderId)!;
+    const gear = Object.values(st.chars.get(id)!.gear).filter((g): g is string => !!g);
+    const held = gear.map((g) => st.inventory[g] ?? 0);
+    expect(dismissMember(st, sq, id)).toBe(true);
+    expect(sq.grid.includes(id)).toBe(false);
+    expect(st.chars.has(id)).toBe(false);
+    gear.forEach((g, i) => expect(st.inventory[g]).toBe(held[i] + gear.filter((x) => x === g).length));
+  });
+
+  it('will not dismiss the leader, or someone from another squad', () => {
+    const st = newCampaign();
+    const [a, b] = st.squads.filter((q) => q.side === 'player');
+    expect(dismissMember(st, a, a.leaderId)).toBe(false);
+    expect(dismissMember(st, a, squadMemberIds(b).find((m) => m !== b.leaderId)!)).toBe(false);
+    expect(st.chars.has(a.leaderId)).toBe(true);
+  });
+
+  it('makes a standing member the leader, but not a fallen one or a stranger', () => {
+    const st = newCampaign();
+    const [a, b] = st.squads.filter((q) => q.side === 'player');
+    const [m1, m2] = squadMemberIds(a).filter((m) => m !== a.leaderId);
+    st.chars.get(m2)!.hp = 0;
+    expect(makeLeader(st, a, m2)).toBe(false);
+    expect(makeLeader(st, a, b.leaderId)).toBe(false);
+    expect(makeLeader(st, a, m1)).toBe(true);
+    expect(a.leaderId).toBe(m1);
+  });
+});
+

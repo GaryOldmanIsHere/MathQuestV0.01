@@ -42,7 +42,9 @@ export class OverworldScene extends Phaser.Scene {
   private hudText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
   private battleActive = false;
-  private cooldowns = new Map<number, number>(); // squad id -> time ok to fight again
+  private cooldowns = new Map<number, number>(); // squad id -> map time when it may fight again
+  /** The map's own clock, in ms: it runs only while the map does. */
+  private clock = 0;
   private aiTimer = 0;
   private dayTimer = 0;
   private terrain: Terrain[] = [];
@@ -56,6 +58,11 @@ export class OverworldScene extends Phaser.Scene {
     this.views.clear();
     this.selected = null;
     this.battleActive = false;
+    // A new campaign starts its clocks afresh.
+    this.clock = 0;
+    this.aiTimer = 0;
+    this.dayTimer = 0;
+    this.cooldowns.clear();
     this.terrain = buildTerrainGrid(st.nodes);
 
     // The map in 3D, grown from the same terrain grid marching is charged on,
@@ -377,7 +384,7 @@ export class OverworldScene extends Phaser.Scene {
   private checkEncounters(): void {
     if (this.battleActive) return;
     const st = getState();
-    const now = this.time.now;
+    const now = this.clock;
     for (const a of st.squads) {
       if (a.side !== 'player') continue;
       for (const b of st.squads) {
@@ -404,9 +411,8 @@ export class OverworldScene extends Phaser.Scene {
   private onBattleDone(payload: { attackerId: number; defenderId: number; winner: string }): void {
     const st = getState();
     this.battleActive = false;
-    // The game's clock, not this scene's: the map has been paused for the
-    // battle, and its own clock still reads the moment the battle began.
-    const now = this.game.loop.time;
+    // Counted on the map's own clock, which stood still through the battle.
+    const now = this.clock;
 
     for (const side of ['attackerId', 'defenderId'] as const) {
       const sq = st.squads.find((s) => s.id === payload[side]);
@@ -559,6 +565,7 @@ export class OverworldScene extends Phaser.Scene {
 
   update(_time: number, frameMs: number): void {
     const deltaMs = frameMs * SPEED;
+    if (getState().phase === 'playing') this.clock += deltaMs;
     const st = getState();
     if (st.phase !== 'playing') return;
     const dt = deltaMs / 1000;

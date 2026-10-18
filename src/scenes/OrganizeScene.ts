@@ -13,7 +13,7 @@ import {
   shopRank, shopStock, SLOTS, typeLabel, unequip, useItem, weaponOf,
 } from '../core/items';
 import type { ItemDef, Slot } from '../core/items';
-import { rallyHome } from '../core/camp';
+import { dismissMember, makeLeader, rallyHome } from '../core/camp';
 import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, TITLE_STYLE } from '../gfx/ui';
 import { unitIcon } from '../gfx/unitIcon';
 
@@ -43,6 +43,8 @@ export class OrganizeScene extends Phaser.Scene {
   private page = 0;
   private filter: ShopFilter = 'supplies';
   private message = '';
+  /** A dismissal asked for once, awaiting its confirmation. */
+  private dismissing: number | null = null;
 
   constructor() {
     super('Organize');
@@ -186,6 +188,7 @@ export class OrganizeScene extends Phaser.Scene {
     if (id !== null) {
       if (this.selectedChar?.id !== id) {
         this.selectedChar = st.chars.get(id)!;
+        this.dismissing = null;
         this.slot = null;
         if (this.mode === 'sheet') this.page = 0;
         if (this.mode === 'recruit') this.mode = 'sheet';
@@ -235,6 +238,7 @@ export class OrganizeScene extends Phaser.Scene {
     this.text(X + 44, 90, `${def.name}  Lv ${c.level}`, '#c8b458');
     const tags = [cap(c.element), def.size === 2 ? 'Large' : '', SQUAD_TYPE_LABEL[marchOf(def)]].filter(Boolean).join(' · ');
     this.text(X + 44, 105, tags, ELEMENT_COLOR[c.element], 10);
+    this.drawMemberActions(c);
 
     (['status', 'gear', 'class'] as Tab[]).forEach((t, i) => {
       const on = this.tab === t;
@@ -253,6 +257,46 @@ export class OrganizeScene extends Phaser.Scene {
     if (this.tab === 'status') this.drawStatus(c, def);
     else if (this.tab === 'gear') this.drawGear(c);
     else this.drawClassChange(c);
+  }
+
+  /**
+   * Leading and leaving: any standing member can be made the squad's
+   * leader; any but the leader can be dismissed (asked twice), freeing their
+   * places for a recruit and returning their gear to the stores.
+   */
+  private drawMemberActions(c: Character): void {
+    const sq = this.squad;
+    if (!sq || c.id === sq.leaderId) {
+      this.text(X + 196, 72, 'LEADER', '#c8b458', 9);
+      return;
+    }
+    const st = getState();
+    const button = (y: number, label: string, color: string, onClick: () => void) => {
+      const t = this.text(X + 196, y, label, color, 9);
+      t.setInteractive({ useHandCursor: true });
+      t.on('pointerdown', onClick);
+    };
+    if (c.hp > 0) {
+      button(72, 'LEAD', '#f0e090', () => {
+        makeLeader(st, sq, c.id);
+        this.message = `${c.name} now leads ${sq.name}.`;
+        this.refresh();
+      });
+    }
+    const asked = this.dismissing === c.id;
+    button(88, asked ? 'SURE?' : 'DISMISS', asked ? '#f08070' : '#c0a0e0', () => {
+      if (!asked) {
+        this.dismissing = c.id;
+        this.refresh();
+        return;
+      }
+      this.dismissing = null;
+      if (dismissMember(st, sq, c.id)) {
+        this.message = `${c.name} leaves the army; their gear goes to the stores.`;
+        this.selectedChar = null;
+      }
+      this.refresh();
+    });
   }
 
   private drawStatus(c: Character, def: ClassDef): void {

@@ -11,7 +11,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { freezeEnemies, newCampaign, openGame, OUT } from './harness.mjs';
+import { freezeEnemies, newCampaign, openGame, OUT, thawEnemies } from './harness.mjs';
 
 const near = (a, b, d) => Math.hypot(a.x - b.x, a.y - b.y) <= d;
 const players = (s) => s.squads.filter((q) => q.side === 'player');
@@ -330,13 +330,27 @@ async function organize(g) {
   await g.click(650, 133);
   s = await g.state();
   g.check('O17', 'a full squad cannot enlist anyone', JSON.stringify(s.squads.find((x) => x.id === wolves.id).grid) === fullBefore);
-  // Make room by sending one member away (there is no dismissal in the game yet).
-  await g.mutate(([sq, id]) => {
-    const st = window.__palatinus.state();
-    const q = st.squads.find((x) => x.id === sq);
-    q.grid = q.grid.map((x) => (x === id ? null : x));
-  }, [wolves.id, hurt.id]);
+  // Make room the way a player would: dismiss a member (asked twice).
   await g.click(106, 489);
+  s = await g.state();
+  q = s.squads.find((x) => x.id === wolves.id);
+  await g.click(...CELL(q.grid.indexOf(hurt.id)));
+  const goneGear = Object.values(s.chars[hurt.id].gear).filter(Boolean);
+  await g.click(740, 93);
+  s = await g.state();
+  g.check('O21', 'DISMISS asks before it acts', s.squads.find((x) => x.id === wolves.id).grid.includes(hurt.id));
+  await g.click(740, 93);
+  s = await g.state();
+  g.check('O22', 'a dismissed member leaves the squad and their gear returns to the stores',
+    !s.squads.find((x) => x.id === wolves.id).grid.includes(hurt.id) && !s.chars[hurt.id]
+      && goneGear.every((id) => (s.inventory[id] ?? 0) >= 1), `${hurt.name}, gear ${goneGear.join(', ')}`);
+  // And a new leader.
+  q = s.squads.find((x) => x.id === wolves.id);
+  const heir = membersOf(s, q).find((c) => c.id !== q.leaderId && c.hp > 0);
+  await g.click(...CELL(q.grid.indexOf(heir.id)));
+  await g.click(732, 77);
+  s = await g.state();
+  g.check('O23', 'LEAD makes a member the squad\'s leader', s.squads.find((x) => x.id === wolves.id).leaderId === heir.id, heir.name);
   await g.click(106, 489);
   s = await g.state();
   const g0 = s.goth;
@@ -449,6 +463,7 @@ async function battle(g) {
  * weakest stays home to guard the keep. Plays until the campaign ends.
  */
 async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sample } = {}) {
+  await thawEnemies(g);
   const start = Date.now();
   const log = [];
   let last = '';
@@ -567,6 +582,7 @@ async function victory(g) {
 
 /** Leave the keep unguarded and let the enemy take it. */
 async function defeat(g) {
+  await thawEnemies(g);
   const s = await g.state();
   const far = { x: 120, y: 120 };
   for (const q of players(s)) await marchTo(g, q.id, far.x + (q.id % 4) * 10, far.y);
@@ -576,9 +592,90 @@ async function defeat(g) {
   if (lost) await afterEnd(g, 'defeat');
 }
 
+// ------------------------------------------------------------- edge cases --
+
+async function edges(g) {
+  await freezeEnemies(g);
+  await g.page.keyboard.press('r');
+  await g.wait(1200);
+  let s = await g.state();
+  const [azure, talon, wolves, lances] = players(s);
+  const hq = s.nodes.find((n) => n.kind === 'hq-player');
+
+  // Organizing in the middle of a march: the march carries on afterwards.
+  const goal = { x: 300, y: 440 };
+  await marchTo(g, azure.id, goal.x, goal.y);
+  await g.wait(800);
+  const mid = (await g.state()).squads.find((q) => q.id === azure.id);
+  await g.click(742, 580, 500);
+  await g.click(106, 548, 500);
+  await g.wait(800);
+  const after = (await g.state()).squads.find((q) => q.id === azure.id);
+  g.check('X1', 'a march goes on after the army screen is opened and closed mid-way',
+    after.tx === mid.tx && after.ty === mid.ty && (after.moving || near(after, goal, 3)) && !near(after, mid, 0.5));
+
+  // A squad whose leader has fallen still marches, shows and fights.
+  await g.mutate(([id]) => {
+    const st = window.__palatinus.state();
+    st.chars.get(st.squads.find((q) => q.id === id).leaderId).hp = 0;
+  }, [talon.id]);
+  await g.wait(600);
+  g.check('X2', 'a squad with a fallen leader can still be selected and marched', await marchTo(g, talon.id, hq.x + 40, hq.y - 30));
+
+  // Every member down: sent into the enemy, it is routed home rather than breaking anything.
+  s = await g.state();
+  const foe = s.squads.find((q) => q.name === 'Border Patrol') ?? enemies(s)[0];
+  await g.mutate(([id]) => {
+    const st = window.__palatinus.state();
+    const q = st.squads.find((x) => x.id === id);
+    for (const c of new Set(q.grid.filter((x) => x !== null))) st.chars.get(c).hp = 0;
+  }, [lances.id]);
+  const n = await g.battles();
+  await marchTo(g, lances.id, foe.x, foe.y);
+  const fought = await g.until(([k]) => window.__palatinus.battles.length > k && !window.__palatinus.game.scene.isActive('Battle')
+    && window.__palatinus.game.scene.isActive('Overworld') && !window.__palatinus.game.scene.isPaused('Overworld'), [n], 90000);
+  s = await g.state();
+  const l = s.squads.find((q) => q.id === lances.id);
+  g.check('X3', 'a squad with everyone down is routed home when it meets the enemy', fought && !!l && near(l, hq, 28)
+    && membersOf(s, l).every((c) => c.hp > 0), l ? `${Math.hypot(l.x - hq.x, l.y - hq.y).toFixed(0)}px from the keep` : 'squad gone');
+
+  // An empty treasury: no recruit, no purchase.
+  await g.mutate(() => { window.__palatinus.state().goth = 0; });
+  await g.click(742, 580, 500);
+  await g.click(106, 107 + 2 * 42);
+  s = await g.state();
+  const w = s.squads.find((q) => q.id === wolves.id);
+  const extra = membersOf(s, w).find((c) => c.id !== w.leaderId);
+  await g.click(...CELL(w.grid.indexOf(extra.id)));
+  await g.click(740, 93);
+  await g.click(740, 93);
+  await g.click(106, 489);
+  const before = await g.state();
+  await g.click(650, 133);
+  s = await g.state();
+  g.check('X4', 'nobody can be enlisted with an empty treasury',
+    JSON.stringify(s.squads.find((q) => q.id === wolves.id).grid) === JSON.stringify(before.squads.find((q) => q.id === wolves.id).grid) && s.goth === 0);
+
+  // Selling the last of something takes it off the list.
+  await g.click(106, 443);
+  s = await g.state();
+  const order = await g.page.evaluate(() => {
+    const st = window.__palatinus.state();
+    const rank = { supply: 0, relic: 1, key: 2, gear: 3 };
+    return Object.keys(st.inventory).map(window.__palatinus.itemOf)
+      .sort((a, b) => rank[a.kind] - rank[b.kind] || a.name.localeCompare(b.name)).map((i) => i.id);
+  });
+  const first = order[0];
+  for (let k = s.inventory[first]; k > 0; k--) await g.click(738, 106 + 9, 150);
+  s = await g.state();
+  g.check('X5', 'selling the last of an item takes it off the list', !(first in s.inventory) && s.goth > 0, first);
+  await g.click(106, 548, 500);
+  await g.shot('edges');
+}
+
 // ----------------------------------------------------------------- driver --
 
-const SECTIONS = { title, map, organize, battle, victory, defeat, soak };
+const SECTIONS = { title, map, organize, battle, edges, victory, defeat, soak };
 
 const want = process.argv.slice(2);
 const run = want.length ? want : Object.keys(SECTIONS);

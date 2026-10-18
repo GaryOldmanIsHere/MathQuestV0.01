@@ -2,6 +2,7 @@ import type { GameState } from './state';
 import type { MapNode, Squad } from './types';
 import { squadMemberIds } from './squad';
 import { haltSquad, strongholdAt } from './movement';
+import { SLOTS, unequip } from './items';
 
 // Rest between battles. A squad standing on one of its own strongholds
 // recovers a little each day; at its own headquarters the fallen rise again.
@@ -35,4 +36,26 @@ export function rallyHome(st: GameState, sq: Squad): void {
   sq.x = home.x;
   sq.y = home.y;
   sq.nodeId = home.id;
+}
+
+/**
+ * Release a member from the army: its gear goes back to the stores and its
+ * places in the formation come free, so a recruit can take them. A squad's
+ * leader cannot be dismissed (choose another leader first).
+ */
+export function dismissMember(st: GameState, sq: Squad, charId: number): boolean {
+  if (charId === sq.leaderId || !sq.grid.includes(charId)) return false;
+  const c = st.chars.get(charId);
+  if (c) for (const slot of SLOTS) if (c.gear[slot]) unequip(c, slot, st.inventory);
+  sq.grid = sq.grid.map((id) => (id === charId ? null : id));
+  st.chars.delete(charId);
+  return true;
+}
+
+/** Make a standing member the squad's leader. */
+export function makeLeader(st: GameState, sq: Squad, charId: number): boolean {
+  const c = st.chars.get(charId);
+  if (!c || c.hp <= 0 || !sq.grid.includes(charId)) return false;
+  sq.leaderId = charId;
+  return true;
 }

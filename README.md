@@ -23,7 +23,8 @@ npm run extract:ob64 -- path/to/your/ogre-battle-64.z64   # .n64 and .v64 work t
 npm run dev
 ```
 
-The title screen confirms it with *Class data: Ogre Battle 64 · 106 classes*.
+The title screen confirms it with *Class data: Ogre Battle 64 (d26b14be) +
+expansion · 190 classes*: the game's 106, plus the expansion below.
 
 **What stays on your machine.** The extractor reads your ROM and writes
 `public/ob64/data.json`. That folder is git-ignored and must stay that way: it
@@ -52,6 +53,65 @@ class their lineage says they were at each level, a class change keeps a unit's
 stats, an enemy "Paladin" below level 15 takes the field as the Knight it still
 is, and every human recruit rolls an element that decides their spells.
 
+## The class expansion
+
+On top of whichever dataset is loaded, Palatinus grafts on the classes of two
+other games, translated into Ogre Battle 64's model:
+
+| Source | What it gives | Classes added (originals / OB64) |
+|---|---|---|
+| *Ogre Battle: The March of the Black Queen* (SNES), from [the RPGClassics shrine](https://shrines.rpgclassics.com/snes/ogrebattle/classes.shtml) | HP, STR, AGI and INT as base + growth; six affinities; starting alignment and luck; two row attacks with hit counts; each class's route (from which class, at what level, in what alignment window, or by which item) | 53 / 39 |
+| *Symphony of War: The Nephilim Saga*, from [the Symphony of War wiki](https://symphonyofwar.wiki.gg) | Low / Med / High ratings for each stat's base and growth; unit type (heavy or light infantry, cavalry, flier, caster, healer); the stat a promotion asks for; which classes each upgrades into | 47 / 45 |
+
+That is 136 classes on the originals, 190 on Ogre Battle 64's data, with
+classes now reaching a fourth tier (Dragon Master, Lich, the Dragon Riders,
+the Dark Mage). Gunpowder classes are left out by design. Named characters
+are not classes and are not taken.
+
+**How a class is translated.** Neither game uses Ogre Battle 64's seven stats
+or its scale, so stats carry over *relatively*: a SNES class's standing
+against the other SNES classes of its tier becomes the same standing against
+the active dataset's classes of that tier. A Symphony of War rating does the
+same with Med as the tier average. VIT, MEN and DEX, which neither game has,
+come from the nearest things each does have: HP and physical affinity, INT
+and elemental affinity, AGI and STR for the SNES; armour, magic and skill for
+Symphony of War. SNES affinities become resistances (its undead, immune to
+all but holy power, stay that way). Attacks are named for what they are:
+*Jihad* is Virtue magic that hits everyone, *Magic* is an element slot cast in
+the caster's own element, a Symphony of War Fire Mage throws Fire at a whole
+row. Large monsters and Colossal dragons fill two places.
+
+**Merging.** When a class already exists (Ogre Battle 64's Knight, the
+originals' Wizard) the existing one wins untouched and the other game only
+adds its routes into it. So a SNES Beast Man can become Ogre Battle 64's own
+Beast Master, and Symphony of War's Soldier and Cavalier both become Knights.
+Its generic recruit, the Fighter, is Ogre Battle 64's Fighter *and* Amazon,
+so its whole tree opens to women too. Most Symphony of War classes are open to
+either gender; a unit only sees the class changes its gender can hold. On
+Ogre Battle 64's data the new routes are stat-gated by the same rule as the
+game's own, led by the stat Symphony of War names (a Scout asks for DEX).
+Routes that consume an item (the SNES Werewolf's *Virus*, the Lich's
+*Undead Ring*) show it and stay shut until Phase 2 brings items.
+
+**Squad types.** How a squad marches now follows from its make-up, by
+Symphony of War's rules. Each class is slow (casters, healers), heavy, light,
+heavy or light cavalry, or a flier. A squad is *flying* when fliers are at
+least as many as the rest with no horses or grounded giants among them;
+*cavalry* when horses outnumber the infantry; *slow* when half are casters;
+*light* when light troops outnumber the rest by one; *heavy* otherwise. Light
+troops are not slowed by forest or hills, heavy cavalry is quick on open
+ground and bogged down in rough, fliers ignore the ground and the road alike.
+
+**Recruiting.** The Organize screen's *Recruit* button enlists any playable
+tier-1 class into the selected squad for Goth: Bowmen, Militia, Medics and
+Drakelings from Symphony of War, Angels, Imps, Giants, Mermaids and more from
+the SNES game, alongside each dataset's own.
+
+The scraped facts live in `src/data/expansion/*.json`. They hold numbers,
+names and routes only; none of either site's writing is copied, and the
+descriptions in game are Palatinus's own. `npm run scrape:expansion`
+regenerates them, pausing between requests.
+
 ## What's implemented
 
 **Overworld (free real-time march).** An open strategic map with a player HQ,
@@ -66,8 +126,9 @@ forts. Taking Castle Verlaine wins the campaign; losing Fort Melchor ends it.
 **Terrain that costs time, never access.** Nothing on the map is impassable —
 you can always go anywhere — but the ground decides how fast you get there.
 Roads are quickest, open plain is the baseline, and forest, mountain, and water
-each slow a march progressively. Flying squads ignore the ground entirely,
-which is what finally makes the flying movement type worth having. Because the
+each slow a march progressively — how much depends on the squad's type (see
+*Squad types* above): light troops shrug off forest and hills, cavalry hates
+them, fliers ignore the ground entirely. Because the
 renderer draws from the very same terrain grid the movement code charges
 against, what you read off the map is always exactly what you pay.
 
@@ -84,7 +145,7 @@ meet — you can intercept a march in open country, and be intercepted yourself.
 Wiped enemy squads are destroyed; wiped player squads rout home to the keep at
 low strength.
 
-**Class structure and promotion tree.** 37 classes across the male line
+**Class structure and promotion tree.** 36 original classes across the male line
 (Fighter → Knight/Berserker/Ninja/Wizard/Phalanx/Fencer/Beast Tamer/Doll
 Master and their elite third tiers), the female line (Amazon →
 Valkyrie/Archer/Cleric/Witch/Sorceress → Freya/Diana/Priest/Siren), and
@@ -101,7 +162,8 @@ read alignment, how you fight determines which classes open up.
 **Organize screen.** Browse your squads, reposition members on the formation
 grid, and read a full character sheet — stats, alignment, kills, the attack
 they use in each row, and every promotion the class offers with its
-requirements, highlighted green when the character qualifies.
+requirements, highlighted green when the character qualifies, paged when a
+class has more routes than fit. The squad's type heads its formation panel.
 
 ## Layout
 
@@ -118,12 +180,18 @@ src/
   data/
     classes.ts     the built-in class tree: stats, growths, row attacks, promotions
     registry.ts    the active dataset (built-in or extracted); every class lookup goes here
+    expansion/     the scraped class facts the expansion translates
     names.ts       name pools and the seeded RNG
+  expansion/
+    sources.ts     the shape of the scraped SNES and Symphony of War class facts
+    translate.ts   turns them into classes and routes on the active dataset
+    index.ts       withExpansion(): the expansion, applied
   ob64/
     decode.ts      reads Ogre Battle 64's class, attack and element tables from a ROM
     convert.ts     turns them into Palatinus classes: roster, promotions, spells, gates
 tools/
   extract-ob64.ts  `npm run extract:ob64`: verifies the dump, writes public/ob64/
+  scrape-expansion.ts `npm run scrape:expansion`: the two class sources, as facts
   gfx/
     pixels.ts      pixel sprite templates, per-class palettes, stand-in art for the rest
     terrain.ts     procedural terrain tiles and stronghold icons
@@ -144,14 +212,13 @@ without a single binary asset.
 
 ## Tests
 
-`npm test` runs 116 tests over the simulation core — the rules, not the
+`npm test` runs 151 tests (142 without extracted ROM data) over the simulation core — the rules, not the
 rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,
 that promotions gate on level, stats, and alignment independently (a
-chaotic Fighter is locked out of Knight but can reach Berserker), that
-alignment drifts in the right direction and stays in bounds, and that a squad
-marches at its slowest member's pace.
+chaotic Fighter is locked out of Knight but can reach Berserker), and that
+alignment drifts in the right direction and stays in bounds.
 
 Movement and terrain get their own coverage: that a squad heads straight for an
 arbitrary point rather than drifting along an axis, that it converges on its
@@ -187,11 +254,29 @@ an extra suite checks the real data: Fighter's eight class changes and
 Amazon's six, every promotion pointing a tier up within the same gender, clean
 names, and the great monsters flagged as large.
 
+The expansion has its own suite. Over the whole expanded tree: every route
+points at a class that exists, never a tier down, only between genders that
+can hold both, with no loops, and every playable translated class reachable
+from a tier-1 class. It checks that no gunpowder class gets in, that the
+existing class wins a merge untouched while gaining routes, that the input
+dataset is never modified, that a class 20% stronger than its SNES tier lands
+20% above this dataset's tier average, that Symphony of War's ratings order
+correctly, that SNES undead immunity survives, that stat gates appear only on
+datasets that gate and lead with the stat the source names, that item routes
+stay shut, that a unit sees only the class changes its gender allows, and
+that every playable translated class can field a squad and fight. Squad type
+tests cover each composition rule at its boundary, and terrain tests each
+type's ground. Each of these was mutation-checked; two guards that the real
+data never exercises (loops, and either-gender classes refusing monsters)
+survived at first, and now have tests of their own.
+
 ## Balance knobs
 
 Class stats, growths, row attacks, and promotion requirements all live in
 `src/data/classes.ts`. Damage and healing formulas are in `src/core/battle.ts`;
-base march speeds are in `src/core/squad.ts`; terrain movement costs and the
-road bonus are in `TERRAIN_SPEED` in `src/core/terrain.ts`; capture and snap
+base march speeds and squad-type rules are in `src/core/squad.ts`;
+translation weights are in `src/expansion/translate.ts`; recruit costs are in
+`src/scenes/OrganizeScene.ts`; terrain movement costs and the
+road bonus are in `TERRAIN_SPEED` and `MARCH_TERRAIN` in `src/core/terrain.ts`; capture and snap
 radii are in `src/core/movement.ts`; the campaign map and starting armies are
 in `src/core/state.ts`.

@@ -275,7 +275,9 @@ export function convertDataset(data: Ob64Data): Dataset {
       growth: statsOf(c, 'growth'),
       attacks,
       promotesTo: promotions.get(c.id) ?? [],
-      moveType: c.moveType === 1 ? 'fly' : 'foot',
+      // The game's own terrain classes: 1 flies, 3 and 4 cross forest and
+      // mountain freely (Amazons, Ninjas, beasts); the rest walk the plain.
+      moveType: c.moveType === 1 ? 'fly' : c.moveType === 3 || c.moveType === 4 ? 'fast' : 'foot',
       preferredRow: c.flag47 === 1 || backHeavy ? 'back' : 'front',
       sprite: spriteFamily(c),
       palette: id,

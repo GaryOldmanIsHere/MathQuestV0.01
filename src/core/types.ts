@@ -1,12 +1,21 @@
 // Core shared types for the strategy layer and battle simulation.
 
-export type Gender = 'M' | 'F' | 'X'; // X = monster/demi-human
+/** M and F are gendered human lines, X monsters and demi-humans, A a human class open to either. */
+export type Gender = 'M' | 'F' | 'X' | 'A';
 
 export type Row = 'front' | 'mid' | 'back';
 
 export type DamageType = 'melee' | 'ranged' | 'magic' | 'heal';
 
 export type MoveType = 'foot' | 'fast' | 'fly';
+
+/**
+ * What a member contributes to its squad's march, after Symphony of War's
+ * squad types: casters and healers are slow, light troops are not hindered by
+ * terrain, cavalry is quick, fliers ignore the ground. The squad as a whole
+ * marches as the type its make-up adds up to (see squadType in squad.ts).
+ */
+export type March = 'slow' | 'heavy' | 'light' | 'heavyCav' | 'lightCav' | 'fly';
 
 /** The elements, in the order Ogre Battle 64's own element table lists them. */
 export const ELEMENTS = ['wind', 'flame', 'earth', 'water', 'virtue', 'bane', 'drakonite'] as const;
@@ -54,6 +63,8 @@ export interface PromotionReq {
   stats?: Partial<Record<GateStat, number>>;
   aliMin?: number; // minimum alignment (0 chaotic .. 100 lawful)
   aliMax?: number; // maximum alignment
+  /** An item the change consumes. Items arrive in Phase 2; until then such routes stay locked. */
+  item?: string;
 }
 
 /**
@@ -71,13 +82,15 @@ export interface ClassDef {
   id: string;
   name: string;
   gender: Gender;
-  tier: 1 | 2 | 3;
+  tier: 1 | 2 | 3 | 4;
   desc: string;
   base: Stats;
   growth: Stats; // per-level gains
   attacks: Partial<Record<Row, RowAttack>>;
   promotesTo: PromotionReq[];
   moveType: MoveType;
+  /** How the class marches; derived from its movement and role when not given. */
+  march?: March;
   preferredRow: Row;
   sprite: string; // sprite sheet key
   palette: string; // palette variant
@@ -91,8 +104,14 @@ export interface ClassDef {
   startLuck?: number;
   /** Whether the player can reach this class (story and boss classes cannot). */
   playable: boolean;
-  /** Where the definition came from: the user's ROM or the built-in originals. */
+  /**
+   * Whose rules the class follows: Ogre Battle 64's (rolled growth, stats kept
+   * on a class change) or the built-in originals'. Classes translated from
+   * other games follow the rules of the dataset they joined.
+   */
   source: 'ob64' | 'builtin';
+  /** The game a class was taken from, where that is not the dataset itself. */
+  origin?: 'snes' | 'sow';
 }
 
 export interface Character {
@@ -146,6 +165,13 @@ export interface MapNode {
    * map's road network.
    */
   links: number[];
+}
+
+/** Whether a unit of one gender can hold a class of another: A is open to either human gender. */
+export function genderCompatible(unit: Gender, target: Gender): boolean {
+  if (target === 'A') return unit !== 'X';
+  if (unit === 'A') return target !== 'X';
+  return unit === target;
 }
 
 export const CELL_ROW: Row[] = [

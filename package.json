@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "extract:ob64": "tsx tools/extract-ob64.ts"
+    "extract:ob64": "tsx tools/extract-ob64.ts",
+    "scrape:expansion": "tsx tools/scrape-expansion.ts"
   },
   "dependencies": {
     "phaser": "^3.85.0"

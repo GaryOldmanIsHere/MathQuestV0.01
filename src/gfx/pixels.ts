@@ -198,6 +198,46 @@ const DRAGON_T: Template = [
   '............',
 ];
 
+// A rider on horseback (the horse in the wood colour), for cavalry.
+const RIDER_T: Template = [
+  '....oooo....',
+  '...ohhhho..w',
+  '...ohseso..w',
+  '....osso...w',
+  '...oaaaao..w',
+  '..oaabbaao.w',
+  '..oaaaaaaoox',
+  'oo.oaaaaoxxo',
+  'oxooxxxxxxxo',
+  '.oxxxxxxxxo.',
+  '..oxxxxxxxo.',
+  '..oxo...oxo.',
+  '..oxo...oxo.',
+  '..oxo...oxo.',
+  '.oo.....oo..',
+  '............',
+];
+
+// Something from the sea: tentacles and a staring eye.
+const SEA_T: Template = [
+  '............',
+  '....oooo....',
+  '...oaaaao...',
+  '..oaaaaaao..',
+  '..oaeaaeao..',
+  '..oaaaaaao..',
+  '..oabbbbao..',
+  '...oaaaao...',
+  '..oaoaaoao..',
+  '.oaooaaooao.',
+  '.oao.oo.oao.',
+  'oao..oo..oao',
+  'oo..oaao..oo',
+  '....oaao....',
+  '.....oo.....',
+  '............',
+];
+
 export const TEMPLATES: Record<string, Template> = {
   warrior: WARRIOR,
   heavy: HEAVY,
@@ -209,6 +249,8 @@ export const TEMPLATES: Record<string, Template> = {
   ghost: GHOST_T,
   golem: GOLEM_T,
   dragon: DRAGON_T,
+  rider: RIDER_T,
+  sea: SEA_T,
 };
 
 export interface Palette {
@@ -322,7 +364,7 @@ export function artFor(def: ClassDef): { template: string; palette: Palette } {
   const back = def.attacks.back;
   const caster = def.preferredRow === 'back' && (back?.type === 'magic' || back?.type === 'heal');
   let template: string;
-  if (def.sprite === 'dragon' || def.sprite === 'golem' || def.sprite === 'beast' || def.sprite === 'ghost') {
+  if (['dragon', 'golem', 'beast', 'ghost', 'rider', 'sea'].includes(def.sprite)) {
     template = def.sprite;
   } else if (caster) {
     template = def.gender === 'F' ? 'dress' : 'robe';

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { convertDataset } from './convert';
 import type { Ob64Data } from './decode';
+import { withExpansion } from '../expansion';
 
 // Integrity checks on the data extracted from a real ROM. They run only where
 // `npm run extract:ob64` has been run: CI has no ROM, and must not.
@@ -60,5 +61,37 @@ describe.skipIf(!present)('extracted Ogre Battle 64 data', () => {
       expect(byName(n).size, n).toBe(2);
     }
     expect(byName('Fighter').size).toBe(1);
+  });
+});
+
+describe.skipIf(!present)('the expansion on extracted Ogre Battle 64 data', () => {
+  const ds = present ? withExpansion(convertDataset(JSON.parse(readFileSync(PATH, 'utf8')) as Ob64Data)) : null;
+  const classes = ds ? Object.values(ds.classes) : [];
+
+  it('keeps every Ogre Battle 64 class as the game has it, and adds routes into them', () => {
+    const plain = convertDataset(JSON.parse(readFileSync(PATH, 'utf8')) as Ob64Data);
+    for (const [id, c] of Object.entries(plain.classes)) {
+      expect(ds!.classes[id].base, c.name).toEqual(c.base);
+      for (const p of c.promotesTo) expect(ds!.classes[id].promotesTo).toContainEqual(p);
+    }
+    const beastMaster = classes.find((c) => c.name === 'Beast Master')!.id;
+    const into = classes.filter((c) => c.promotesTo.some((p) => p.classId === beastMaster)).map((c) => c.name);
+    expect(into).toContain('Beast Tamer');
+  });
+
+  it('meets the shared classes rather than copying them', () => {
+    for (const name of ['Knight', 'Paladin', 'Wizard', 'Valkyrie', 'Red Dragon', 'Griffin']) {
+      expect(classes.filter((c) => c.name === name && c.playable).length, name).toBe(1);
+    }
+    expect(classes.some((c) => c.name === 'Gryphon' || c.name === 'Cockatris')).toBe(false);
+  });
+
+  it('follows Ogre Battle 64 rules: translated classes roll growth and are stat-gated', () => {
+    const soldier = classes.find((c) => c.name === 'Soldier' && c.origin === 'sow')!;
+    expect(soldier.source).toBe('ob64');
+    const fighter = classes.find((c) => c.name === 'Fighter')!;
+    const req = fighter.promotesTo.find((p) => p.classId === soldier.id)!;
+    expect(Object.keys(req.stats ?? {})).toHaveLength(2);
+    expect(fighter.promotesTo.length).toBeGreaterThan(15);
   });
 });

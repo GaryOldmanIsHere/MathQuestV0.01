@@ -3,6 +3,7 @@ import { buildClassTextures, buildUnitTextures } from '../gfx/pixels';
 import { buildTerrainTextures } from '../gfx/terrain';
 import { allClasses, installDataset } from '../data/registry';
 import { convertDataset } from '../ob64/convert';
+import { withExpansion } from '../expansion';
 import type { Ob64Data } from '../ob64/decode';
 
 export class BootScene extends Phaser.Scene {
@@ -30,7 +31,7 @@ async function loadExtractedData(): Promise<void> {
     const res = await fetch('ob64/data.json', { cache: 'no-store' });
     // The dev server answers a missing file with the app's index page.
     if (!res.ok || !res.headers.get('content-type')?.includes('json')) return;
-    installDataset(convertDataset((await res.json()) as Ob64Data));
+    installDataset(withExpansion(convertDataset((await res.json()) as Ob64Data)));
   } catch (err) {
     console.warn('Ogre Battle 64 data present but unreadable; using built-in classes.', err);
   }

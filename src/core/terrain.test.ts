@@ -93,6 +93,43 @@ describe('movement costs', () => {
   });
 });
 
+describe('ground by squad type', () => {
+  const first = (kind: string): [number, number] => {
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const x = col * TILE + TILE / 2;
+        const y = row * TILE + TILE / 2;
+        if (terrainAtPoint(GRID, x, y) === kind) return [x, y];
+      }
+    }
+    throw new Error(`no ${kind} on the map`);
+  };
+
+  it('does not slow light troops in forest or hills', () => {
+    for (const kind of ['forest', 'mountain']) {
+      const [x, y] = first(kind);
+      expect(speedMultiplierAt(GRID, x, y, 'heavy')).toBeLessThan(1);
+      expect(speedMultiplierAt(GRID, x, y, 'light')).toBe(1);
+      expect(speedMultiplierAt(GRID, x, y, 'lightCav')).toBe(1);
+    }
+  });
+
+  it('speeds heavy cavalry on open ground and bogs it down in rough', () => {
+    const [px, py] = first('plain');
+    const [fx, fy] = first('forest');
+    expect(speedMultiplierAt(GRID, px, py, 'heavyCav')).toBeGreaterThan(speedMultiplierAt(GRID, px, py, 'heavy'));
+    expect(speedMultiplierAt(GRID, fx, fy, 'heavyCav')).toBeLessThan(speedMultiplierAt(GRID, fx, fy, 'heavy'));
+  });
+
+  it('gives fliers no road bonus, and everyone else one', () => {
+    const [x, y] = first('road');
+    expect(speedMultiplierAt(GRID, x, y, 'fly')).toBe(1);
+    for (const t of ['slow', 'heavy', 'light', 'heavyCav', 'lightCav'] as const) {
+      expect(speedMultiplierAt(GRID, x, y, t)).toBeGreaterThan(1);
+    }
+  });
+});
+
 describe('roads', () => {
   it('lays a road corridor over every stronghold', () => {
     for (const n of NODES) {

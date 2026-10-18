@@ -81,6 +81,20 @@ export function newCampaign(): GameState {
     squads.push(sq);
   }
 
+  {
+    // Cavalry from the expansion: horses outnumber the infantry, so this
+    // squad rides — quick on open ground, slow in the woods.
+    const leader = reg(makeCharacter('cavalier', 7, { name: 'Oswin', ali: 58, gender: 'M' }));
+    const sq = makeSquad('player', [], leader, 0, hq.x, hq.y, 'Crimson Lances');
+    [leader,
+      reg(makeCharacter('cavalier', 5, { ali: 52 })),
+      reg(makeCharacter('scout', 5, { ali: 47 })),
+      reg(makeCharacter('horsebow', 5, { ali: 50 })),
+      reg(makeCharacter('hospitaller', 5, { ali: 64 })),
+    ].forEach((c) => autoPlace(sq, c));
+    squads.push(sq);
+  }
+
   // --- Enemy legion ---
   const enemyAt = (nodeId: number, name: string, roster: [string, number][]) => {
     const pos = nodePos(nodes, nodeId);
@@ -93,7 +107,8 @@ export function newCampaign(): GameState {
   enemyAt(3, 'Highcliff Garrison', [['knight', 6], ['fighter', 4], ['fighter', 4], ['wizard', 6]]);
   enemyAt(6, 'Stonegate Watch', [['phalanx', 7], ['fighter', 5], ['skeleton', 5], ['witch', 7]]);
   enemyAt(7, 'Ash Raiders', [['berserker', 6], ['hellhound', 5], ['hellhound', 5], ['sorceress', 6]]);
-  enemyAt(4, 'Border Patrol', [['fighter', 4], ['fighter', 4], ['amazon', 4], ['cleric', 5]]);
+  enemyAt(4, 'Border Patrol', [['soldier', 5], ['militia', 4], ['bowman', 4], ['medic', 4]]);
+  enemyAt(5, 'Risen Host', [['risen-knight', 8], ['risen-soldier', 6], ['risen-archer', 6], ['risen-archmage', 7]]);
   enemyAt(8, 'Verlaine Guard', [['black-knight', 9], ['golem', 7], ['ghost', 6], ['wizard', 7], ['cleric', 6]]);
   enemyAt(8, 'Dragon Wing', [['wyvern', 7], ['dragon-tamer', 7], ['archer', 6]]);
 

@@ -1,4 +1,5 @@
-import type { Character, ClassDef, Element, GateStat, PromotionReq, Stats } from './types';
+import type { Character, ClassDef, Element, Gender, GateStat, PromotionReq, Stats } from './types';
+import { genderCompatible } from './types';
 import { classOf } from '../data/registry';
 import { FEMALE_NAMES, MALE_NAMES, MONSTER_NAMES, pick, rng } from '../data/names';
 
@@ -73,18 +74,21 @@ export function makeCharacter(classId: string, level: number, opts?: {
   ali?: number;
   luk?: number;
   element?: Element;
+  /** For classes open to either gender; otherwise the class decides. */
+  gender?: Gender;
 }): Character {
   const requested = classOf(classId);
   // The game fields a high class below its level as the ancestor it still is.
   const actualId = requested.source === 'ob64' ? classAtLevel(classId, level) : classId;
   const def = classOf(actualId);
   const stats = generateStats(classId, level);
-  const namePool = def.gender === 'M' ? MALE_NAMES : def.gender === 'F' ? FEMALE_NAMES : MONSTER_NAMES;
+  const gender: Gender = def.gender === 'A' ? opts?.gender ?? (rng() < 0.5 ? 'M' : 'F') : def.gender;
+  const namePool = gender === 'M' ? MALE_NAMES : gender === 'F' ? FEMALE_NAMES : MONSTER_NAMES;
   return {
     id: nextCharId++,
     name: opts?.name ?? pick(namePool),
     classId: actualId,
-    gender: def.gender,
+    gender,
     level,
     exp: 0,
     luk: opts?.luk ?? def.startLuck ?? 50,
@@ -124,6 +128,9 @@ export function grantExp(c: Character, amount: number): number {
 }
 
 export function meetsReq(c: Character, req: PromotionReq): boolean {
+  if (!genderCompatible(c.gender, classOf(req.classId).gender)) return false;
+  // Items arrive in Phase 2; until then a route that consumes one stays shut.
+  if (req.item) return false;
   if (c.level < req.level) return false;
   for (const [k, min] of Object.entries(req.stats ?? {}) as [GateStat, number][]) {
     if (c.stats[k] < min) return false;
@@ -137,8 +144,9 @@ export function availablePromotions(c: Character): PromotionReq[] {
   return classOf(c.classId).promotesTo.filter((req) => meetsReq(c, req));
 }
 
+/** Every class change this character's class offers that their gender can take. */
 export function allPromotions(c: Character): PromotionReq[] {
-  return classOf(c.classId).promotesTo;
+  return classOf(c.classId).promotesTo.filter((req) => genderCompatible(c.gender, classOf(req.classId).gender));
 }
 
 /**

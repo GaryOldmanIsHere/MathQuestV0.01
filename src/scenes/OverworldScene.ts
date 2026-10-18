@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { getState } from '../core/state';
 import type { MapNode, Squad } from '../core/types';
 import { classOf } from '../data/registry';
-import { squadMemberIds, squadMoveType, moveSpeed } from '../core/squad';
+import { moveSpeed, squadMemberIds, squadType, SQUAD_TYPE_LABEL } from '../core/squad';
 import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/ui';
 import { rng } from '../data/names';
 import {
@@ -68,7 +68,8 @@ export class OverworldScene extends Phaser.Scene {
       const sq = this.squadAt(p.x, p.y);
       if (sq && sq.side === 'player' && sq !== this.selected) {
         this.selected = sq;
-        this.hintText.setText(`${sq.name} — click anywhere to march.`);
+        const type = squadType(squadMemberIds(sq).map((id) => st.chars.get(id)!));
+        this.hintText.setText(`${sq.name} (${SQUAD_TYPE_LABEL[type]}) — click anywhere to march.`);
         return;
       }
       if (this.selected) this.orderMarch(this.selected, p.x, p.y);
@@ -171,10 +172,10 @@ export class OverworldScene extends Phaser.Scene {
     if (!sq.moving || sq.targetX === null || sq.targetY === null) return;
 
     const chars = squadMemberIds(sq).map((id) => st.chars.get(id)!);
-    const mt = squadMoveType(chars);
-    // Terrain under the squad's feet sets the pace; fliers are unimpeded.
-    const terrainFactor = speedMultiplierAt(this.terrain, sq.x, sq.y, mt === 'fly');
-    const distance = moveSpeed(mt) * terrainFactor * dt;
+    const type = squadType(chars);
+    // The squad's make-up sets its pace, and how the ground under it tells.
+    const terrainFactor = speedMultiplierAt(this.terrain, sq.x, sq.y, type);
+    const distance = moveSpeed(type) * terrainFactor * dt;
 
     const next = stepToward(sq.x, sq.y, sq.targetX, sq.targetY, distance);
     sq.x = next.x;

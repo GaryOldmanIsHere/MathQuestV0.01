@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { autoPlace, makeSquad, memberRow, moveSpeed, squadMemberIds, squadMoveType } from './squad';
+import { autoPlace, makeSquad, marchOf, memberRow, moveSpeed, squadMemberIds, squadType } from './squad';
+import { classOf } from '../data/registry';
 import { makeCharacter } from './character';
 import type { Character } from './types';
 import { CELL_ROW } from './types';
@@ -58,30 +59,51 @@ describe('auto-placement', () => {
   });
 });
 
-describe('march speed', () => {
+describe('squad type', () => {
   const of = (...classIds: string[]): Character[] => classIds.map((c) => makeCharacter(c, 5));
 
-  it('moves at foot pace when any member walks', () => {
-    expect(squadMoveType(of('ghost', 'knight'))).toBe('foot');
+  it('reads each class\'s own march', () => {
+    expect(marchOf(classOf('knight'))).toBe('heavy');
+    expect(marchOf(classOf('wizard'))).toBe('slow');
+    expect(marchOf(classOf('cleric'))).toBe('slow');
+    expect(marchOf(classOf('ninja'))).toBe('light');
+    expect(marchOf(classOf('ghost'))).toBe('fly');
+    expect(marchOf(classOf('cavalier'))).toBe('heavyCav');
+    expect(marchOf(classOf('scout'))).toBe('lightCav');
   });
 
-  it('moves fast only when no member is on foot', () => {
-    expect(squadMoveType(of('ninja', 'ghost'))).toBe('fast');
+  it('is heavy infantry by default', () => {
+    expect(squadType(of('knight', 'fighter', 'fighter'))).toBe('heavy');
+    expect(squadType([])).toBe('heavy');
   });
 
-  it('flies only when every member flies', () => {
-    expect(squadMoveType(of('ghost', 'wyvern'))).toBe('fly');
-    expect(squadMoveType(of('ghost', 'ninja'))).not.toBe('fly');
+  it('is slow when at least half the squad casts or heals', () => {
+    expect(squadType(of('wizard', 'cleric', 'knight', 'fighter'))).toBe('slow');
+    expect(squadType(of('wizard', 'knight', 'fighter'))).toBe('heavy');
   });
 
-  it('is limited by the slowest member, not the fastest', () => {
-    const mixed = squadMoveType(of('wyvern', 'golem')); // flier + heavy walker
-    expect(mixed).toBe('foot');
-    expect(moveSpeed(mixed)).toBeLessThan(moveSpeed('fly'));
+  it('is light only when light troops outnumber the rest by one', () => {
+    expect(squadType(of('ninja', 'bowman', 'knight'))).toBe('light');
+    expect(squadType(of('ninja', 'knight'))).toBe('heavy');
   });
 
-  it('orders the three paces correctly', () => {
-    expect(moveSpeed('fly')).toBeGreaterThan(moveSpeed('fast'));
-    expect(moveSpeed('fast')).toBeGreaterThan(moveSpeed('foot'));
+  it('rides when horses outnumber the infantry', () => {
+    expect(squadType(of('cavalier', 'cavalier', 'knight'))).toBe('heavyCav');
+    expect(squadType(of('scout', 'horsebow', 'knight'))).toBe('lightCav');
+    expect(squadType(of('cavalier', 'knight'))).toBe('heavy');
+  });
+
+  it('flies when fliers are at least as many, with no horse or grounded giant', () => {
+    expect(squadType(of('ghost', 'ghost', 'knight'))).toBe('fly');
+    expect(squadType(of('ghost', 'knight', 'fighter'))).not.toBe('fly');
+    expect(squadType(of('ghost', 'ghost', 'cavalier'))).not.toBe('fly');
+    expect(squadType(of('wyvern', 'golem'))).not.toBe('fly'); // a golem cannot be carried
+  });
+
+  it('orders the paces: riders and fliers, then infantry, then the slow', () => {
+    expect(moveSpeed('fly')).toBe(moveSpeed('heavyCav'));
+    expect(moveSpeed('lightCav')).toBeGreaterThan(moveSpeed('heavy'));
+    expect(moveSpeed('light')).toBe(moveSpeed('heavy'));
+    expect(moveSpeed('heavy')).toBeGreaterThan(moveSpeed('slow'));
   });
 });

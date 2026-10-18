@@ -1,4 +1,4 @@
-import type { MapNode } from './types';
+import type { MapNode, March } from './types';
 
 // The overworld ground layer, as data rather than pixels.
 //
@@ -25,6 +25,19 @@ export const TERRAIN_SPEED: Record<Terrain, number> = {
   forest: 0.62,
   mountain: 0.45,
   water: 0.35,
+};
+
+/**
+ * How each squad type takes the ground, where it differs from the table
+ * above. Light troops are not slowed by forest or hills; heavy cavalry gains
+ * on open ground and loses badly in rough; fliers ignore the ground and with
+ * it the road.
+ */
+export const MARCH_TERRAIN: Partial<Record<March, Partial<Record<Terrain, number>>>> = {
+  light: { forest: 1, mountain: 1, water: 0.7 },
+  lightCav: { forest: 1, mountain: 1, water: 0.7 },
+  heavyCav: { road: 1.5, plain: 1.15, forest: 0.45, mountain: 0.35, water: 0.3 },
+  fly: { road: 1, plain: 1, forest: 1, mountain: 1, water: 1 },
 };
 
 /** Half-width, in pixels, of the road corridor stamped along each link. */
@@ -127,16 +140,16 @@ export function terrainAtPoint(grid: Terrain[], x: number, y: number): Terrain {
 }
 
 /**
- * How fast a squad moves over the point it currently occupies.
- * Fliers are unimpeded — mountains and water mean nothing to them — which is
- * what finally makes the flying move type worth something.
+ * How fast a squad of the given type moves over the point it occupies.
+ * `true` and `false` stand for flying and heavy infantry.
  */
 export function speedMultiplierAt(
   grid: Terrain[],
   x: number,
   y: number,
-  flying = false,
+  march: March | boolean = 'heavy',
 ): number {
-  if (flying) return 1;
-  return TERRAIN_SPEED[terrainAtPoint(grid, x, y)];
+  const type: March = march === true ? 'fly' : march === false ? 'heavy' : march;
+  const ground = terrainAtPoint(grid, x, y);
+  return MARCH_TERRAIN[type]?.[ground] ?? TERRAIN_SPEED[ground];
 }

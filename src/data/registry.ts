@@ -1,10 +1,12 @@
 import type { ClassDef, Element, RowAttack, SpellKind } from '../core/types';
 import { CLASSES } from './classes';
+import { withExpansion } from '../expansion';
 
 // The active class data. The game boots on its built-in originals and swaps
 // in the Ogre Battle 64 tables when they have been extracted from the user's
-// ROM. Everything that needs a class goes through here, so no system cares
-// which dataset is loaded.
+// ROM; either way the classes translated from the SNES Ogre Battle and
+// Symphony of War are grafted on (src/expansion/). Everything that needs a
+// class goes through here, so no system cares which dataset is loaded.
 
 /** For element-dependent spell slots: the concrete spell per kind and element. */
 export type SpellBook = Record<SpellKind, Partial<Record<Element, RowAttack>>>;
@@ -16,12 +18,15 @@ export interface Dataset {
   label: string;
 }
 
-const BUILTIN: Dataset = {
+/** The built-in originals alone, without the expansion. */
+export const ORIGINALS: Dataset = {
   classes: CLASSES,
   spells: null,
   source: 'builtin',
   label: 'Palatinus originals',
 };
+
+const BUILTIN: Dataset = withExpansion(ORIGINALS);
 
 let active: Dataset = BUILTIN;
 

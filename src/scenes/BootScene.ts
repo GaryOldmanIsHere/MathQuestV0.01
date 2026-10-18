@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { buildClassTextures, buildUnitTextures } from '../gfx/pixels';
-import { buildTerrainTextures } from '../gfx/terrain';
 import { allClasses, installDataset } from '../data/registry';
 import { convertDataset } from '../ob64/convert';
 import { withExpansion } from '../expansion';
@@ -16,7 +15,6 @@ export class BootScene extends Phaser.Scene {
     loadExtractedData().then(() => loadOb64Sprites(this)).finally(() => {
       buildUnitTextures(this);
       buildClassTextures(this, allClasses());
-      buildTerrainTextures(this);
       this.scene.start('Title');
     });
   }

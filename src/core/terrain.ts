@@ -41,23 +41,51 @@ export const MARCH_TERRAIN: Partial<Record<March, Partial<Record<Terrain, number
 };
 
 /** Half-width, in pixels, of the road corridor stamped along each link. */
-const ROAD_WIDTH = 11;
+export const ROAD_WIDTH = 11;
 
-/** Deterministic value noise in [0,1) for a tile. */
-function tileNoise(col: number, row: number): number {
-  const x = col * TILE;
-  const y = row * TILE;
-  return Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
+/** Deterministic noise in [0, 1) at an integer lattice point. */
+function lattice(i: number, j: number, salt: number): number {
+  const v = Math.sin(i * 127.1 + j * 311.7 + salt * 57.3) * 43758.5453;
+  return v - Math.floor(v);
 }
 
-/** The natural landscape, before roads are laid over it. */
+/** Smooth value noise in [0, 1): lattice values eased together, `scale` tiles apart. */
+function smoothNoise(col: number, row: number, scale: number, salt: number): number {
+  const u = col / scale;
+  const v = row / scale;
+  const i = Math.floor(u);
+  const j = Math.floor(v);
+  const ease = (t: number) => t * t * (3 - 2 * t);
+  const fu = ease(u - i);
+  const fv = ease(v - j);
+  const a = lattice(i, j, salt);
+  const b = lattice(i + 1, j, salt);
+  const c = lattice(i, j + 1, salt);
+  const d = lattice(i + 1, j + 1, salt);
+  return a + (b - a) * fu + (c - a) * fv + (a - b - c + d) * fu * fv;
+}
+
+/** Two octaves of smooth noise: broad shapes with ragged edges. */
+function fractal(col: number, row: number, scale: number, salt: number): number {
+  return smoothNoise(col, row, scale, salt) * 0.7 + smoothNoise(col, row, scale / 2.5, salt + 9) * 0.3;
+}
+
+/**
+ * The natural landscape, before roads are laid over it: a range of
+ * mountains along the north with foothills reaching south, a lake in the
+ * south-east, and woods in clumps across the rest.
+ */
 export function baseTerrainAt(col: number, row: number): Terrain {
   const x = col * TILE;
   const y = row * TILE;
-  const h = tileNoise(col, row);
-  if (y < 80 && h > 0.3) return 'mountain';
-  if (x > 600 && y > 420 && h > 0.35) return 'water';
-  if (h > 0.82 || h < 0.06) return 'forest';
+  // The northern range thins toward its southern edge.
+  if (fractal(col, row, 5, 1) > 0.25 + Math.max(0, (y - 40) / 90)) return 'mountain';
+  // Foothills: scattered high ground in the north half.
+  if (y < MAP_H * 0.5 && fractal(col, row, 4, 2) > 0.74) return 'mountain';
+  // The lake, its shore wandering.
+  const lake = Math.hypot((x - 720) / 150, (y - 520) / 110);
+  if (lake + (fractal(col, row, 3, 3) - 0.5) * 0.5 < 1) return 'water';
+  if (fractal(col, row, 6, 4) > 0.6) return 'forest';
   return 'plain';
 }
 

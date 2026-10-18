@@ -5,6 +5,7 @@ import type { Anim, SpriteFrame, SpriteSet } from './sprites';
 import { chooseView, frameAt } from './sprites';
 import type { Placement, Shot } from './layout';
 import { cameraPosition, lerpShot, WIDE } from './layout';
+import { sharedRenderer } from './renderer';
 
 // The 3D battlefield. Ogre Battle 64 stands its 2D sprites on polygon
 // ground under a moving camera; so does this. The stage owns a Three.js
@@ -62,8 +63,6 @@ const THEMES: Record<FieldTheme, { ground: number[]; sky: number; fog: number; d
 };
 
 export class BattleStage {
-  readonly canvas: HTMLCanvasElement;
-  private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
   private actors = new Map<number, Actor>();
@@ -72,11 +71,7 @@ export class BattleStage {
   private shot: Shot = WIDE;
   private shake = 0;
 
-  constructor(width: number, height: number) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true, powerPreference: 'low-power' });
-    this.renderer.setPixelRatio(1);
-    this.renderer.setSize(width, height, false);
-    this.canvas = this.renderer.domElement;
+  constructor(private width: number, private height: number) {
     this.camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 200);
     this.scene.add(new THREE.HemisphereLight(0xe8f0ff, 0x506040, 1.3));
     const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
@@ -358,8 +353,8 @@ export class BattleStage {
     if (!a) return null;
     const feet = new THREE.Vector3(a.place.x + a.offset.x, 0, a.place.z + a.offset.z).project(this.camera);
     const head = new THREE.Vector3(a.place.x + a.offset.x, a.height, a.place.z + a.offset.z).project(this.camera);
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    const w = this.width;
+    const h = this.height;
     return { x: (feet.x * 0.5 + 0.5) * w, y: (-feet.y * 0.5 + 0.5) * h, headY: (-head.y * 0.5 + 0.5) * h };
   }
 
@@ -397,7 +392,12 @@ export class BattleStage {
     }
     this.applyShot();
     this.shake *= 0.86;
-    this.renderer.render(this.scene, this.camera);
+    sharedRenderer(this.width, this.height).render(this.scene, this.camera);
+  }
+
+  /** The canvas the last update drew into; copy it out before anything else renders. */
+  get canvas(): HTMLCanvasElement {
+    return sharedRenderer(this.width, this.height).domElement;
   }
 
   dispose(): void {
@@ -409,7 +409,6 @@ export class BattleStage {
       if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
       else mat?.dispose();
     });
-    this.renderer.dispose();
   }
 
   // ------------------------------------------------------------- internals --

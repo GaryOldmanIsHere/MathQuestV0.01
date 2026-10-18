@@ -2,8 +2,8 @@
 
 A playable real-time strategy RPG in the tradition of the late-90s "march your
 squads across a liberation map" tactics games. Built with Phaser 3 +
-TypeScript, with battles staged in 3D by Three.js, running entirely in the
-browser. All art and text in this repository are original; Ogre Battle 64's
+TypeScript, with the campaign map and its battles in 3D by Three.js, running
+entirely in the browser. All art and text in this repository are original; Ogre Battle 64's
 own art appears only when extracted locally from your own ROM (below).
 
 ## Running it
@@ -211,6 +211,55 @@ seen from behind, the one from the front, and the variant. The extractor
 copies each bundle out as stored, still compressed (13 MB for the 137 in
 use), and the browser unpacks a bundle when a battle first needs it.
 
+## The campaign map in 3D
+
+The campaign map is a 3D world in the manner of Ogre Battle 64's: rolling
+polygon ground under a tilted camera, with a mountain range along the north,
+woods, a lake, and roads of packed earth between strongholds. The
+strongholds are small buildings flying their owner's colours: the two
+castles with towers and a keep, forts with a stockade and a watchtower, and
+towns of cottages. A flag changes colour the moment its stronghold falls.
+
+The world is grown from the very terrain grid that marching is charged on
+(`src/core/terrain.ts`), so the two never disagree:
+* hills rise where marching is slow;
+* the ground dips under the water exactly on the water tiles;
+* the roads are painted as wide as the corridor that speeds a march;
+* the woods stand on the forest tiles.
+
+The landscape itself is drawn from smooth noise, so woods, hills and the
+lake come in shapes rather than scattered tiles. Past the campaign's edges
+the land runs on, darkened, as a mirror of the land within.
+
+**The camera.**
+* **Drag** to pan; the map moves with the pointer.
+* **The wheel** zooms toward the pointer, looking down more steeply from afar.
+* **Q and E**, or a right-drag, turn the view.
+* **WASD or the arrow keys** pan.
+* **Space** finds a squad.
+* **R** returns to the whole map.
+
+A click that isn't a drag works as before: it selects a squad, or orders the
+selected one to march. Your squads are picked where they stand on screen;
+the ground under the pointer is found as it rises and falls. A march order
+leaves a ring where it was given and a dashed line along the route.
+
+**Squads on the march.** Each squad is its leader's figure, standing on the
+ground over a disc in its side's colour, with its name and strength above.
+With Ogre Battle 64's sprites extracted, the leader walks the map as the game
+walks its units, in its side's colours:
+* the walking animation while it marches, at ease when it halts;
+* seen from the front as it comes toward the camera, from behind as it goes
+  away, and turned to the side it heads for, as the camera turns too;
+* great beasts larger.
+
+Without the sprites, the leader's pixel-art figure turns and bobs in step.
+A squad halted on a stronghold is drawn in front of the building rather
+than inside it; its place in the game doesn't change.
+
+The map and the battles share one WebGL renderer. A battle only ever plays
+while the map waits, and each copies out what it drew straight away.
+
 ## What's implemented
 
 **Overworld (free real-time march).** An open strategic map with a player HQ,
@@ -227,9 +276,9 @@ you can always go anywhere — but the ground decides how fast you get there.
 Roads are quickest, open plain is the baseline, and forest, mountain, and water
 each slow a march progressively — how much depends on the squad's type (see
 *Squad types* above): light troops shrug off forest and hills, cavalry hates
-them, fliers ignore the ground entirely. Because the
-renderer draws from the very same terrain grid the movement code charges
-against, what you read off the map is always exactly what you pay.
+them, fliers ignore the ground entirely. Because the 3D map is grown from
+the very same terrain grid the movement code charges against, what you read
+off the map is always exactly what you pay.
 
 **Auto-battle with 3x3 formations.** When opposing squads meet on the map the
 engagement resolves automatically, and plays out on the 3D battlefield. Each squad fields up to five members on a
@@ -304,15 +353,18 @@ src/
     sprites.ts     what the stage needs from a unit's art; sets built from one still drawing
     ob64Sprites.ts loads the extracted sprites: portraits at boot, animated sets per battle
     unitArt.ts     a unit's battle art: Ogre Battle 64's if extracted, else the pixel art
+    world.ts       the 3D campaign map: ground, water, woods, strongholds, squads, camera, picking
+    worldMap.ts    the map's shape in 3D: world coordinates, heights from the terrain grid, the camera's views
+    mapFigures.ts  a squad's figure on the map: the leader walking, turned the way it marches
+    renderer.ts    the one WebGL renderer the map and battles share
   gfx/
     unitIcon.ts    a class's standing figure for menus and the map, whichever art it has
     pixels.ts      pixel sprite templates, per-class palettes, stand-in art for the rest
-    terrain.ts     procedural terrain tiles and stronghold icons
     ui.ts          menu panel styling
   scenes/
     BootScene      loads extracted data if present, renders all textures
     TitleScene
-    OverworldScene march orders, capture, enemy AI, encounter detection
+    OverworldScene the 3D map's camera and clicks, march orders, capture, enemy AI, encounter detection
     BattleScene    plays back the simulated engagement on the 3D stage
     OrganizeScene  formation editing and promotions
 tools/
@@ -329,7 +381,7 @@ without a single binary asset.
 
 ## Tests
 
-`npm test` runs 239 tests (222 without extracted ROM data) over the simulation core — the rules, not the
+`npm test` runs 261 tests (244 without extracted ROM data) over the simulation core — the rules, not the
 rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,
@@ -427,6 +479,23 @@ marked, every translated class's borrowed art exists, and every class's
 animations build. The stage's layout and camera, and the choice of which view
 to show and which frame plays when, are tested without a browser.
 
+The 3D map's shape is tested without a browser:
+* **Heights:** deterministic, under the water exactly on the water tiles
+  (even a lone pond, even a lone islet), mountains above open country, and
+  smooth between vertices.
+* **Edges:** the land mirrors past them.
+* **The camera:** it opens on the whole map, stays on it, keeps its
+  distance and pitch within bounds, pans the way it faces, zooms within
+  limits, and turns the short way round.
+* **Headings:** each turns into the right one on screen for any camera turn.
+* **Map figures:** they show their front coming toward the camera and their
+  back going away, turn to the side they head for, walk only while
+  marching, and stand a man's height (great beasts larger).
+
+Twelve mutations were tried; two survived at first (the shore fix, which
+this map happens not to need, and one direction of the yaw wrap) and now
+have tests.
+
 ## Balance knobs
 
 Class stats, growths, row attacks, and promotion requirements all live in
@@ -443,4 +512,7 @@ in `src/core/state.ts`. The battle's spacing and camera shots are in
 `src/gfx3d/layout.ts`; Ogre Battle 64 sprites' size and the beasts'
 enlargement are `PIXELS_PER_UNIT` and `LARGE_SCALE` in
 `src/gfx3d/ob64Sprites.ts`, and their animation speed is `TICK_MS` in
-`src/ob64/sprites.ts`.
+`src/ob64/sprites.ts`. The landscape's shapes are in `baseTerrainAt` in
+`src/core/terrain.ts`; the map's heights in `src/gfx3d/worldMap.ts`, with the
+camera's limits and opening view (`VIEW_LIMITS`, `OVERVIEW`); figures' size on
+the map is `FIGURE_HEIGHT` in `src/gfx3d/mapFigures.ts`.

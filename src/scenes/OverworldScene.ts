@@ -7,35 +7,42 @@ import { addLoot, rollLoot } from '../core/items';
 import { restSquads } from '../core/camp';
 import { itemOf } from '../data/registry';
 import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/ui';
-import { unitIcon } from '../gfx/unitIcon';
+import { WorldStage } from '../gfx3d/world';
+import { mapFigureFor } from '../gfx3d/mapFigures';
+import { prepareSprites } from '../gfx3d/ob64Sprites';
+import { OVERVIEW, panView } from '../gfx3d/worldMap';
 import { rng } from '../data/names';
 import {
   haltSquad, orderTo, retreatTarget, snapOrder, stepToward, strongholdAt,
 } from '../core/movement';
 import type { Terrain } from '../core/terrain';
-import {
-  buildTerrainGrid, COLS, MAP_H, ROWS, speedMultiplierAt, terrainAtPoint, terrainAtTile, TILE,
-} from '../core/terrain';
+import { buildTerrainGrid, MAP_H, speedMultiplierAt, terrainAtPoint } from '../core/terrain';
+
+const W = 800;
 
 interface SquadView {
-  sprite: Phaser.GameObjects.Image;
-  ring: Phaser.GameObjects.Arc;
   hpBar: Phaser.GameObjects.Rectangle;
   hpFill: Phaser.GameObjects.Rectangle;
   label: Phaser.GameObjects.Text;
 }
 
+/** How far the pointer must travel before a press becomes a drag. */
+const DRAG_SLOP = 6;
+
 export class OverworldScene extends Phaser.Scene {
   private views = new Map<number, SquadView>();
   private selected: Squad | null = null;
-  private selectRing!: Phaser.GameObjects.Arc;
+  private world: WorldStage | null = null;
+  private screen: Phaser.Textures.CanvasTexture | null = null;
+  private nodeLabels = new Map<number, Phaser.GameObjects.Text>();
+  private press: { x: number; y: number; button: number; dragging: boolean } | null = null;
+  private keys: Record<string, Phaser.Input.Keyboard.Key> = {};
   private hudText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
   private battleActive = false;
   private cooldowns = new Map<number, number>(); // squad id -> time ok to fight again
   private aiTimer = 0;
   private dayTimer = 0;
-  private nodeFlags = new Map<number, Phaser.GameObjects.Image>();
   private terrain: Terrain[] = [];
 
   constructor() {
@@ -49,11 +56,28 @@ export class OverworldScene extends Phaser.Scene {
     this.battleActive = false;
     this.terrain = buildTerrainGrid(st.nodes);
 
-    this.drawTerrain(); // roads are part of the terrain grid now
-    this.drawNodes();
-
-    this.selectRing = this.add.circle(0, 0, 20).setStrokeStyle(2, 0xf0e090).setVisible(false);
-    this.selectRing.setDepth(50);
+    // The map in 3D, grown from the same terrain grid marching is charged on,
+    // drawn by Three.js and shown here as a texture under the interface.
+    this.world?.dispose();
+    const world = new WorldStage(W, MAP_H);
+    this.world = world;
+    world.build(this.terrain, st.nodes);
+    world.setView(OVERVIEW, true);
+    if (this.textures.exists('world3d')) this.textures.remove('world3d');
+    this.screen = this.textures.createCanvas('world3d', W, MAP_H);
+    this.add.image(0, 0, 'world3d').setOrigin(0).setDepth(0);
+    this.nodeLabels.clear();
+    for (const n of st.nodes) {
+      this.nodeLabels.set(n.id, this.add
+        .text(0, 0, n.name, { ...SMALL_STYLE, stroke: '#101020', strokeThickness: 3 })
+        .setOrigin(0.5, 0)
+        .setDepth(5));
+    }
+    this.add
+      .text(8, 6, 'Drag: pan   Wheel: zoom   Q/E or right-drag: turn   Space: find squad   R: whole map',
+        { ...SMALL_STYLE, fontSize: '9px', color: '#e8e0c8', stroke: '#101020', strokeThickness: 3 })
+      .setDepth(60)
+      .setAlpha(0.85);
 
     // HUD
     drawPanel(this, 0, MAP_H, 800, 40, { depth: 90 });
@@ -65,23 +89,36 @@ export class OverworldScene extends Phaser.Scene {
       this.scene.launch('Organize');
     }, 95);
 
-    // Map click: selecting your own squad takes priority, otherwise the click
-    // is a march order to that exact point — anywhere on the map.
+    // The camera: drag to pan (right-drag turns), the wheel zooms, keys pan
+    // and turn. A press that does not become a drag is a click on the map.
+    this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (p.y >= MAP_H || this.battleActive || st.phase !== 'playing') return;
-      // Squads stacked on one spot (the keep, at the start) are picked in
-      // turn: each click on the stack selects the next of them.
-      const stack = st.squads.filter((s) => s.side === 'player' && Phaser.Math.Distance.Between(p.x, p.y, s.x, s.y) < 22);
-      if (stack.length && !(stack.length === 1 && stack[0] === this.selected)) {
-        const at = this.selected ? stack.indexOf(this.selected) : -1;
-        const sq = stack[(at + 1) % stack.length];
-        this.selected = sq;
-        const type = squadType(squadMemberIds(sq).map((id) => st.chars.get(id)!));
-        this.hintText.setText(`${sq.name} (${SQUAD_TYPE_LABEL[type]}) — click anywhere to march.`);
-        return;
-      }
-      if (this.selected) this.orderMarch(this.selected, p.x, p.y);
+      if (p.y >= MAP_H) return;
+      this.press = { x: p.x, y: p.y, button: p.button, dragging: false };
     });
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      const press = this.press;
+      if (!press || !p.isDown || !this.world) return;
+      if (!press.dragging && Phaser.Math.Distance.Between(p.x, p.y, press.x, press.y) < DRAG_SLOP) return;
+      press.dragging = true;
+      if (press.button === 0) this.world.drag(p.prevPosition.x, p.prevPosition.y, p.x, p.y);
+      else this.world.turn((p.x - p.prevPosition.x) * 0.01);
+    });
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      const press = this.press;
+      this.press = null;
+      if (!press || press.dragging || press.button !== 0 || p.y >= MAP_H) return;
+      this.clickMap(p.x, p.y);
+    });
+    this.input.on('wheel', (p: Phaser.Input.Pointer, _over: unknown, _dx: number, dy: number) => {
+      if (p.y < MAP_H) this.world?.zoomAt(dy > 0 ? 1.12 : 1 / 1.12, p.x, p.y);
+    });
+    const kb = this.input.keyboard;
+    if (kb) {
+      this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,Q,E') as Record<string, Phaser.Input.Keyboard.Key>;
+      kb.on('keydown-SPACE', () => this.findSquad());
+      kb.on('keydown-R', () => this.world?.setView(OVERVIEW));
+    }
 
     // fan out squads that share a starting stronghold
     const slots = new Map<number, number>();
@@ -92,57 +129,106 @@ export class OverworldScene extends Phaser.Scene {
       this.settle(sq, st.nodes.find((n) => n.id === sq.nodeId)!, slot);
     }
 
-    this.events.on(Phaser.Scenes.Events.RESUME, () => this.syncAll());
+    this.events.on(Phaser.Scenes.Events.RESUME, () => {
+      this.syncAll();
+      this.prepareLeaders();
+    });
+    this.prepareLeaders();
     this.game.events.on('battle-done', this.onBattleDone, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off('battle-done', this.onBattleDone, this);
+      this.input.keyboard?.off('keydown-SPACE');
+      this.input.keyboard?.off('keydown-R');
+      this.world?.dispose();
+      this.world = null;
+      this.screen = null;
+      if (this.textures.exists('world3d')) this.textures.remove('world3d');
     });
 
     this.syncAll();
   }
 
-  // ---------------- terrain & nodes ----------------
+  // ---------------- the map ----------------
 
   /**
-   * Draw the ground straight from the terrain grid the movement code charges
-   * against, so what the player reads off the map is exactly what they pay.
+   * A click on the map. Selecting your own squad takes priority; otherwise,
+   * with a squad selected, it is a march order to that point of ground,
+   * anywhere on the map.
    */
-  private drawTerrain(): void {
-    const tileFor: Record<Terrain, string> = {
-      plain: 'tile-grass',
-      forest: 'tile-forest',
-      mountain: 'tile-mountain',
-      water: 'tile-water',
-      road: 'tile-road',
-    };
-    for (let row = 0; row < ROWS; row++) {
-      for (let col = 0; col < COLS; col++) {
-        const t = terrainAtTile(this.terrain, col, row);
-        this.add.image(col * TILE + TILE / 2, row * TILE + TILE / 2, tileFor[t]).setDepth(0);
-      }
+  private clickMap(sx: number, sy: number): void {
+    const st = getState();
+    const world = this.world;
+    if (!world || this.battleActive || st.phase !== 'playing') return;
+    // Squads are picked where they stand on screen. Squads stacked on one
+    // spot (the keep, at the start) are picked in turn: each click on the
+    // stack selects the next of them.
+    const stack = st.squads.filter((s) => {
+      if (s.side !== 'player') return false;
+      const p = this.shownAt(s);
+      const at = world.project(p.x, p.y, world.squadHeight(s.id) / 2);
+      return at.visible && Phaser.Math.Distance.Between(sx, sy, at.x, at.y) < 22;
+    });
+    if (stack.length && !(stack.length === 1 && stack[0] === this.selected)) {
+      const at = this.selected ? stack.indexOf(this.selected) : -1;
+      const sq = stack[(at + 1) % stack.length];
+      this.selected = sq;
+      world.select(sq.id, this.routeOf(sq));
+      const type = squadType(squadMemberIds(sq).map((id) => st.chars.get(id)!));
+      this.hintText.setText(`${sq.name} (${SQUAD_TYPE_LABEL[type]}) — click anywhere to march.`);
+      return;
     }
+    const ground = world.pick(sx, sy);
+    if (this.selected && ground) this.orderMarch(this.selected, ground.x, ground.y);
   }
 
-  private drawNodes(): void {
-    const st = getState();
-    for (const n of st.nodes) {
-      const icon = n.kind === 'town' ? 'icon-town' : n.kind === 'fort' ? 'icon-fort' : 'icon-castle';
-      this.add.image(n.x, n.y - 6, icon).setScale(2).setDepth(5);
-      const flag = this.add.image(n.x + 18, n.y - 24, `flag-${n.owner}`).setScale(2).setDepth(6);
-      this.nodeFlags.set(n.id, flag);
-      this.add
-        .text(n.x, n.y + 18, n.name, { ...SMALL_STYLE, stroke: '#101020', strokeThickness: 3 })
-        .setOrigin(0.5)
-        .setDepth(5);
-    }
+  /**
+   * Where a squad is drawn: where it stands, except that one halted on a
+   * stronghold's very centre stands in front of the building instead of
+   * inside it. (Its place in the game is unchanged.)
+   */
+  private shownAt(sq: Squad): { x: number; y: number } {
+    if (sq.moving) return { x: sq.x, y: sq.y };
+    const n = getState().nodes.find((o) => Math.abs(o.x - sq.x) < 3 && Math.abs(o.y - sq.y) < 3);
+    return n ? { x: n.x, y: n.y + 22 } : { x: sq.x, y: sq.y };
   }
 
-  private nodeAt(x: number, y: number): MapNode | null {
+  private routeOf(sq: Squad): { x: number; y: number } | null {
+    return sq.moving && sq.targetX !== null && sq.targetY !== null ? { x: sq.targetX, y: sq.targetY } : null;
+  }
+
+  /**
+   * Fetch Ogre Battle 64's sprites for every squad's leader, where they were
+   * extracted; until they arrive a leader shows its standing drawing.
+   */
+  private prepareLeaders(): void {
     const st = getState();
-    for (const n of st.nodes) {
-      if (Phaser.Math.Distance.Between(x, y, n.x, n.y) < 26) return n;
-    }
-    return null;
+    void prepareSprites(st.squads.map((sq) => ({ def: classOf(st.chars.get(sq.leaderId)!.classId), side: sq.side })));
+  }
+
+  /** Bring the selected squad into view, or the next of the army's squads. */
+  private findSquad(): void {
+    const st = getState();
+    const mine = st.squads.filter((s) => s.side === 'player');
+    if (!mine.length || !this.world) return;
+    const sq = this.selected ?? mine[0];
+    this.selected = sq;
+    this.world.select(sq.id, this.routeOf(sq));
+    const p = this.shownAt(sq);
+    this.world.lookAt(p.x, p.y, 18);
+  }
+
+  /** Keys pan and turn the camera while held. */
+  private steerCamera(dt: number): void {
+    const world = this.world;
+    if (!world) return;
+    const k = this.keys;
+    const down = (...names: string[]) => names.some((n) => k[n]?.isDown);
+    const step = world.view.distance * 0.9 * dt;
+    const right = (down('D', 'RIGHT') ? 1 : 0) - (down('A', 'LEFT') ? 1 : 0);
+    const forward = (down('W', 'UP') ? 1 : 0) - (down('S', 'DOWN') ? 1 : 0);
+    if (right || forward) world.setView(panView(world.view, right * step, forward * step));
+    const turn = (down('E') ? 1 : 0) - (down('Q') ? 1 : 0);
+    if (turn) world.turn(turn * 1.6 * dt);
   }
 
   // ---------------- movement ----------------
@@ -157,7 +243,8 @@ export class OverworldScene extends Phaser.Scene {
       this.hintText.setText(
         node ? `${sq.name} marches on ${node.name}.` : `${sq.name} marches into open country.`,
       );
-      this.pingOrder(dest.x, dest.y);
+      this.world?.ping(dest.x, dest.y);
+      if (this.selected === sq) this.world?.select(sq.id, dest);
     }
   }
 
@@ -177,24 +264,13 @@ export class OverworldScene extends Phaser.Scene {
     if (!next.arrived) return;
 
     haltSquad(sq);
+    if (this.selected === sq) this.world?.select(sq.id, null);
     const node = strongholdAt(st.nodes, sq.x, sq.y);
     if (node) {
       sq.nodeId = node.id;
       this.settle(sq, node);
       this.tryCapture(sq, node);
     }
-  }
-
-  /** Brief marker where a march order was issued, so the click reads. */
-  private pingOrder(x: number, y: number): void {
-    const ring = this.add.circle(x, y, 6).setStrokeStyle(2, 0xf0e090).setDepth(40);
-    this.tweens.add({
-      targets: ring,
-      radius: 20,
-      alpha: 0,
-      duration: 500,
-      onComplete: () => ring.destroy(),
-    });
   }
 
   /**
@@ -221,7 +297,7 @@ export class OverworldScene extends Phaser.Scene {
     if (contested) return;
     if (node.owner !== sq.side) {
       node.owner = sq.side;
-      this.nodeFlags.get(node.id)?.setTexture(`flag-${sq.side}`);
+      this.world?.setOwner(node.id, sq.side);
       this.toast(`${node.name} ${sq.side === 'player' ? 'liberated!' : 'has fallen!'}`, sq.side === 'player' ? '#90e090' : '#e09090');
       if (node.kind === 'hq-enemy' && sq.side === 'player') this.endCampaign('victory');
       if (node.kind === 'hq-player' && sq.side === 'enemy') this.endCampaign('defeat');
@@ -287,7 +363,9 @@ export class OverworldScene extends Phaser.Scene {
   private onBattleDone(payload: { attackerId: number; defenderId: number; winner: string }): void {
     const st = getState();
     this.battleActive = false;
-    const now = this.time.now;
+    // The game's clock, not this scene's: the map has been paused for the
+    // battle, and its own clock still reads the moment the battle began.
+    const now = this.game.loop.time;
 
     for (const side of ['attackerId', 'defenderId'] as const) {
       const sq = st.squads.find((s) => s.id === payload[side]);
@@ -333,8 +411,7 @@ export class OverworldScene extends Phaser.Scene {
     const live = new Set(st.squads.map((s) => s.id));
     for (const [id, v] of this.views) {
       if (!live.has(id)) {
-        v.sprite.destroy();
-        v.ring.destroy();
+        this.world?.removeSquad(id);
         v.hpBar.destroy();
         v.hpFill.destroy();
         v.label.destroy();
@@ -343,23 +420,57 @@ export class OverworldScene extends Phaser.Scene {
     }
     for (const sq of st.squads) if (!this.views.has(sq.id)) this.makeView(sq);
     if (this.selected && !live.has(this.selected.id)) this.selected = null;
+    if (this.selected) this.world?.select(this.selected.id, this.routeOf(this.selected));
   }
 
   private makeView(sq: Squad): void {
-    const st = getState();
-    const leader = st.chars.get(sq.leaderId)!;
-    const palette = classOf(leader.classId).palette;
-    const ring = this.add
-      .circle(sq.x, sq.y + 6, 13, sq.side === 'player' ? 0x4a6ae0 : 0xd04838, 0.45)
-      .setDepth(9);
-    const sprite = unitIcon(this, sq.x, sq.y, palette, 32).setDepth(10);
     const hpBar = this.add.rectangle(sq.x, sq.y - 22, 26, 4, 0x101020).setDepth(11);
     const hpFill = this.add.rectangle(sq.x - 13, sq.y - 22, 26, 4, 0x58c858).setOrigin(0, 0.5).setDepth(12);
     const label = this.add
       .text(sq.x, sq.y - 31, sq.name, { ...SMALL_STYLE, fontSize: '9px', stroke: '#101020', strokeThickness: 3 })
       .setOrigin(0.5)
       .setDepth(11);
-    this.views.set(sq.id, { sprite, ring, hpBar, hpFill, label });
+    this.views.set(sq.id, { hpBar, hpFill, label });
+  }
+
+  /**
+   * Stand every squad where it now is, draw the world, and lay the names and
+   * strength bars over it where the camera sees each one.
+   */
+  private drawWorld(deltaMs: number): void {
+    const st = getState();
+    const world = this.world;
+    if (!world || !this.screen) return;
+    for (const sq of st.squads) {
+      const leader = st.chars.get(sq.leaderId)!;
+      const p = this.shownAt(sq);
+      world.setSquad(sq.id, p.x, p.y, sq.side, mapFigureFor(this, classOf(leader.classId), sq.side), sq.moving);
+    }
+    if (this.selected?.moving) world.refreshRoute(this.routeOf(this.selected));
+    world.update(Math.min(deltaMs, 50));
+    const ctx = this.screen.getContext();
+    ctx.clearRect(0, 0, W, MAP_H);
+    ctx.drawImage(world.canvas, 0, 0, W, MAP_H);
+    this.screen.refresh();
+
+    for (const n of st.nodes) {
+      const at = world.project(n.x, n.y, 0);
+      this.nodeLabels.get(n.id)?.setPosition(at.x, at.y + 10).setVisible(at.visible && at.y < MAP_H - 6);
+    }
+    for (const sq of st.squads) {
+      const v = this.views.get(sq.id);
+      if (!v) continue;
+      const p = this.shownAt(sq);
+      const at = world.project(p.x, p.y, world.squadHeight(sq.id) + 0.15);
+      const shown = at.visible && at.y > 0 && at.y < MAP_H;
+      v.hpBar.setPosition(at.x, at.y - 4).setVisible(shown);
+      v.label.setPosition(at.x, at.y - 13).setVisible(shown);
+      const members = squadMemberIds(sq).map((id) => st.chars.get(id)!);
+      const ratio = members.reduce((s, c) => s + c.hp, 0) / Math.max(1, members.reduce((s, c) => s + c.stats.hp, 0));
+      v.hpFill.setPosition(at.x - 13, at.y - 4).setVisible(shown);
+      v.hpFill.width = 26 * ratio;
+      v.hpFill.fillColor = hpColor(ratio);
+    }
   }
 
   private endCampaign(result: 'victory' | 'defeat'): void {
@@ -390,6 +501,7 @@ export class OverworldScene extends Phaser.Scene {
     if (st.phase !== 'playing') return;
     const dt = deltaMs / 1000;
 
+    this.steerCamera(dt);
     for (const sq of st.squads) this.stepSquad(sq, dt);
     this.checkEncounters();
 
@@ -407,25 +519,7 @@ export class OverworldScene extends Phaser.Scene {
       restSquads(st);
     }
 
-    // sync views
-    for (const sq of st.squads) {
-      const v = this.views.get(sq.id);
-      if (!v) continue;
-      v.sprite.setPosition(sq.x, sq.y);
-      v.ring.setPosition(sq.x, sq.y + 6);
-      v.hpBar.setPosition(sq.x, sq.y - 22);
-      v.label.setPosition(sq.x, sq.y - 31);
-      const members = squadMemberIds(sq).map((id) => st.chars.get(id)!);
-      const ratio = members.reduce((s, c) => s + c.hp, 0) / Math.max(1, members.reduce((s, c) => s + c.stats.hp, 0));
-      v.hpFill.setPosition(sq.x - 13, sq.y - 22);
-      v.hpFill.width = 26 * ratio;
-      v.hpFill.fillColor = hpColor(ratio);
-    }
-    if (this.selected) {
-      this.selectRing.setVisible(true).setPosition(this.selected.x, this.selected.y + 2);
-    } else {
-      this.selectRing.setVisible(false);
-    }
+    this.drawWorld(deltaMs);
 
     const owned = st.nodes.filter((n) => n.owner === 'player').length;
     this.hudText.setText(`Day ${st.day}   ${st.goth} Goth   Strongholds ${owned}/${st.nodes.length}`);

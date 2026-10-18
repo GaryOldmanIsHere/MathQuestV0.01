@@ -1,17 +1,21 @@
-import type { ClassDef } from '../core/types';
+import type { ClassDef, Resistances } from '../core/types';
 
-// The Ogre Battle 64 class structure: two trainable base classes (Fighter for
-// men, Amazon for women) branch by level, charisma, and alignment into the
-// classic tree, with elite third tiers. Requirements follow the original
-// guides where known and stay data-driven so they can be tuned in one place.
+// Palatinus's own class tree: the built-in data the game runs on when no Ogre
+// Battle 64 ROM has been extracted (see src/ob64/). It has the same shape as
+// the extracted data, so every system works on either. Two trainable base
+// classes (Fighter for men, Amazon for women) branch by level and alignment
+// into the classic tree, with elite third tiers.
 //
-// Alignment: 0 = fully Chaotic, 100 = fully Lawful (as in the original).
+// Alignment: 0 = fully Chaotic, 100 = fully Lawful.
 
-const s = (hp: number, str: number, vit: number, int: number, men: number, agi: number) => ({
-  hp, str, vit, int, men, agi,
+/** Stats. DEX defaults to AGI: the original roster predates the stat. */
+const s = (hp: number, str: number, vit: number, int: number, men: number, agi: number, dex = agi) => ({
+  hp, str, vit, int, men, agi, dex,
 });
 
-export const CLASSES: Record<string, ClassDef> = {
+type RawClassDef = Omit<ClassDef, 'resist' | 'size' | 'playable' | 'source'>;
+
+const RAW: Record<string, RawClassDef> = {
   // ------------------------------------------------------------------
   // MALE LINE
   // ------------------------------------------------------------------
@@ -25,14 +29,14 @@ export const CLASSES: Record<string, ClassDef> = {
       back: { name: 'Sword Slash', type: 'melee', count: 1, power: 0.8, target: 'one' },
     },
     promotesTo: [
-      { classId: 'wizard', level: 4, cha: 50, aliMin: 10, aliMax: 60 },
-      { classId: 'knight', level: 5, cha: 50, aliMin: 50 },
-      { classId: 'beast-tamer', level: 5, cha: 50, aliMin: 25, aliMax: 65 },
-      { classId: 'doll-master', level: 5, cha: 50, aliMin: 30, aliMax: 70 },
+      { classId: 'wizard', level: 4, aliMin: 10, aliMax: 60 },
+      { classId: 'knight', level: 5, aliMin: 50 },
+      { classId: 'beast-tamer', level: 5, aliMin: 25, aliMax: 65 },
+      { classId: 'doll-master', level: 5, aliMin: 30, aliMax: 70 },
       { classId: 'phalanx', level: 5, aliMin: 35, aliMax: 75 },
-      { classId: 'berserker', level: 6, cha: 50, aliMax: 49 },
+      { classId: 'berserker', level: 6, aliMax: 49 },
       { classId: 'ninja', level: 6, aliMax: 49 },
-      { classId: 'fencer', level: 7, cha: 55, aliMin: 40, aliMax: 60 },
+      { classId: 'fencer', level: 7, aliMin: 40, aliMax: 60 },
     ],
     moveType: 'foot', preferredRow: 'front', sprite: 'humanoid', palette: 'fighter',
   },
@@ -45,7 +49,7 @@ export const CLASSES: Record<string, ClassDef> = {
       mid: { name: 'Long Sword', type: 'melee', count: 2, power: 1.0, target: 'one' },
       back: { name: 'Long Sword', type: 'melee', count: 1, power: 0.9, target: 'one' },
     },
-    promotesTo: [{ classId: 'paladin', level: 15, cha: 60, aliMin: 60 }],
+    promotesTo: [{ classId: 'paladin', level: 15, aliMin: 60 }],
     moveType: 'foot', preferredRow: 'front', sprite: 'humanoid', palette: 'knight',
   },
   paladin: {
@@ -53,9 +57,9 @@ export const CLASSES: Record<string, ClassDef> = {
     desc: 'A holy knight whose blade shines with divine light.',
     base: s(84, 24, 22, 12, 16, 13), growth: s(7, 3.0, 2.8, 1.4, 1.8, 1.8),
     attacks: {
-      front: { name: 'Holy Blade', type: 'melee', count: 3, power: 1.2, target: 'one', element: 'holy' },
-      mid: { name: 'Holy Blade', type: 'melee', count: 2, power: 1.1, target: 'one', element: 'holy' },
-      back: { name: 'Healing Light', type: 'heal', count: 1, power: 1.2, target: 'allies', element: 'holy' },
+      front: { name: 'Holy Blade', type: 'melee', count: 3, power: 1.2, target: 'one', element: 'virtue' },
+      mid: { name: 'Holy Blade', type: 'melee', count: 2, power: 1.1, target: 'one', element: 'virtue' },
+      back: { name: 'Healing Light', type: 'heal', count: 1, power: 1.2, target: 'allies', element: 'virtue' },
     },
     promotesTo: [],
     moveType: 'foot', preferredRow: 'front', sprite: 'humanoid', palette: 'paladin',
@@ -77,9 +81,9 @@ export const CLASSES: Record<string, ClassDef> = {
     desc: 'A dread knight cloaked in darkness. Fear marches with him.',
     base: s(88, 27, 20, 10, 12, 13), growth: s(8, 3.4, 2.6, 1.2, 1.4, 1.8),
     attacks: {
-      front: { name: 'Dark Blade', type: 'melee', count: 3, power: 1.3, target: 'one', element: 'dark' },
-      mid: { name: 'Dark Blade', type: 'melee', count: 2, power: 1.2, target: 'one', element: 'dark' },
-      back: { name: 'Dread Wave', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'dark' },
+      front: { name: 'Dark Blade', type: 'melee', count: 3, power: 1.3, target: 'one', element: 'bane' },
+      mid: { name: 'Dark Blade', type: 'melee', count: 2, power: 1.2, target: 'one', element: 'bane' },
+      back: { name: 'Dread Wave', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'bane' },
     },
     promotesTo: [],
     moveType: 'foot', preferredRow: 'front', sprite: 'humanoid', palette: 'blackknight',
@@ -162,8 +166,8 @@ export const CLASSES: Record<string, ClassDef> = {
     base: s(46, 8, 8, 18, 14, 9), growth: s(4, 1.0, 1.2, 2.6, 1.9, 1.2),
     attacks: {
       front: { name: 'Staff', type: 'melee', count: 1, power: 0.6, target: 'one' },
-      mid: { name: 'Fireball', type: 'magic', count: 1, power: 1.0, target: 'one', element: 'fire' },
-      back: { name: 'Fireball', type: 'magic', count: 1, power: 1.0, target: 'row', element: 'fire' },
+      mid: { name: 'Fireball', type: 'magic', count: 1, power: 1.0, target: 'one', element: 'flame' },
+      back: { name: 'Fireball', type: 'magic', count: 1, power: 1.0, target: 'row', element: 'flame' },
     },
     promotesTo: [{ classId: 'mage', level: 9, aliMin: 10, aliMax: 60 }],
     moveType: 'foot', preferredRow: 'back', sprite: 'humanoid', palette: 'wizard',
@@ -174,8 +178,8 @@ export const CLASSES: Record<string, ClassDef> = {
     base: s(54, 9, 10, 24, 18, 10), growth: s(5, 1.1, 1.3, 3.0, 2.2, 1.3),
     attacks: {
       front: { name: 'Staff', type: 'melee', count: 1, power: 0.6, target: 'one' },
-      mid: { name: 'Thunderbolt', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'thunder' },
-      back: { name: 'Thunderbolt', type: 'magic', count: 1, power: 1.2, target: 'row', element: 'thunder' },
+      mid: { name: 'Thunderbolt', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'wind' },
+      back: { name: 'Thunderbolt', type: 'magic', count: 1, power: 1.2, target: 'row', element: 'wind' },
     },
     promotesTo: [{ classId: 'sorcerer', level: 18, aliMax: 50 }],
     moveType: 'foot', preferredRow: 'back', sprite: 'humanoid', palette: 'mage',
@@ -186,8 +190,8 @@ export const CLASSES: Record<string, ClassDef> = {
     base: s(62, 10, 12, 32, 24, 11), growth: s(5, 1.2, 1.5, 3.6, 2.6, 1.4),
     attacks: {
       front: { name: 'Staff', type: 'melee', count: 1, power: 0.6, target: 'one' },
-      mid: { name: 'Nightmare', type: 'magic', count: 1, power: 1.1, target: 'all', element: 'dark' },
-      back: { name: 'Nightmare', type: 'magic', count: 1, power: 1.2, target: 'all', element: 'dark' },
+      mid: { name: 'Nightmare', type: 'magic', count: 1, power: 1.1, target: 'all', element: 'bane' },
+      back: { name: 'Nightmare', type: 'magic', count: 1, power: 1.2, target: 'all', element: 'bane' },
     },
     promotesTo: [],
     moveType: 'foot', preferredRow: 'back', sprite: 'humanoid', palette: 'sorcerer',
@@ -223,7 +227,7 @@ export const CLASSES: Record<string, ClassDef> = {
     attacks: {
       front: { name: 'Dragon Lash', type: 'melee', count: 3, power: 1.25, target: 'one' },
       mid: { name: 'Dragon Lash', type: 'melee', count: 2, power: 1.1, target: 'one' },
-      back: { name: 'Dragon Roar', type: 'magic', count: 1, power: 1.0, target: 'row', element: 'fire' },
+      back: { name: 'Dragon Roar', type: 'magic', count: 1, power: 1.0, target: 'row', element: 'flame' },
     },
     promotesTo: [],
     moveType: 'foot', preferredRow: 'front', sprite: 'humanoid', palette: 'dragonmaster',
@@ -266,10 +270,10 @@ export const CLASSES: Record<string, ClassDef> = {
       back: { name: 'Sling', type: 'ranged', count: 1, power: 0.8, target: 'one' },
     },
     promotesTo: [
-      { classId: 'cleric', level: 4, cha: 50, aliMin: 60 },
-      { classId: 'valkyrie', level: 5, cha: 50, aliMin: 35 },
+      { classId: 'cleric', level: 4, aliMin: 60 },
+      { classId: 'valkyrie', level: 5, aliMin: 35 },
       { classId: 'archer', level: 5, aliMin: 30, aliMax: 70 },
-      { classId: 'witch', level: 5, cha: 50, aliMax: 65 },
+      { classId: 'witch', level: 5, aliMax: 65 },
       { classId: 'sorceress', level: 6, aliMax: 50 },
     ],
     moveType: 'foot', preferredRow: 'front', sprite: 'humanoid', palette: 'amazon',
@@ -283,7 +287,7 @@ export const CLASSES: Record<string, ClassDef> = {
       mid: { name: 'Valkyrie Spear', type: 'melee', count: 2, power: 1.0, target: 'one' },
       back: { name: 'Spear Throw', type: 'ranged', count: 1, power: 0.9, target: 'one' },
     },
-    promotesTo: [{ classId: 'freya', level: 15, cha: 60, aliMin: 55 }],
+    promotesTo: [{ classId: 'freya', level: 15, aliMin: 55 }],
     moveType: 'foot', preferredRow: 'front', sprite: 'humanoid', palette: 'valkyrie',
   },
   freya: {
@@ -291,9 +295,9 @@ export const CLASSES: Record<string, ClassDef> = {
     desc: 'A war-goddess made flesh; lightning rides her spear.',
     base: s(76, 22, 18, 16, 17, 16), growth: s(6, 2.9, 2.4, 1.8, 1.9, 2.1),
     attacks: {
-      front: { name: 'Divine Spear', type: 'melee', count: 3, power: 1.2, target: 'one', element: 'thunder' },
-      mid: { name: 'Divine Spear', type: 'melee', count: 2, power: 1.15, target: 'one', element: 'thunder' },
-      back: { name: 'Thunder Lance', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'thunder' },
+      front: { name: 'Divine Spear', type: 'melee', count: 3, power: 1.2, target: 'one', element: 'wind' },
+      mid: { name: 'Divine Spear', type: 'melee', count: 2, power: 1.15, target: 'one', element: 'wind' },
+      back: { name: 'Thunder Lance', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'wind' },
     },
     promotesTo: [],
     moveType: 'foot', preferredRow: 'front', sprite: 'humanoid', palette: 'freya',
@@ -328,8 +332,8 @@ export const CLASSES: Record<string, ClassDef> = {
     base: s(50, 8, 9, 15, 18, 9), growth: s(4, 1.0, 1.3, 2.0, 2.4, 1.2),
     attacks: {
       front: { name: 'Mace', type: 'melee', count: 1, power: 0.7, target: 'one' },
-      mid: { name: 'Heal', type: 'heal', count: 1, power: 1.2, target: 'allies', element: 'holy' },
-      back: { name: 'Heal', type: 'heal', count: 1, power: 1.3, target: 'allies', element: 'holy' },
+      mid: { name: 'Heal', type: 'heal', count: 1, power: 1.2, target: 'allies', element: 'virtue' },
+      back: { name: 'Heal', type: 'heal', count: 1, power: 1.3, target: 'allies', element: 'virtue' },
     },
     promotesTo: [{ classId: 'priest', level: 12, aliMin: 65 }],
     moveType: 'foot', preferredRow: 'back', sprite: 'humanoid', palette: 'cleric',
@@ -340,8 +344,8 @@ export const CLASSES: Record<string, ClassDef> = {
     base: s(60, 9, 11, 20, 26, 10), growth: s(5, 1.1, 1.5, 2.4, 3.0, 1.3),
     attacks: {
       front: { name: 'Mace', type: 'melee', count: 1, power: 0.7, target: 'one' },
-      mid: { name: 'Banish', type: 'magic', count: 1, power: 1.0, target: 'row', element: 'holy' },
-      back: { name: 'Great Heal', type: 'heal', count: 1, power: 1.6, target: 'allies', element: 'holy' },
+      mid: { name: 'Banish', type: 'magic', count: 1, power: 1.0, target: 'row', element: 'virtue' },
+      back: { name: 'Great Heal', type: 'heal', count: 1, power: 1.6, target: 'allies', element: 'virtue' },
     },
     promotesTo: [],
     moveType: 'foot', preferredRow: 'back', sprite: 'humanoid', palette: 'priest',
@@ -352,8 +356,8 @@ export const CLASSES: Record<string, ClassDef> = {
     base: s(48, 7, 8, 17, 14, 11), growth: s(4, 0.9, 1.2, 2.3, 1.8, 1.4),
     attacks: {
       front: { name: 'Broom Swat', type: 'melee', count: 1, power: 0.6, target: 'one' },
-      mid: { name: 'Hex', type: 'magic', count: 1, power: 0.9, target: 'row', element: 'dark' },
-      back: { name: 'Hex', type: 'magic', count: 1, power: 1.0, target: 'row', element: 'dark' },
+      mid: { name: 'Hex', type: 'magic', count: 1, power: 0.9, target: 'row', element: 'bane' },
+      back: { name: 'Hex', type: 'magic', count: 1, power: 1.0, target: 'row', element: 'bane' },
     },
     promotesTo: [],
     moveType: 'foot', preferredRow: 'back', sprite: 'humanoid', palette: 'witch',
@@ -364,8 +368,8 @@ export const CLASSES: Record<string, ClassDef> = {
     base: s(46, 7, 8, 19, 15, 10), growth: s(4, 0.9, 1.2, 2.7, 1.9, 1.3),
     attacks: {
       front: { name: 'Dagger', type: 'melee', count: 1, power: 0.6, target: 'one' },
-      mid: { name: 'Ice Storm', type: 'magic', count: 1, power: 1.0, target: 'row', element: 'ice' },
-      back: { name: 'Ice Storm', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'ice' },
+      mid: { name: 'Ice Storm', type: 'magic', count: 1, power: 1.0, target: 'row', element: 'water' },
+      back: { name: 'Ice Storm', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'water' },
     },
     promotesTo: [{ classId: 'siren', level: 15, aliMax: 50 }],
     moveType: 'foot', preferredRow: 'back', sprite: 'humanoid', palette: 'sorceress',
@@ -376,8 +380,8 @@ export const CLASSES: Record<string, ClassDef> = {
     base: s(56, 8, 10, 28, 20, 12), growth: s(4, 1.0, 1.3, 3.3, 2.3, 1.5),
     attacks: {
       front: { name: 'Dagger', type: 'melee', count: 1, power: 0.6, target: 'one' },
-      mid: { name: 'Fatal Aria', type: 'magic', count: 1, power: 1.0, target: 'all', element: 'ice' },
-      back: { name: 'Fatal Aria', type: 'magic', count: 1, power: 1.1, target: 'all', element: 'ice' },
+      mid: { name: 'Fatal Aria', type: 'magic', count: 1, power: 1.0, target: 'all', element: 'water' },
+      back: { name: 'Fatal Aria', type: 'magic', count: 1, power: 1.1, target: 'all', element: 'water' },
     },
     promotesTo: [],
     moveType: 'foot', preferredRow: 'back', sprite: 'humanoid', palette: 'siren',
@@ -391,9 +395,9 @@ export const CLASSES: Record<string, ClassDef> = {
     desc: 'A burning beast that hunts in packs.',
     base: s(70, 18, 13, 6, 8, 16), growth: s(6, 2.5, 1.8, 0.7, 1.0, 2.1),
     attacks: {
-      front: { name: 'Flame Fang', type: 'melee', count: 2, power: 1.1, target: 'one', element: 'fire' },
-      mid: { name: 'Flame Fang', type: 'melee', count: 1, power: 1.0, target: 'one', element: 'fire' },
-      back: { name: 'Howl', type: 'magic', count: 1, power: 0.6, target: 'one', element: 'fire' },
+      front: { name: 'Flame Fang', type: 'melee', count: 2, power: 1.1, target: 'one', element: 'flame' },
+      mid: { name: 'Flame Fang', type: 'melee', count: 1, power: 1.0, target: 'one', element: 'flame' },
+      back: { name: 'Howl', type: 'magic', count: 1, power: 0.6, target: 'one', element: 'flame' },
     },
     promotesTo: [{ classId: 'cerberus', level: 14, aliMax: 55 }],
     moveType: 'fast', preferredRow: 'front', sprite: 'beast', palette: 'hellhound',
@@ -403,9 +407,9 @@ export const CLASSES: Record<string, ClassDef> = {
     desc: 'Three heads, one hunger.',
     base: s(90, 24, 17, 8, 10, 19), growth: s(7, 3.0, 2.2, 0.9, 1.2, 2.4),
     attacks: {
-      front: { name: 'Triple Fang', type: 'melee', count: 3, power: 1.15, target: 'one', element: 'fire' },
-      mid: { name: 'Triple Fang', type: 'melee', count: 2, power: 1.1, target: 'one', element: 'fire' },
-      back: { name: 'Hell Howl', type: 'magic', count: 1, power: 0.8, target: 'row', element: 'fire' },
+      front: { name: 'Triple Fang', type: 'melee', count: 3, power: 1.15, target: 'one', element: 'flame' },
+      mid: { name: 'Triple Fang', type: 'melee', count: 2, power: 1.1, target: 'one', element: 'flame' },
+      back: { name: 'Hell Howl', type: 'magic', count: 1, power: 0.8, target: 'row', element: 'flame' },
     },
     promotesTo: [],
     moveType: 'fast', preferredRow: 'front', sprite: 'beast', palette: 'cerberus',
@@ -415,8 +419,8 @@ export const CLASSES: Record<string, ClassDef> = {
     desc: 'Rattling bones that refuse the grave.',
     base: s(60, 16, 14, 4, 4, 10), growth: s(5, 2.2, 2.0, 0.5, 0.5, 1.3),
     attacks: {
-      front: { name: 'Bone Sword', type: 'melee', count: 2, power: 1.0, target: 'one', element: 'dark' },
-      mid: { name: 'Bone Sword', type: 'melee', count: 1, power: 0.9, target: 'one', element: 'dark' },
+      front: { name: 'Bone Sword', type: 'melee', count: 2, power: 1.0, target: 'one', element: 'bane' },
+      mid: { name: 'Bone Sword', type: 'melee', count: 1, power: 0.9, target: 'one', element: 'bane' },
       back: { name: 'Bone Throw', type: 'ranged', count: 1, power: 0.7, target: 'one' },
     },
     promotesTo: [],
@@ -427,9 +431,9 @@ export const CLASSES: Record<string, ClassDef> = {
     desc: 'A cold whisper that drinks the living.',
     base: s(50, 6, 8, 16, 16, 12), growth: s(4, 0.8, 1.1, 2.2, 2.2, 1.5),
     attacks: {
-      front: { name: 'Chill Touch', type: 'magic', count: 1, power: 1.0, target: 'one', element: 'dark' },
-      mid: { name: 'Chill Touch', type: 'magic', count: 1, power: 1.0, target: 'one', element: 'dark' },
-      back: { name: 'Moan', type: 'magic', count: 1, power: 0.9, target: 'row', element: 'dark' },
+      front: { name: 'Chill Touch', type: 'magic', count: 1, power: 1.0, target: 'one', element: 'bane' },
+      mid: { name: 'Chill Touch', type: 'magic', count: 1, power: 1.0, target: 'one', element: 'bane' },
+      back: { name: 'Moan', type: 'magic', count: 1, power: 0.9, target: 'row', element: 'bane' },
     },
     promotesTo: [],
     moveType: 'fly', preferredRow: 'mid', sprite: 'ghost', palette: 'ghost',
@@ -464,16 +468,35 @@ export const CLASSES: Record<string, ClassDef> = {
     base: s(105, 26, 22, 14, 14, 15), growth: s(9, 3.2, 2.7, 1.5, 1.6, 1.9),
     attacks: {
       front: { name: 'Dragon Claw', type: 'melee', count: 2, power: 1.3, target: 'one' },
-      mid: { name: 'Fire Breath', type: 'magic', count: 1, power: 1.2, target: 'row', element: 'fire' },
-      back: { name: 'Fire Breath', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'fire' },
+      mid: { name: 'Fire Breath', type: 'magic', count: 1, power: 1.2, target: 'row', element: 'flame' },
+      back: { name: 'Fire Breath', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'flame' },
     },
     promotesTo: [],
     moveType: 'fly', preferredRow: 'front', sprite: 'dragon', palette: 'reddragon',
   },
 };
 
-export function classOf(id: string): ClassDef {
-  const c = CLASSES[id];
-  if (!c) throw new Error(`Unknown class: ${id}`);
-  return c;
-}
+const NEUTRAL: Resistances = {
+  physical: 50, wind: 50, flame: 50, earth: 50, water: 50, virtue: 50, bane: 50,
+};
+
+/** Where a class departs from neutral: the undead fear virtue, the great beasts fill two places. */
+const TRAITS: Record<string, Partial<Pick<ClassDef, 'resist' | 'size'>>> = {
+  skeleton: { resist: { ...NEUTRAL, virtue: 28, bane: 68 } },
+  ghost: { resist: { ...NEUTRAL, virtue: 28, bane: 70 } },
+  hellhound: { size: 2 },
+  cerberus: { size: 2 },
+  golem: { size: 2 },
+  wyvern: { size: 2 },
+  'red-dragon': { size: 2 },
+};
+
+export const CLASSES: Record<string, ClassDef> = Object.fromEntries(
+  Object.entries(RAW).map(([id, def]) => [id, {
+    ...def,
+    resist: TRAITS[id]?.resist ?? NEUTRAL,
+    size: TRAITS[id]?.size ?? 1,
+    playable: def.gender !== 'X',
+    source: 'builtin' as const,
+  }]),
+);

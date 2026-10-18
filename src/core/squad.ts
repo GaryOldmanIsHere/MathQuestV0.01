@@ -1,6 +1,6 @@
 import type { Character, MoveType, Row, Squad } from './types';
 import { CELL_ROW } from './types';
-import { classOf } from '../data/classes';
+import { classOf } from '../data/registry';
 import { pick, SQUAD_NAMES } from '../data/names';
 
 let nextSquadId = 1;

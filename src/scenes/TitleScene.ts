@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { drawPanel, makeButton, FONT } from '../gfx/ui';
 import { resetState } from '../core/state';
-import { CLASS_ART } from '../gfx/pixels';
+import { allClasses, datasetLabel, datasetSource } from '../data/registry';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -20,11 +20,12 @@ export class TitleScene extends Phaser.Scene {
     }
     this.add.rectangle(W / 2, H - 60, W, 120, 0x141a30);
 
-    const keys = Object.keys(CLASS_ART);
-    for (let i = 0; i < keys.length; i++) {
-      const spr = this.add.image(40 + (i % 12) * 62, H - 92 + Math.floor(i / 12) * 46, `unit-${keys[i]}`);
+    // A parade of the active roster: the originals, or the classes extracted from the ROM.
+    const parade = allClasses().filter((c) => c.playable).slice(0, 36);
+    parade.forEach((c, i) => {
+      const spr = this.add.image(40 + (i % 12) * 62, H - 92 + Math.floor(i / 12) * 46, `unit-${c.palette}`);
       spr.setScale(2).setAlpha(0.9);
-    }
+    });
 
     this.add
       .text(W / 2, 120, 'PALATINUS', {
@@ -40,6 +41,12 @@ export class TitleScene extends Phaser.Scene {
     this.add
       .text(W / 2, 215, 'A real-time strategy RPG in the spirit of the classics', {
         fontFamily: FONT, fontSize: '13px', color: '#8890a8',
+      })
+      .setOrigin(0.5);
+    const authentic = datasetSource() === 'ob64';
+    this.add
+      .text(W / 2, 240, `Class data: ${datasetLabel()} · ${allClasses().length} classes`, {
+        fontFamily: FONT, fontSize: '11px', color: authentic ? '#90d890' : '#68708a',
       })
       .setOrigin(0.5);
 

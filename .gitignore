@@ -2,6 +2,16 @@ node_modules/
 dist/
 *.log
 
+# Data extracted from a user's own Ogre Battle 64 ROM (npm run extract:ob64).
+# Copyrighted game data: generated locally, never committed.
+public/ob64/
+# ROM dumps themselves
+*.z64
+*.n64
+*.v64
+*.sfc
+*.smc
+
 # Prerequisites
 *.d
 

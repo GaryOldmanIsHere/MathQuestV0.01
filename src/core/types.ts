@@ -8,6 +8,15 @@ export type DamageType = 'melee' | 'ranged' | 'magic' | 'heal';
 
 export type MoveType = 'foot' | 'fast' | 'fly';
 
+/** The elements, in the order Ogre Battle 64's own element table lists them. */
+export const ELEMENTS = ['wind', 'flame', 'earth', 'water', 'virtue', 'bane', 'drakonite'] as const;
+export type Element = (typeof ELEMENTS)[number];
+
+/** What a class resists: physical blows plus each magical element. 50 = neutral. */
+export const RESIST_KEYS = ['physical', 'wind', 'flame', 'earth', 'water', 'virtue', 'bane'] as const;
+export type ResistKey = (typeof RESIST_KEYS)[number];
+export type Resistances = Record<ResistKey, number>;
+
 export interface Stats {
   hp: number;
   str: number;
@@ -15,7 +24,14 @@ export interface Stats {
   int: number;
   men: number; // mentality: magic defense
   agi: number;
+  dex: number; // dexterity: accuracy and the bow
 }
+
+/** Stats a class change can demand a minimum of. */
+export type GateStat = Exclude<keyof Stats, 'hp'>;
+
+/** Spells whose actual form depends on the caster's own element. */
+export type SpellKind = 'basic' | 'advanced' | 'status' | 'summon';
 
 export interface RowAttack {
   name: string;
@@ -23,15 +39,32 @@ export interface RowAttack {
   count: number; // number of strikes
   power: number; // multiplier on STR (melee/ranged) or INT (magic/heal)
   target: 'one' | 'row' | 'all' | 'allies';
-  element?: 'fire' | 'ice' | 'thunder' | 'dark' | 'holy';
+  element?: Element;
+  /**
+   * When set, the attack is a slot rather than a fixed spell: it resolves at
+   * battle time to the spell of this kind matching the caster's element.
+   */
+  spell?: SpellKind;
 }
 
 export interface PromotionReq {
   classId: string;
   level: number;
-  cha?: number; // minimum charisma
+  /** Minimum stat values. */
+  stats?: Partial<Record<GateStat, number>>;
   aliMin?: number; // minimum alignment (0 chaotic .. 100 lawful)
   aliMax?: number; // maximum alignment
+}
+
+/**
+ * Promotion lineage, as Ogre Battle 64 records it: below `tier2Level` a unit of
+ * this class is still its tier-1 ancestor, below `tier3Level` its tier-2 one.
+ */
+export interface Lineage {
+  tier1?: string;
+  tier2Level?: number;
+  tier2?: string;
+  tier3Level?: number;
 }
 
 export interface ClassDef {
@@ -48,6 +81,18 @@ export interface ClassDef {
   preferredRow: Row;
   sprite: string; // sprite sheet key
   palette: string; // palette variant
+  resist: Resistances;
+  /** Large units (dragons, golems, great beasts) fill two places in a squad. */
+  size: 1 | 2;
+  /** Fixed element (monsters); humans roll theirs when recruited. */
+  element?: Element;
+  lineage?: Lineage;
+  startAlignment?: number;
+  startLuck?: number;
+  /** Whether the player can reach this class (story and boss classes cannot). */
+  playable: boolean;
+  /** Where the definition came from: the user's ROM or the built-in originals. */
+  source: 'ob64' | 'builtin';
 }
 
 export interface Character {
@@ -57,8 +102,9 @@ export interface Character {
   gender: Gender;
   level: number;
   exp: number;
-  cha: number; // charisma 0-100
+  luk: number; // luck 0-100
   ali: number; // alignment 0 (chaotic) - 100 (lawful)
+  element: Element;
   stats: Stats;
   hp: number; // current hp
   kills: number;

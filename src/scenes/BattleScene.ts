@@ -3,7 +3,7 @@ import { getState } from '../core/state';
 import type { BattleEvent } from '../core/battle';
 import { simulateBattle } from '../core/battle';
 import type { Character, Squad } from '../core/types';
-import { classOf } from '../data/classes';
+import { classOf } from '../data/registry';
 import { drawPanel, FONT, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/ui';
 
 // Plays back one engagement: two 3x3 formations face each other and the

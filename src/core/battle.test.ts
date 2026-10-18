@@ -3,7 +3,7 @@ import { elementBonus, simulateBattle } from './battle';
 import { makeCharacter } from './character';
 import { makeSquad } from './squad';
 import type { Character, Squad } from './types';
-import { classOf } from '../data/classes';
+import { classOf } from '../data/registry';
 
 // Builds a squad with members pinned to exact cells so row behaviour is
 // deterministic. Cell layout: col 0 = back, 1 = mid, 2 = front.

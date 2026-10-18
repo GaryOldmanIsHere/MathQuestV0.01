@@ -13,6 +13,45 @@ npm test         # run the simulation test suite
 npm run build    # type-check + production bundle into dist/
 ```
 
+## Playing on Ogre Battle 64's own data
+
+If you own Ogre Battle 64: Person of Lordly Caliber (USA, Rev A), Palatinus
+can run on the real game's class tables instead of its built-in originals:
+
+```bash
+npm run extract:ob64 -- path/to/your/ogre-battle-64.z64   # .n64 and .v64 work too
+npm run dev
+```
+
+The title screen confirms it with *Class data: Ogre Battle 64 · 106 classes*.
+
+**What stays on your machine.** The extractor reads your ROM and writes
+`public/ob64/data.json`. That folder is git-ignored and must stay that way: it
+is copyrighted game data, and this repository only ever contains the code that
+reads it. The ROM dump itself is ignored too. Note that `npm run build` copies
+`public/` into `dist/`, so don't publish a build made while the data is
+present. Without the extracted file, the game simply runs on its originals,
+which is also what CI and anyone else who clones the repo gets.
+
+The extractor checks the dump's SHA-1 (`d26b14be…`) and refuses anything else,
+because every table is read from a fixed address in that exact revision.
+
+**What comes over, and how faithfully.** Everything below was located in the
+ROM and its layout confirmed against the game's own code, using the
+disassembly from the [OB64 recompilation project](https://github.com/lfarroco/ogre-battle-64-recomp):
+
+| From the ROM, directly | Derived from ROM structure | Inferred, and labelled as such |
+|---|---|---|
+| 166 class records: stats and per-level growth, starting alignment and Luck, resistances to physical and the six elements, size, movement type, element, default equipment | The player's class tree, from each class's promotion lineage | Which stats a class change demands and its alignment window: a rule fitted to the documented Knight, Berserker, Wizard and Paladin gates, which it reproduces exactly |
+| Each row's attack and hit count | Each element's spell family (a Wizard of Earth casts Acid Vapor; of Flame, Fireball) from the shape of the attack table | How resistances scale damage, until the battle formula is decoded |
+| 159 attacks: category, element, target, effect | Story and boss classes, kept out of the player's tree by where they sit in the table | |
+| Level gates, lineage, and the level-up roll (growth + 0–2 per stat, capped at 999) | | |
+
+With the data loaded, Ogre Battle 64's own rules apply: units grow as whichever
+class their lineage says they were at each level, a class change keeps a unit's
+stats, an enemy "Paladin" below level 15 takes the field as the Knight it still
+is, and every human recruit rolls an element that decides their spells.
+
 ## What's implemented
 
 **Overworld (free real-time march).** An open strategic map with a player HQ,
@@ -69,23 +108,28 @@ requirements, highlighted green when the character qualifies.
 ```
 src/
   core/         pure simulation, no Phaser
-    types.ts       shared types, grid/row mapping
-    classes*       (see data/) 
-    character.ts   stat derivation, exp, promotion gates, alignment drift
+    types.ts       shared types, grid/row mapping, elements and resistances
+    character.ts   lineage, stat generation and level-up rolls, class change, alignment
     squad.ts       formation grid, march speed, auto-placement
     battle.ts      engagement simulator; returns an animatable event log
     terrain.ts     terrain grid, road stamping, per-tile movement costs
     movement.ts    free-form marching, stronghold occupancy, retreat
     state.ts       campaign state and starting scenario
   data/
-    classes.ts     the class tree: stats, growths, row attacks, promotions
+    classes.ts     the built-in class tree: stats, growths, row attacks, promotions
+    registry.ts    the active dataset (built-in or extracted); every class lookup goes here
     names.ts       name pools and the seeded RNG
+  ob64/
+    decode.ts      reads Ogre Battle 64's class, attack and element tables from a ROM
+    convert.ts     turns them into Palatinus classes: roster, promotions, spells, gates
+tools/
+  extract-ob64.ts  `npm run extract:ob64`: verifies the dump, writes public/ob64/
   gfx/
-    pixels.ts      pixel sprite templates + per-class palette swaps
+    pixels.ts      pixel sprite templates, per-class palettes, stand-in art for the rest
     terrain.ts     procedural terrain tiles and stronghold icons
     ui.ts          menu panel styling
   scenes/
-    BootScene      renders all textures at startup
+    BootScene      loads extracted data if present, renders all textures
     TitleScene
     OverworldScene march orders, capture, enemy AI, encounter detection
     BattleScene    plays back the simulated engagement
@@ -100,11 +144,11 @@ without a single binary asset.
 
 ## Tests
 
-`npm test` runs 72 tests over the simulation core — the rules, not the
+`npm test` runs 116 tests over the simulation core — the rules, not the
 rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,
-that promotions gate on level, charisma, and alignment independently (a
+that promotions gate on level, stats, and alignment independently (a
 chaotic Fighter is locked out of Knight but can reach Berserker), that
 alignment drifts in the right direction and stays in bounds, and that a squad
 marches at its slowest member's pace.
@@ -128,6 +172,20 @@ breaking the holy-damage bonus, front-rank targeting, road stamping, flier
 terrain immunity, and movement normalisation each produced failures, which is
 what confirms those tests are actually testing something. Two early tests were
 caught passing for the wrong reasons this way and rewritten.
+
+The Ogre Battle 64 path has its own coverage. The decoder runs against a
+synthetic cartridge built in memory with the same layout, so CI never needs a
+ROM: stat and growth fields, the seven resistances, lineage bytes, the
+`0x10` line-break control code in two-line names. The converter's tests check
+that promotions come out of lineage, that story classes stay out of the
+player's tree, that heals are Virtue magic and not merely the heal effect byte,
+and that the inferred gates reproduce the four documented requirements. The
+rules tests cover lineage downgrade, growth as each class held along the way,
+the 0–2 level-up roll (including that it actually varies), class change keeping
+stats, and element-resolved spells. Where `npm run extract:ob64` has been run,
+an extra suite checks the real data: Fighter's eight class changes and
+Amazon's six, every promotion pointing a tier up within the same gender, clean
+names, and the great monsters flagged as large.
 
 ## Balance knobs
 

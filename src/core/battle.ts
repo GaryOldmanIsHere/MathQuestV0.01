@@ -1,5 +1,5 @@
-import type { Character, Row, RowAttack, Squad } from './types';
-import { classOf } from '../data/classes';
+import type { Character, ResistKey, Row, RowAttack, Squad } from './types';
+import { classOf, resolveSpell } from '../data/registry';
 import { grantExp, shiftAlignment } from './character';
 import { memberRow, squadMemberIds } from './squad';
 import { rng } from '../data/names';
@@ -29,10 +29,30 @@ export interface BattleResult {
   levelUps: Map<number, number>;
 }
 
+/**
+ * How hard an attack lands given the target's class resistance to its element
+ * (physical for unelemented blows). 50 is neutral; each point below makes the
+ * hit 2% stronger and each point above 2% weaker, so the undead's low Virtue
+ * resistance turns holy magic into a scourge. The resistances are the game's;
+ * this scaling is provisional until the battle formula itself is decoded.
+ */
 export function elementBonus(att: RowAttack, target: Character): number {
-  // Holy scourges the undead; a light elemental rock-paper otherwise ignored.
-  if (att.element === 'holy' && (target.classId === 'skeleton' || target.classId === 'ghost')) return 1.8;
-  return 1;
+  // Drakonite (the dragons' own element) has no resistance column; it lands as physical.
+  const key: ResistKey = att.element && att.element !== 'drakonite' ? att.element : 'physical';
+  const resist = classOf(target.classId).resist[key] ?? 50;
+  return Math.max(0.25, Math.min(2, 1 + (50 - resist) / 50));
+}
+
+/**
+ * The attack a combatant actually makes. Spell slots (a Wizard's magic, a
+ * Witch's hex) become the spell of that kind for the caster's own element.
+ */
+export function resolveAttack(attack: RowAttack, caster: Character): RowAttack {
+  if (!attack.spell) return attack;
+  const spell = resolveSpell(attack.spell, caster.element);
+  return spell
+    ? { ...spell, count: attack.count }
+    : { ...attack, element: caster.element, spell: undefined };
 }
 
 function damageOf(att: RowAttack, actor: Character, target: Character): number {
@@ -88,11 +108,12 @@ export function simulateBattle(
     const isAttacker = actor.squad.id === attacker.squad.id;
     const allies = isAttacker ? atk : def;
     const enemies = isAttacker ? def : atk;
-    const attack = classOf(actor.char.classId).attacks[actor.row];
-    if (!attack) {
+    const slot = classOf(actor.char.classId).attacks[actor.row];
+    if (!slot) {
       events.push({ kind: 'skip', actorId: actor.char.id });
       continue;
     }
+    const attack = resolveAttack(slot, actor.char);
 
     if (attack.type === 'heal') {
       const hurt = allies

@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { getState } from '../core/state';
-import type { Character, Squad } from '../core/types';
+import type { Character, Element, Squad } from '../core/types';
 import { CELL_ROW } from '../core/types';
-import { classOf } from '../data/classes';
+import { classOf } from '../data/registry';
 import { availablePromotions, allPromotions, meetsReq, promote } from '../core/character';
 import { squadMemberIds } from '../core/squad';
+import { resolveAttack } from '../core/battle';
 import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, TITLE_STYLE } from '../gfx/ui';
 
 // Army organization: reposition members on the 3x3 grid and promote
@@ -138,68 +139,81 @@ export class OrganizeScene extends Phaser.Scene {
     const def = classOf(c.classId);
     const x = 524;
     this.track(this.add.image(x + 16, 96, `unit-${def.palette}`).setScale(3.2));
-    this.track(this.add.text(x + 44, 76, c.name, TEXT_STYLE));
-    this.track(this.add.text(x + 44, 96, `${def.name}  Lv ${c.level}`, { ...SMALL_STYLE, color: '#c8b458' }));
+    this.track(this.add.text(x + 44, 74, c.name, TEXT_STYLE));
+    this.track(this.add.text(x + 44, 93, `${def.name}  Lv ${c.level}`, { ...SMALL_STYLE, color: '#c8b458' }));
+    const tags = [cap(c.element), def.size === 2 ? 'Large' : '', def.moveType === 'fly' ? 'Flies' : '']
+      .filter(Boolean).join(' · ');
+    this.track(this.add.text(x + 44, 108, tags, { ...SMALL_STYLE, fontSize: '10px', color: ELEMENT_COLOR[c.element] }));
+
     const aliWord = c.ali >= 60 ? 'Lawful' : c.ali <= 40 ? 'Chaotic' : 'Neutral';
     this.track(
       this.add.text(
-        x, 130,
-        `HP ${c.hp}/${c.stats.hp}   STR ${c.stats.str}  VIT ${c.stats.vit}\n` +
-        `INT ${c.stats.int}  MEN ${c.stats.men}  AGI ${c.stats.agi}\n` +
-        `CHA ${c.cha}   ALI ${c.ali} (${aliWord})   Kills ${c.kills}`,
-        { ...SMALL_STYLE, lineSpacing: 4 },
+        x, 128,
+        `HP ${c.hp}/${c.stats.hp}\n` +
+        `STR ${pad(c.stats.str)} VIT ${pad(c.stats.vit)} INT ${pad(c.stats.int)}\n` +
+        `MEN ${pad(c.stats.men)} AGI ${pad(c.stats.agi)} DEX ${pad(c.stats.dex)}\n` +
+        `ALI ${c.ali} (${aliWord})  LUK ${c.luk}  Kills ${c.kills}`,
+        { ...SMALL_STYLE, lineSpacing: 3 },
       ),
     );
-    this.track(this.add.text(x, 186, def.desc, { ...SMALL_STYLE, fontSize: '10px', color: '#8890a8', wordWrap: { width: 250 } }));
 
-    // attacks by row
+    // attacks by row, as this character actually makes them
     const rows = (['front', 'mid', 'back'] as const)
       .map((r) => {
-        const a = def.attacks[r];
-        return a ? `${r.toUpperCase().padEnd(5)} ${a.name} x${a.count}` : `${r.toUpperCase().padEnd(5)} —`;
+        const slot = def.attacks[r];
+        if (!slot) return `${r.toUpperCase().padEnd(5)} —`;
+        const a = resolveAttack(slot, c);
+        return `${r.toUpperCase().padEnd(5)} ${a.name} x${a.count}`;
       })
       .join('\n');
-    this.track(this.add.text(x, 226, rows, { ...SMALL_STYLE, fontSize: '10px', color: '#a8c8e8', lineSpacing: 3 }));
+    this.track(this.add.text(x, 204, rows, { ...SMALL_STYLE, fontSize: '10px', color: '#a8c8e8', lineSpacing: 3 }));
 
     // promotions
-    this.track(this.add.text(x, 288, 'CLASS CHANGE', { ...SMALL_STYLE, color: '#c8b458' }));
+    this.track(this.add.text(x, 254, 'CLASS CHANGE', { ...SMALL_STYLE, color: '#c8b458' }));
     const promos = allPromotions(c);
     if (promos.length === 0) {
-      this.track(this.add.text(x, 308, 'This class has mastered its path.', { ...SMALL_STYLE, fontSize: '10px', color: '#8890a8' }));
+      this.track(this.add.text(x, 274, 'This class has mastered its path.', { ...SMALL_STYLE, fontSize: '10px', color: '#8890a8' }));
       return;
     }
     const eligible = new Set(availablePromotions(c).map((p) => p.classId));
-    promos.slice(0, 5).forEach((req, i) => {
+    promos.slice(0, 8).forEach((req, i) => {
       const target = classOf(req.classId);
       const ok = eligible.has(req.classId);
-      const y = 310 + i * 40;
-      const reqs = [
-        `Lv${req.level}`,
-        req.cha !== undefined ? `CHA${req.cha}+` : '',
-        req.aliMin !== undefined && req.aliMax !== undefined
-          ? `ALI ${req.aliMin}-${req.aliMax}`
-          : req.aliMin !== undefined
-            ? `ALI ${req.aliMin}+`
-            : req.aliMax !== undefined
-              ? `ALI ${req.aliMax}-`
-              : '',
-      ].filter(Boolean).join('  ');
+      const y = 274 + i * 29;
+      const gates = Object.entries(req.stats ?? {}).map(([k, v]) => `${k.toUpperCase()}${v}`);
+      const ali = req.aliMin !== undefined && req.aliMax !== undefined
+        ? `ALI${req.aliMin}-${req.aliMax}`
+        : req.aliMin !== undefined ? `ALI${req.aliMin}+` : req.aliMax !== undefined ? `ALI${req.aliMax}-` : '';
+      const reqs = [`Lv${req.level}`, ...gates, ali].filter(Boolean).join(' ');
       const box = this.track(
-        this.add.rectangle(x + 126, y + 10, 252, 34, ok ? 0x2a4a2a : 0x1a2038).setStrokeStyle(1, ok ? 0x90e090 : 0x484a6a),
+        this.add.rectangle(x + 126, y + 11, 252, 27, ok ? 0x2a4a2a : 0x1a2038).setStrokeStyle(1, ok ? 0x90e090 : 0x484a6a),
       );
-      this.track(this.add.image(x + 18, y + 10, `unit-${target.palette}`).setScale(1.8));
+      this.track(this.add.image(x + 12, y + 11, `unit-${target.palette}`).setScale(1.3));
       this.track(
-        this.add.text(x + 36, y - 2, target.name, { ...SMALL_STYLE, fontSize: '11px', color: ok ? '#c0f0c0' : '#8890a8' }),
+        this.add.text(x + 26, y, target.name, { ...SMALL_STYLE, fontSize: '10px', color: ok ? '#c0f0c0' : '#a8acc0' }),
       );
-      this.track(this.add.text(x + 36, y + 12, reqs, { ...SMALL_STYLE, fontSize: '9px', color: '#8890a8' }));
+      this.track(this.add.text(x + 26, y + 12, reqs, { ...SMALL_STYLE, fontSize: '9px', color: '#8890a8' }));
       if (ok && meetsReq(c, req)) {
         box.setInteractive({ useHandCursor: true });
         box.on('pointerdown', () => {
           promote(c, req.classId);
           this.refresh();
         });
-        this.track(this.add.text(x + 210, y + 4, 'PROMOTE', { ...SMALL_STYLE, fontSize: '9px', color: '#f0e090' }));
+        this.track(this.add.text(x + 206, y + 1, 'PROMOTE', { ...SMALL_STYLE, fontSize: '9px', color: '#f0e090' }));
       }
     });
   }
 }
+
+function pad(n: number): string {
+  return String(n).padStart(3, ' ');
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+const ELEMENT_COLOR: Record<Element, string> = {
+  wind: '#a8e0f0', flame: '#f0a070', earth: '#c8b078', water: '#88b0f0',
+  virtue: '#f0e8a8', bane: '#c090e0', drakonite: '#e0c060',
+};

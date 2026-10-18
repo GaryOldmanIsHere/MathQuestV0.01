@@ -48,35 +48,35 @@ export function newCampaign(): GameState {
   // --- Player battalion ---
   const hq = nodePos(nodes, 0);
   {
-    const leader = reg(makeCharacter('knight', 6, { name: 'Aldric', ali: 68, cha: 62 }));
+    const leader = reg(makeCharacter('knight', 6, { name: 'Aldric', ali: 68 }));
     const sq = makeSquad('player', [], leader, 0, hq.x, hq.y, 'Azure Wing');
     [leader,
       reg(makeCharacter('fighter', 5, { ali: 55 })),
       reg(makeCharacter('fighter', 4, { ali: 45 })),
       reg(makeCharacter('cleric', 5, { ali: 70 })),
-      reg(makeCharacter('wizard', 5, { ali: 40 })),
+      reg(makeCharacter('wizard', 6, { ali: 40 })),
     ].forEach((c) => autoPlace(sq, c));
     squads.push(sq);
   }
   {
-    const leader = reg(makeCharacter('valkyrie', 6, { name: 'Brienne', ali: 60, cha: 58 }));
+    const leader = reg(makeCharacter('valkyrie', 6, { name: 'Brienne', ali: 60 }));
     const sq = makeSquad('player', [], leader, 0, hq.x, hq.y, 'Silver Talon');
     [leader,
       reg(makeCharacter('amazon', 5, { ali: 50 })),
-      reg(makeCharacter('archer', 5, { ali: 48 })),
-      reg(makeCharacter('archer', 4, { ali: 52 })),
-      reg(makeCharacter('sorceress', 5, { ali: 32 })),
+      reg(makeCharacter('archer', 6, { ali: 48 })),
+      reg(makeCharacter('archer', 6, { ali: 52 })),
+      reg(makeCharacter('sorceress', 6, { ali: 32 })),
     ].forEach((c) => autoPlace(sq, c));
     squads.push(sq);
   }
   {
-    const leader = reg(makeCharacter('berserker', 6, { name: 'Falk', ali: 30, cha: 55 }));
+    const leader = reg(makeCharacter('berserker', 6, { name: 'Falk', ali: 30 }));
     const sq = makeSquad('player', [], leader, 0, hq.x, hq.y, 'Grey Wolves');
     [leader,
       reg(makeCharacter('fighter', 5, { ali: 35 })),
       reg(makeCharacter('ninja', 5, { ali: 25 })),
       reg(makeCharacter('amazon', 4, { ali: 44 })),
-      reg(makeCharacter('cleric', 4, { ali: 62 })),
+      reg(makeCharacter('cleric', 5, { ali: 62 })),
     ].forEach((c) => autoPlace(sq, c));
     squads.push(sq);
   }
@@ -90,11 +90,11 @@ export function newCampaign(): GameState {
     squads.push(sq);
   };
 
-  enemyAt(3, 'Highcliff Garrison', [['knight', 5], ['fighter', 4], ['fighter', 4], ['wizard', 4]]);
-  enemyAt(6, 'Stonegate Watch', [['phalanx', 6], ['fighter', 5], ['skeleton', 5], ['witch', 5]]);
-  enemyAt(7, 'Ash Raiders', [['berserker', 6], ['hellhound', 5], ['hellhound', 5], ['sorceress', 5]]);
-  enemyAt(4, 'Border Patrol', [['fighter', 4], ['fighter', 4], ['amazon', 4], ['cleric', 4]]);
-  enemyAt(8, 'Verlaine Guard', [['black-knight', 9], ['golem', 7], ['ghost', 6], ['mage', 7], ['cleric', 6]]);
+  enemyAt(3, 'Highcliff Garrison', [['knight', 6], ['fighter', 4], ['fighter', 4], ['wizard', 6]]);
+  enemyAt(6, 'Stonegate Watch', [['phalanx', 7], ['fighter', 5], ['skeleton', 5], ['witch', 7]]);
+  enemyAt(7, 'Ash Raiders', [['berserker', 6], ['hellhound', 5], ['hellhound', 5], ['sorceress', 6]]);
+  enemyAt(4, 'Border Patrol', [['fighter', 4], ['fighter', 4], ['amazon', 4], ['cleric', 5]]);
+  enemyAt(8, 'Verlaine Guard', [['black-knight', 9], ['golem', 7], ['ghost', 6], ['wizard', 7], ['cleric', 6]]);
   enemyAt(8, 'Dragon Wing', [['wyvern', 7], ['dragon-tamer', 7], ['archer', 6]]);
 
   return { chars, squads, nodes, goth: 500, day: 1, phase: 'playing' };

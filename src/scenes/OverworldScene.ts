@@ -1,10 +1,9 @@
 import Phaser from 'phaser';
 import { getState } from '../core/state';
 import type { MapNode, Squad } from '../core/types';
-import { classOf } from '../data/classes';
+import { classOf } from '../data/registry';
 import { squadMemberIds, squadMoveType, moveSpeed } from '../core/squad';
 import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/ui';
-import { CLASS_ART } from '../gfx/pixels';
 import { rng } from '../data/names';
 import {
   haltSquad, orderTo, retreatTarget, snapOrder, stepToward, strongholdAt,
@@ -349,7 +348,7 @@ export class OverworldScene extends Phaser.Scene {
   private makeView(sq: Squad): void {
     const st = getState();
     const leader = st.chars.get(sq.leaderId)!;
-    const palette = CLASS_ART[classOf(leader.classId).palette] ? classOf(leader.classId).palette : 'fighter';
+    const palette = classOf(leader.classId).palette;
     const ring = this.add
       .circle(sq.x, sq.y + 6, 13, sq.side === 'player' ? 0x4a6ae0 : 0xd04838, 0.45)
       .setDepth(9);

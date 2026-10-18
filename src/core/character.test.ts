@@ -9,12 +9,13 @@ import {
   shiftAlignment,
   statsAt,
 } from './character';
-import { CLASSES, classOf } from '../data/classes';
+import { CLASSES } from '../data/classes';
+import { classOf } from '../data/registry';
 
 describe('promotion gating', () => {
   it('opens Knight to a lawful Fighter but never to a chaotic one', () => {
-    const lawful = makeCharacter('fighter', 8, { ali: 80, cha: 70 });
-    const chaotic = makeCharacter('fighter', 8, { ali: 10, cha: 70 });
+    const lawful = makeCharacter('fighter', 8, { ali: 80 });
+    const chaotic = makeCharacter('fighter', 8, { ali: 10 });
 
     const lawfulIds = availablePromotions(lawful).map((p) => p.classId);
     const chaoticIds = availablePromotions(chaotic).map((p) => p.classId);
@@ -27,24 +28,32 @@ describe('promotion gating', () => {
     expect(lawfulIds).not.toContain('berserker');
   });
 
-  it('blocks on level even when alignment and charisma qualify', () => {
-    const c = makeCharacter('fighter', 1, { ali: 80, cha: 90 });
+  it('blocks on level even when alignment qualifies', () => {
+    const c = makeCharacter('fighter', 1, { ali: 80 });
     expect(availablePromotions(c).map((p) => p.classId)).not.toContain('knight');
     c.level = 5;
     expect(availablePromotions(c).map((p) => p.classId)).toContain('knight');
   });
 
-  it('blocks on charisma even when level and alignment qualify', () => {
-    const c = makeCharacter('fighter', 9, { ali: 80, cha: 20 });
-    expect(availablePromotions(c).map((p) => p.classId)).not.toContain('knight');
-    c.cha = 60;
-    expect(availablePromotions(c).map((p) => p.classId)).toContain('knight');
+  it('blocks on a stat minimum even when level and alignment qualify', () => {
+    // Ogre Battle 64 gates class change on stats; the rule is the same for any class.
+    const c = makeCharacter('fighter', 9, { ali: 80 });
+    const req = { classId: 'knight', level: 1, stats: { str: c.stats.str + 1 } };
+    expect(meetsReq(c, req)).toBe(false);
+    c.stats.str += 1;
+    expect(meetsReq(c, req)).toBe(true);
+  });
+
+  it('requires every gated stat, not just one of them', () => {
+    const c = makeCharacter('fighter', 9, { ali: 80 });
+    const req = { classId: 'knight', level: 1, stats: { str: c.stats.str, int: c.stats.int + 5 } };
+    expect(meetsReq(c, req)).toBe(false); // STR is met, INT is not
   });
 
   it('honours both ends of a bounded alignment window', () => {
     // Beast Tamer requires ALI 25-65
     const req = classOf('fighter').promotesTo.find((p) => p.classId === 'beast-tamer')!;
-    const c = makeCharacter('fighter', 9, { ali: 45, cha: 80 });
+    const c = makeCharacter('fighter', 9, { ali: 45 });
     expect(meetsReq(c, req)).toBe(true);
     c.ali = 20;
     expect(meetsReq(c, req)).toBe(false); // too chaotic
@@ -53,17 +62,17 @@ describe('promotion gating', () => {
   });
 
   it('refuses a promotion the character has not earned', () => {
-    const c = makeCharacter('fighter', 2, { ali: 80, cha: 90 });
+    const c = makeCharacter('fighter', 2, { ali: 80 });
     expect(() => promote(c, 'knight')).toThrow();
   });
 
   it('refuses a promotion that is not on this class\'s tree', () => {
-    const c = makeCharacter('fighter', 30, { ali: 80, cha: 90 });
+    const c = makeCharacter('fighter', 30, { ali: 80 });
     expect(() => promote(c, 'freya')).toThrow();
   });
 
   it('re-derives stats from the new class on a successful promotion', () => {
-    const c = makeCharacter('fighter', 8, { ali: 80, cha: 70 });
+    const c = makeCharacter('fighter', 8, { ali: 80 });
     promote(c, 'knight');
     expect(c.classId).toBe('knight');
     expect(c.level).toBe(8); // level is preserved

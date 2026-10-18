@@ -1,42 +1,98 @@
-import type { Character, Gender, PromotionReq, Stats } from './types';
-import { classOf } from '../data/classes';
+import type { Character, ClassDef, Element, GateStat, PromotionReq, Stats } from './types';
+import { classOf } from '../data/registry';
 import { FEMALE_NAMES, MALE_NAMES, MONSTER_NAMES, pick, rng } from '../data/names';
 
 let nextCharId = 1;
 
+const STAT_KEYS: (keyof Stats)[] = ['hp', 'str', 'vit', 'int', 'men', 'agi', 'dex'];
+
+/** Ogre Battle 64 caps every stat here (func_8016EBC4). */
+export const STAT_CAP = 999;
+
+/** Human recruits roll one of the four natural elements; monsters have their own. */
+const RECRUIT_ELEMENTS: Element[] = ['wind', 'flame', 'earth', 'water'];
+
+/**
+ * The class a unit of `classId` actually is at `level`. Ogre Battle 64 fields
+ * a "Paladin" below level 15 as a Knight, and below 6 as a Fighter
+ * (func_8016EA54). Classes without lineage are always themselves.
+ */
+export function classAtLevel(classId: string, level: number): string {
+  const l = classOf(classId).lineage;
+  if (!l) return classId;
+  if (l.tier1 && l.tier2Level && level < l.tier2Level) return l.tier1;
+  if (l.tier2 && l.tier3Level && level < l.tier3Level) return l.tier2;
+  return classId;
+}
+
+/**
+ * One level's gains for a class, rolled as the game rolls them: the class's
+ * growth plus 0, 1 or 2 (two coin flips) per stat (func_8016EBC4).
+ */
+export function rollGrowth(def: ClassDef): Stats {
+  const out = {} as Stats;
+  for (const k of STAT_KEYS) {
+    out[k] = def.growth[k] + (rng() < 0.5 ? 0 : 1) + (rng() < 0.5 ? 0 : 1);
+  }
+  return out;
+}
+
+function addCapped(a: Stats, b: Stats): Stats {
+  const out = {} as Stats;
+  for (const k of STAT_KEYS) out[k] = Math.min(STAT_CAP, a[k] + b[k]);
+  return out;
+}
+
+/** The built-in classes' deterministic stats: base plus growth for each level past the first. */
+export function statsAt(classId: string, level: number): Stats {
+  const def = classOf(classId);
+  const lv = level - 1;
+  const out = {} as Stats;
+  for (const k of STAT_KEYS) out[k] = Math.floor(def.base[k] + def.growth[k] * lv);
+  return out;
+}
+
+/**
+ * A new unit's stats. Ogre Battle 64 classes are raised the way the game
+ * raises them (func_8016F13C): start from the base stats of the class the unit
+ * was at level 1, then one level-up per level, each grown as the class the
+ * unit was *at that level*. A level-20 Paladin grew as a Fighter to 6, a
+ * Knight to 15, and a Paladin after.
+ */
+export function generateStats(classId: string, level: number): Stats {
+  if (classOf(classId).source !== 'ob64') return statsAt(classId, level);
+  let stats = { ...classOf(classAtLevel(classId, 1)).base };
+  for (let lv = 1; lv < level; lv++) {
+    stats = addCapped(stats, rollGrowth(classOf(classAtLevel(classId, lv))));
+  }
+  return stats;
+}
+
 export function makeCharacter(classId: string, level: number, opts?: {
   name?: string;
   ali?: number;
-  cha?: number;
+  luk?: number;
+  element?: Element;
 }): Character {
-  const def = classOf(classId);
-  const stats = statsAt(classId, level);
+  const requested = classOf(classId);
+  // The game fields a high class below its level as the ancestor it still is.
+  const actualId = requested.source === 'ob64' ? classAtLevel(classId, level) : classId;
+  const def = classOf(actualId);
+  const stats = generateStats(classId, level);
   const namePool = def.gender === 'M' ? MALE_NAMES : def.gender === 'F' ? FEMALE_NAMES : MONSTER_NAMES;
   return {
     id: nextCharId++,
     name: opts?.name ?? pick(namePool),
-    classId,
+    classId: actualId,
     gender: def.gender,
     level,
     exp: 0,
-    cha: opts?.cha ?? 40 + Math.floor(rng() * 30),
-    ali: opts?.ali ?? 30 + Math.floor(rng() * 40),
+    luk: opts?.luk ?? def.startLuck ?? 50,
+    ali: opts?.ali ?? def.startAlignment ?? 30 + Math.floor(rng() * 40),
+    element: opts?.element ?? def.element ?? pick(RECRUIT_ELEMENTS),
     stats,
     hp: stats.hp,
     kills: 0,
-  };
-}
-
-export function statsAt(classId: string, level: number): Stats {
-  const def = classOf(classId);
-  const lv = level - 1;
-  return {
-    hp: Math.floor(def.base.hp + def.growth.hp * lv),
-    str: Math.floor(def.base.str + def.growth.str * lv),
-    vit: Math.floor(def.base.vit + def.growth.vit * lv),
-    int: Math.floor(def.base.int + def.growth.int * lv),
-    men: Math.floor(def.base.men + def.growth.men * lv),
-    agi: Math.floor(def.base.agi + def.growth.agi * lv),
   };
 }
 
@@ -54,8 +110,14 @@ export function grantExp(c: Character, amount: number): number {
     ups++;
   }
   if (ups > 0) {
+    const def = classOf(c.classId);
     const hpRatio = c.stats.hp > 0 ? c.hp / c.stats.hp : 1;
-    c.stats = statsAt(c.classId, c.level);
+    if (def.source === 'ob64') {
+      // Each level grows as the unit's current class, on top of what it has.
+      for (let i = 0; i < ups; i++) c.stats = addCapped(c.stats, rollGrowth(def));
+    } else {
+      c.stats = statsAt(c.classId, c.level);
+    }
     c.hp = Math.max(1, Math.floor(c.stats.hp * hpRatio));
   }
   return ups;
@@ -63,7 +125,9 @@ export function grantExp(c: Character, amount: number): number {
 
 export function meetsReq(c: Character, req: PromotionReq): boolean {
   if (c.level < req.level) return false;
-  if (req.cha !== undefined && c.cha < req.cha) return false;
+  for (const [k, min] of Object.entries(req.stats ?? {}) as [GateStat, number][]) {
+    if (c.stats[k] < min) return false;
+  }
   if (req.aliMin !== undefined && c.ali < req.aliMin) return false;
   if (req.aliMax !== undefined && c.ali > req.aliMax) return false;
   return true;
@@ -77,13 +141,18 @@ export function allPromotions(c: Character): PromotionReq[] {
   return classOf(c.classId).promotesTo;
 }
 
-/** Class change: stats re-derive from the new class at the current level. */
+/**
+ * Class change. In Ogre Battle 64 a unit keeps its own stats and only its
+ * future growth changes; the built-in classes re-derive stats instead.
+ */
 export function promote(c: Character, classId: string): void {
   const req = classOf(c.classId).promotesTo.find((r) => r.classId === classId);
   if (!req || !meetsReq(c, req)) throw new Error(`${c.name} cannot become ${classId}`);
   c.classId = classId;
-  c.stats = statsAt(classId, c.level);
-  c.hp = c.stats.hp;
+  if (classOf(classId).source !== 'ob64') {
+    c.stats = statsAt(classId, c.level);
+    c.hp = c.stats.hp;
+  }
 }
 
 /** OB64-style alignment drift: felling stronger foes is honorable. */

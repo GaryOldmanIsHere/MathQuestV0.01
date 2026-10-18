@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { ClassDef } from '../core/types';
 
 // Hand-authored 12x16 chibi sprite templates + per-class palette swaps,
 // rendered into textures at boot. All art is original, in an N64-era
@@ -267,26 +268,94 @@ export const CLASS_ART: Record<string, { template: string; palette: Palette }> =
 export const SPRITE_W = 12;
 export const SPRITE_H = 16;
 
-/** Render one palette-swapped template into a texture named `unit-<key>`. */
-export function buildUnitTextures(scene: Phaser.Scene): void {
-  for (const [key, art] of Object.entries(CLASS_ART)) {
-    const texKey = `unit-${key}`;
-    if (scene.textures.exists(texKey)) continue;
-    const tpl = TEMPLATES[art.template];
-    if (!tpl) throw new Error(`missing template ${art.template}`);
-    const canvas = scene.textures.createCanvas(texKey, SPRITE_W, SPRITE_H);
-    if (!canvas) continue;
-    const ctx = canvas.getContext();
-    for (let y = 0; y < tpl.length; y++) {
-      const row = tpl[y];
-      if (row.length !== SPRITE_W) throw new Error(`template ${art.template} row ${y} width ${row.length}`);
-      for (let x = 0; x < row.length; x++) {
-        const ch = row[x] as keyof Palette | '.';
-        if (ch === '.') continue;
-        ctx.fillStyle = art.palette[ch] ?? '#ff00ff';
-        ctx.fillRect(x, y, 1, 1);
-      }
+function paint(scene: Phaser.Scene, texKey: string, art: { template: string; palette: Palette }): void {
+  if (scene.textures.exists(texKey)) return;
+  const tpl = TEMPLATES[art.template];
+  if (!tpl) throw new Error(`missing template ${art.template}`);
+  const canvas = scene.textures.createCanvas(texKey, SPRITE_W, SPRITE_H);
+  if (!canvas) return;
+  const ctx = canvas.getContext();
+  for (let y = 0; y < tpl.length; y++) {
+    const row = tpl[y];
+    if (row.length !== SPRITE_W) throw new Error(`template ${art.template} row ${y} width ${row.length}`);
+    for (let x = 0; x < row.length; x++) {
+      const ch = row[x] as keyof Palette | '.';
+      if (ch === '.') continue;
+      ctx.fillStyle = art.palette[ch] ?? '#ff00ff';
+      ctx.fillRect(x, y, 1, 1);
     }
-    canvas.refresh();
   }
+  canvas.refresh();
+}
+
+/** Render every hand-made palette-swapped sprite into a texture named `unit-<key>`. */
+export function buildUnitTextures(scene: Phaser.Scene): void {
+  for (const [key, art] of Object.entries(CLASS_ART)) paint(scene, `unit-${key}`, art);
+}
+
+function hsl(h: number, s: number, l: number): string {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const hp = (h % 360) / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  const [r, g, b] =
+    hp < 1 ? [c, x, 0] : hp < 2 ? [x, c, 0] : hp < 3 ? [0, c, x] : hp < 4 ? [0, x, c] : hp < 5 ? [x, 0, c] : [c, 0, x];
+  const m = l - c / 2;
+  const to = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+  return `#${to(r)}${to(g)}${to(b)}`;
+}
+
+function nameHash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/**
+ * Stand-in art for a class that has no hand-made sprite (most of Ogre Battle
+ * 64's roster, until its real sprites are extracted): the template follows the
+ * class's build and role, the colours a stable hash of its name.
+ */
+export function artFor(def: ClassDef): { template: string; palette: Palette } {
+  const known = CLASS_ART[def.palette] ?? CLASS_ART[def.palette.replace(/-/g, '')];
+  if (known) return known;
+
+  const back = def.attacks.back;
+  const caster = def.preferredRow === 'back' && (back?.type === 'magic' || back?.type === 'heal');
+  let template: string;
+  if (def.sprite === 'dragon' || def.sprite === 'golem' || def.sprite === 'beast' || def.sprite === 'ghost') {
+    template = def.sprite;
+  } else if (caster) {
+    template = def.gender === 'F' ? 'dress' : 'robe';
+  } else if (back?.type === 'ranged') {
+    template = 'archer';
+  } else if (def.growth.vit > def.growth.str) {
+    template = 'heavy';
+  } else if (def.growth.agi >= 4) {
+    template = 'rogue';
+  } else {
+    template = 'warrior';
+  }
+
+  const h = nameHash(def.name);
+  const hue = h % 360;
+  const undead = def.resist.virtue < 45 && def.resist.bane > 55;
+  return {
+    template,
+    palette: {
+      o: '#1a1028',
+      s: undead ? '#d8d8c8' : def.gender === 'X' ? hsl(hue + 20, 0.25, 0.55) : '#f0c8a0',
+      e: def.gender === 'X' ? '#f0d048' : '#20182c',
+      h: hsl((hue + 40 + ((h >> 9) % 80)) % 360, 0.45, 0.3 + ((h >> 4) % 20) / 100),
+      a: hsl(hue, 0.42, 0.42),
+      b: hsl(hue + 180, 0.5, 0.62),
+      w: '#c8d0e0',
+      x: '#8a5a2c',
+      d: hsl(hue + 30, 0.25, 0.5),
+    },
+  };
+}
+
+/** Make sure every class in the active dataset has a `unit-<palette>` texture. */
+export function buildClassTextures(scene: Phaser.Scene, classes: ClassDef[]): void {
+  for (const def of classes) paint(scene, `unit-${def.palette}`, artFor(def));
 }

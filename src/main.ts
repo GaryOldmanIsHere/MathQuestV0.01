@@ -4,8 +4,11 @@ import { TitleScene } from './scenes/TitleScene';
 import { OverworldScene } from './scenes/OverworldScene';
 import { BattleScene } from './scenes/BattleScene';
 import { OrganizeScene } from './scenes/OrganizeScene';
+import { getState } from './core/state';
+import { classOf, itemOf } from './data/registry';
+import { exposeDebug } from './debug';
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   width: 800,
@@ -18,3 +21,12 @@ new Phaser.Game({
   },
   scene: [BootScene, TitleScene, OverworldScene, BattleScene, OrganizeScene],
 });
+
+// For the automated playthrough (with ?debug): the game, its state, and every battle's outcome.
+const battles: unknown[] = [];
+game.events.on('battle-done', (p: unknown) => battles.push(p));
+exposeDebug('game', game);
+exposeDebug('state', getState);
+exposeDebug('battles', battles);
+exposeDebug('itemOf', itemOf);
+exposeDebug('classOf', classOf);

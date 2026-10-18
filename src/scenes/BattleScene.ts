@@ -14,6 +14,7 @@ import type { Placement } from '../gfx3d/layout';
 import { spriteSetFor } from '../gfx3d/unitArt';
 import { prepareSprites } from '../gfx3d/ob64Sprites';
 import { drawPanel, FONT, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/ui';
+import { exposeDebug, SPEED } from '../debug';
 
 // Plays back one engagement on a 3D battlefield: the two formations face each
 // other on ground shaped like the place they met, and the camera follows
@@ -56,6 +57,8 @@ export class BattleScene extends Phaser.Scene {
     const st = getState();
     this.labels.clear();
     this.places.clear();
+    this.time.timeScale = SPEED;
+    this.tweens.timeScale = SPEED;
 
     const stage = new BattleStage(W, H);
     this.stage = stage;
@@ -116,6 +119,12 @@ export class BattleScene extends Phaser.Scene {
     stage.cut(WIDE, 1100);
 
     const result = simulateBattle({ squad: this.attacker, chars: st.chars }, { squad: this.defender, chars: st.chars });
+    exposeDebug('lastBattle', {
+      attackerId: this.attacker.id, defenderId: this.defender.id, winner: result.winner,
+      attackerWiped: result.attackerWiped, defenderWiped: result.defenderWiped,
+      kinds: result.events.flatMap((e) => (e.kind === 'act' ? [e.attack.type] : [])),
+      levelUps: [...result.levelUps.entries()],
+    });
     this.time.delayedCall(1250, () => {
       this.playEvents(result.events, 0, () => {
         this.stage?.cut(WIDE, 600);
@@ -139,7 +148,7 @@ export class BattleScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const stage = this.stage;
     if (!stage || !this.screen) return;
-    stage.update(Math.min(delta, 50));
+    stage.update(Math.min(delta, 50) * SPEED);
     const ctx = this.screen.getContext();
     ctx.drawImage(stage.canvas, 0, 0, W, H);
     this.screen.refresh();

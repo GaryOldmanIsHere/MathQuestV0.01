@@ -44,3 +44,6 @@ public/ob64/
 *.exe
 *.out
 *.app
+
+# Screenshots and reports from `npm run e2e`
+e2e-results/

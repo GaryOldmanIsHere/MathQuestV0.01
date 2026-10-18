@@ -12,6 +12,7 @@ import { mapFigureFor } from '../gfx3d/mapFigures';
 import { prepareSprites } from '../gfx3d/ob64Sprites';
 import { figureScale, OVERVIEW, panView } from '../gfx3d/worldMap';
 import { declutter } from '../gfx/declutter';
+import { exposeDebug, SPEED } from '../debug';
 import { rng } from '../data/names';
 import {
   CONTEST_RADIUS, ENGAGE_RADIUS, haltSquad, orderTo, retreatTarget, settleOffset, snapOrder, stepToward, strongholdAt,
@@ -136,6 +137,22 @@ export class OverworldScene extends Phaser.Scene {
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
       hidden = this.children.list.filter((o) => o !== view3d && (o as unknown as Phaser.GameObjects.Components.Visible).visible);
       for (const o of hidden) (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false);
+    });
+    this.tweens.timeScale = SPEED;
+    // For the automated playthrough: where a squad or a map point is on screen.
+    exposeDebug('map', {
+      scene: this,
+      pointOnScreen: (x: number, y: number) => world.project(x, y, 0),
+      squadOnScreen: (id: number) => {
+        const sq = getState().squads.find((s) => s.id === id);
+        if (!sq) return null;
+        const p = this.shownAt(sq);
+        return world.project(p.x, p.y, world.squadHeight(id) / 2);
+      },
+      selectedId: () => this.selected?.id ?? null,
+      view: () => ({ ...world.view }),
+      hint: () => this.hintText.text,
+      setView: (v: Parameters<WorldStage['setView']>[0]) => world.setView(v, true),
     });
     this.events.on(Phaser.Scenes.Events.RESUME, () => {
       for (const o of hidden) if (o.active) (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(true);
@@ -471,7 +488,7 @@ export class OverworldScene extends Phaser.Scene {
       world.setSquad(sq.id, p.x, p.y, sq.side, mapFigureFor(this, classOf(leader.classId), sq.side), sq.moving);
     }
     if (this.selected?.moving) world.refreshRoute(this.routeOf(this.selected));
-    world.update(Math.min(deltaMs, 50));
+    world.update(Math.min(deltaMs, 50 * SPEED));
     const ctx = this.screen.getContext();
     ctx.clearRect(0, 0, W, MAP_H);
     ctx.drawImage(world.canvas, 0, 0, W, MAP_H);
@@ -540,7 +557,8 @@ export class OverworldScene extends Phaser.Scene {
     this.tweens.add({ targets: t, y: 50, alpha: 0, duration: 2600, onComplete: () => t.destroy() });
   }
 
-  update(_time: number, deltaMs: number): void {
+  update(_time: number, frameMs: number): void {
+    const deltaMs = frameMs * SPEED;
     const st = getState();
     if (st.phase !== 'playing') return;
     const dt = deltaMs / 1000;

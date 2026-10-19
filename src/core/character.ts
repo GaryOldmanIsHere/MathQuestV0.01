@@ -62,8 +62,9 @@ export function statsAt(classId: string, level: number): Stats {
  * Knight to 15, and a Paladin after.
  */
 export function generateStats(classId: string, level: number): Stats {
-  if (classOf(classId).source !== 'ob64') return statsAt(classId, level);
-  let stats = { ...classOf(classAtLevel(classId, 1)).base };
+  const def = classOf(classId);
+  if (def.source !== 'ob64') return statsAt(classId, level);
+  let stats = { ...(def.startBase ?? classOf(classAtLevel(classId, 1)).base) };
   for (let lv = 1; lv < level; lv++) {
     stats = addCapped(stats, rollGrowth(classOf(classAtLevel(classId, lv))));
   }

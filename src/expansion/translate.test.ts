@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { expandDataset, gatesFor, normName, referenceProfiles } from './translate';
+import { expandDataset, gatesFor, giveLineage, normName, referenceProfiles } from './translate';
 import { withExpansion } from '.';
 import type { SnesClass, SowClass } from './sources';
 import snesData from '../data/expansion/snes.json';
@@ -296,3 +296,58 @@ describe('the translated classes\' Ogre Battle 64 looks', () => {
     }
   });
 });
+
+describe('lineage for translated classes on Ogre Battle 64\'s data', () => {
+  const stats = (v: number) => ({ hp: v * 1.4, str: v, vit: v, int: v, men: v, agi: v, dex: v });
+  const cls = (id: string, tier: 1 | 2 | 3, v: number, extra: Partial<ClassDef> = {}): ClassDef => ({
+    id, name: id, gender: 'M', tier, desc: '', base: stats(v), growth: stats(2), attacks: {}, promotesTo: [],
+    moveType: 'foot', sprite: '', palette: id, resist: {} as ClassDef['resist'], size: 1, playable: true, source: 'ob64', ...extra,
+  } as ClassDef);
+  const world = () => {
+    const classes: Record<string, ClassDef> = {
+      fighter: cls('fighter', 1, 50),
+      amazon: cls('amazon', 1, 50),
+      archer: cls('archer', 2, 70, { lineage: { tier1: 'amazon', tier2Level: 6 } }),
+      knight: cls('knight', 2, 70, { lineage: { tier1: 'fighter', tier2Level: 6 } }),
+      paladin: cls('paladin', 3, 90, { lineage: { tier1: 'fighter', tier2Level: 6, tier2: 'knight', tier3Level: 15 } }),
+      militia: cls('militia', 1, 52, { origin: 'sow' }),
+      cavalier: cls('cavalier', 2, 75, { origin: 'sow' }),
+      marshal: cls('marshal', 3, 95, { origin: 'sow' }),
+      risen: cls('risen', 2, 80, { origin: 'sow' }),
+    };
+    classes.militia.promotesTo.push({ classId: 'cavalier', level: 7 });
+    classes.fighter.promotesTo.push({ classId: 'cavalier', level: 9 });
+    classes.cavalier.promotesTo.push({ classId: 'marshal', level: 16 });
+    return classes;
+  };
+
+  it('raises a translated class from the class that changes into it, at the earliest such change', () => {
+    const c = world();
+    giveLineage(c);
+    expect(c.cavalier.lineage).toEqual({ tier1: 'militia', tier2Level: 7 });
+  });
+
+  it('carries the ancestry on up the tiers', () => {
+    const c = world();
+    giveLineage(c);
+    expect(c.marshal.lineage).toEqual({ tier1: 'militia', tier2Level: 7, tier2: 'cavalier', tier3Level: 16 });
+  });
+
+  it('starts a class no route reaches from a tier-1 class\'s size, keeping its identity', () => {
+    const c = world();
+    giveLineage(c);
+    expect(c.risen.lineage).toBeUndefined();
+    expect(c.risen.startBase!.str).toBeLessThan(c.risen.base.str);
+    // Scaled by the native humans' tier-1 to tier-2 ratio (50 to 70).
+    expect(c.risen.startBase!.str).toBe(Math.round(80 * 50 / 70));
+  });
+
+  it('leaves native classes and their lineage alone', () => {
+    const c = world();
+    giveLineage(c);
+    expect(c.knight.lineage).toEqual({ tier1: 'fighter', tier2Level: 6 });
+    expect(c.fighter.lineage).toBeUndefined();
+    expect(c.militia.startBase).toBeUndefined();
+  });
+});
+

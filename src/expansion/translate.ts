@@ -500,6 +500,47 @@ export interface ExpansionReport {
  * Graft the SNES and Symphony of War classes onto `base`. Returns a new
  * dataset; `base` is not modified.
  */
+/**
+ * On Ogre Battle 64's data a unit is raised as the class its lineage says it
+ * was at each level: a level-5 Knight grew as a Fighter, and is one still.
+ * The translated classes have no lineage of their own, so without one a
+ * level-5 Cavalier would start from a tier-2 class's base and outgrow every
+ * native unit of its level. Each is given the lineage its routes imply: the
+ * class one tier down that changes into it, at that change's level (lower
+ * tiers first, so a tier-3 class inherits its parent's own ancestry).
+ *
+ * A class no route leads into (the risen dead, say) keeps its identity at
+ * every level, but starts from its base scaled down to a tier-1 class's
+ * size, by the native human classes' averages, so it is raised from
+ * where a tier-1 unit would be.
+ */
+export function giveLineage(classes: Record<string, ClassDef>): void {
+  const all = Object.values(classes);
+  const profile = referenceProfiles(all.filter((c) => !c.origin));
+  const translated = all.filter((c) => c.origin && c.tier > 1 && !c.lineage).sort((a, b) => a.tier - b.tier);
+  for (const c of translated) {
+    let best: { parent: ClassDef; level: number } | null = null;
+    for (const p of all) {
+      if (p.tier !== c.tier - 1) continue;
+      const req = p.promotesTo.find((r) => r.classId === c.id);
+      if (req && (!best || req.level < best.level)) best = { parent: p, level: req.level };
+    }
+    if (!best) {
+      // Measured on the human classes: the tiers of monsters (whose tier-1
+      // ranks hold dragons and golems) say little about rising through ranks.
+      const low = profile(1, false).base;
+      const high = profile(c.tier, false).base;
+      c.startBase = {} as Stats;
+      for (const k of STATS) c.startBase[k] = Math.max(1, Math.round(c.base[k] * (high[k] > 0 ? low[k] / high[k] : 1)));
+      continue;
+    }
+    const { parent, level } = best;
+    c.lineage = parent.tier === 1
+      ? { tier1: parent.id, tier2Level: level }
+      : { tier1: parent.lineage?.tier1, tier2Level: parent.lineage?.tier2Level, tier2: parent.id, tier3Level: level };
+  }
+}
+
 export function expandDataset(
   base: Dataset,
   snes: SnesClass[],
@@ -634,15 +675,18 @@ export function expandDataset(
     // The class table's section is the tier; the infobox occasionally disagrees.
     const tier = clamp(Number(c.group) || c.tier || (c.group === 'dlc' ? 4 : 2), 1, 4) as Tier;
     const monster = gender === 'X';
-    const raw = sowStats(c, rate, profile(tier, monster));
+    // The risen are soldiers raised from the dead: measured against the
+    // dataset's soldiers, not its dragons and golems.
+    const risen = /^risen/i.test(c.name);
+    const measure = profile(tier, monster && !risen);
+    const raw = sowStats(c, rate, measure);
     const stats = round(raw);
     const element = sowElement(c);
     const attacks = sowAttacks(c, kind, element);
     const march = sowMarch(c, kind);
-    const menRatio = raw.base.men / Math.max(1, profile(tier, monster).base.men);
+    const menRatio = raw.base.men / Math.max(1, measure.base.men);
     const id = newId(c.name, 'sow');
     ids.set(`sow:${c.name}`, id);
-    const risen = /^risen/i.test(c.name);
     const backRow = kind === 'archer' || kind === 'caster' || kind === 'healer' || kind === 'archerCav';
     classes[id] = {
       id,
@@ -768,6 +812,8 @@ export function expandDataset(
       }
     }
   }
+
+  if (base.source === 'ob64') giveLineage(classes);
 
   return {
     dataset: {

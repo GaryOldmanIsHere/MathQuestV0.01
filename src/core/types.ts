@@ -102,6 +102,12 @@ export interface ClassDef {
   /** Fixed element (monsters); humans roll theirs when recruited. */
   element?: Element;
   lineage?: Lineage;
+  /**
+   * Where a unit of this class starts at level 1, when it has no lineage to
+   * be raised through but should not start from its own high-tier base
+   * (translated classes no route leads into, on Ogre Battle 64's data).
+   */
+  startBase?: Stats;
   startAlignment?: number;
   startLuck?: number;
   /** Whether the player can reach this class (story and boss classes cannot). */

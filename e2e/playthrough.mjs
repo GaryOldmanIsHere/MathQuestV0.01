@@ -477,6 +477,7 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
   const log = [];
   let last = '';
   let sampled = 0;
+  let seen = await g.battles();
   await g.page.keyboard.press('r');
   while (Date.now() - start < minutes * 60000) {
     const s = await g.state();
@@ -508,8 +509,17 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
       }
       if (goal) await marchTo(g, q.id, goal.x, goal.y);
     }
+    // Every fight, where it happened and who won, so a lost campaign can be read back.
+    const fought = await g.page.evaluate((from) => window.__palatinus.battles.slice(from), seen);
+    for (const b of fought) {
+      const name = (id) => s.squads.find((q) => q.id === id)?.name ?? id;
+      const by = s.squads.find((q) => q.id === b.defenderId) ?? s.squads.find((q) => q.id === b.attackerId);
+      const near = by && s.nodes.find((n) => Math.hypot(n.x - by.x, n.y - by.y) < 40);
+      log.push(`  day ${s.day} ${name(b.attackerId)} attacks ${name(b.defenderId)}${near ? ` at ${near.name}` : ''}: ${b.winner} wins`);
+    }
+    seen += fought.length;
     const line = `day ${s.day}: ${s.nodes.filter((n) => n.owner === 'player').length}/9 held, ` +
-      `${players(s).length} vs ${enemies(s).length} squads, ${s.goth} Goth, ${await g.battles()} battles`;
+      `${players(s).length} vs ${enemies(s).length} squads, ${s.goth} Goth, ${seen} battles`;
     if (line !== last) {
       log.push(line);
       last = line;
@@ -521,7 +531,7 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
     await g.wait(1500);
   }
   const s = await g.state();
-  console.log(log.filter((_, i) => i % 5 === 0 || i === log.length - 1).join('\n'));
+  console.log(log.filter((l, i) => l.startsWith(' ') || i % 5 === 0 || i === log.length - 1).join('\n'));
   await g.shot(`campaign-${s.phase}`);
   g.check('C1', 'a campaign comes to an end, won or lost', s.phase !== 'playing', `${s.phase} on day ${s.day} after ${await g.battles()} battles, ${((Date.now() - start) / 60000).toFixed(1)} min at ${g.speed}x`);
   g.check('C2', 'a plain strategy can win the campaign', s.phase === 'victory', log.at(-1));

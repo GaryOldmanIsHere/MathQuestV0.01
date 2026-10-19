@@ -89,6 +89,26 @@ describe('engagement resolution', () => {
   });
 });
 
+describe('experience', () => {
+  it('raises the player\'s soldiers but leaves the enemy at its campaign levels', () => {
+    for (const playerAttacks of [true, false]) {
+      const chars = new Map<number, Character>();
+      const mine = squadOf('player', [{ classId: 'knight', level: 3, cell: 2 }, { classId: 'knight', level: 3, cell: 5 }], chars);
+      const theirs = squadOf('enemy', [{ classId: 'knight', level: 3, cell: 2 }, { classId: 'knight', level: 3, cell: 5 }], chars);
+      for (const c of chars.values()) c.stats.hp = c.hp = 10000; // everyone lives to learn
+      const [a, d] = playerAttacks ? [mine, theirs] : [theirs, mine];
+      const result = simulateBattle({ squad: a, chars }, { squad: d, chars });
+      const side = (id: number) => (mine.grid.includes(id) ? 'player' : 'enemy');
+      const learned = [...result.expGained.keys()];
+      expect(learned.some((id) => side(id) === 'enemy')).toBe(true); // the enemy earned some...
+      for (const c of chars.values()) {
+        if (side(c.id) === 'player') expect(c.level * 1000 + c.exp).toBeGreaterThan(3000);
+        else expect([c.level, c.exp]).toEqual([3, 0]); // ...but keeps none of it
+      }
+    }
+  });
+});
+
 describe('healers', () => {
   it('restores allies rather than damaging enemies', () => {
     const chars = new Map<number, Character>();

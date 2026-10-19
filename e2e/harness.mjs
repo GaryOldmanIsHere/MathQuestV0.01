@@ -24,6 +24,9 @@ export async function openGame({ url = 'http://localhost:5173/', speed = 4, tag 
     // A missing ob64/ file is how the game learns it has no extracted data.
     if (m.type() === 'error' && !/404|Failed to load resource/.test(m.text())) errors.push(m.text());
   });
+  // E2E_DATA=builtin plays on the built-in data even where OB64's is extracted,
+  // by answering the game's requests for it as if the files were not there.
+  if (process.env.E2E_DATA === 'builtin') await page.route('**/ob64/**', (r) => r.fulfill({ status: 404, body: '' }));
   await page.goto(`${url}?debug&speed=${speed}`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.__palatinus?.game?.scene?.isActive('Title'), null, { timeout: 30000 });
   const box = await page.locator('canvas').boundingBox();

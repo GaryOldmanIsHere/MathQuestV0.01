@@ -4,10 +4,12 @@
 //
 //   npm run dev            (in another terminal)
 //   npm run e2e            every section
-//   npm run e2e -- map     just one or more: title map organize battle campaign defeat soak
+//   npm run e2e -- map     just one or more: title map organize battle edges victory defeat soak
 //
-// With Ogre Battle 64 data extracted, it plays on that; without, on the
-// built-in data. Screenshots and a JSON report land in e2e-results/.
+// With Ogre Battle 64 data extracted, it plays on that; without, or with
+// E2E_DATA=builtin, on the built-in data. E2E_SPEED (1-8) runs the game
+// faster; E2E_TAG names the run. Screenshots and a JSON report land in
+// e2e-results/.
 
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -518,8 +520,13 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
       log.push(`  day ${s.day} ${name(b.attackerId)} attacks ${name(b.defenderId)}${near ? ` at ${near.name}` : ''}: ${b.winner} wins`);
     }
     seen += fought.length;
+    const level = (side) => {
+      const ls = s.squads.filter((q) => q.side === side).flatMap((q) => membersOf(s, q)).map((c) => c.level);
+      return (ls.reduce((a, b) => a + b, 0) / Math.max(1, ls.length)).toFixed(1);
+    };
     const line = `day ${s.day}: ${s.nodes.filter((n) => n.owner === 'player').length}/9 held, ` +
-      `${players(s).length} vs ${enemies(s).length} squads, ${s.goth} Goth, ${seen} battles`;
+      `${players(s).length} vs ${enemies(s).length} squads, ${s.goth} Goth, ${seen} battles, ` +
+      `levels ${level('player')} vs ${level('enemy')}`;
     if (line !== last) {
       log.push(line);
       last = line;

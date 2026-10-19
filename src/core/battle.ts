@@ -210,7 +210,14 @@ export function simulateBattle(
   else if (damageBy.defender > damageBy.attacker * 1.1) winner = 'defender';
   else winner = 'draw';
 
+  // Only the player's army learns from battle. The enemy's squads keep the
+  // levels the campaign gives them, as Ogre Battle's do: a garrison that
+  // grew with every attack it beat off would soon be out of reach.
+  const learners = new Set(
+    [...atk, ...def].filter((c) => c.squad.side === 'player').map((c) => c.char.id),
+  );
   for (const [id, exp] of expGained) {
+    if (!learners.has(id)) continue;
     const char = attacker.chars.get(id) ?? defender.chars.get(id);
     if (char && char.hp > 0) {
       const ups = grantExp(char, exp);

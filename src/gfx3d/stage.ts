@@ -67,6 +67,16 @@ export class BattleStage {
   private camera: THREE.PerspectiveCamera;
   private actors = new Map<number, Actor>();
   private textures = new Map<SpriteFrame['image'], THREE.Texture>();
+  /**
+   * The shapes the passing effects (bolts, sparks) are cut from, shared for
+   * the whole battle: an effect gone from the scene is gone from the graphics
+   * card too, so a long war does not pile them up.
+   */
+  private effectShapes = {
+    spark: new THREE.PlaneGeometry(0.12, 0.12),
+    blow: new THREE.SphereGeometry(0.09, 8, 6),
+    bolt: new THREE.SphereGeometry(0.2, 8, 6),
+  };
   private tweens: Tween[] = [];
   private shot: Shot = WIDE;
   private shake = 0;
@@ -283,7 +293,7 @@ export class BattleStage {
       return;
     }
     const orb = new THREE.Mesh(
-      new THREE.SphereGeometry(element === 'physical' ? 0.09 : 0.2, 8, 6),
+      element === 'physical' ? this.effectShapes.blow : this.effectShapes.bolt,
       new THREE.MeshBasicMaterial({ color: ELEMENT_COLOUR[element] }),
     );
     this.scene.add(orb);
@@ -293,7 +303,7 @@ export class BattleStage {
       orb.position.lerpVectors(p0, p1, k);
       orb.position.y += Math.sin(k * Math.PI) * arc;
     }, () => {
-      this.scene.remove(orb);
+      this.discard(orb);
       hit();
     });
   }
@@ -305,7 +315,7 @@ export class BattleStage {
     const colour = kind === 'heal' ? 0x90ffa0 : ELEMENT_COLOUR[element];
     const n = kind === 'hit' ? 6 : 14;
     for (let i = 0; i < n; i++) {
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.12), new THREE.MeshBasicMaterial({ color: colour, transparent: true, side: THREE.DoubleSide }));
+      const p = new THREE.Mesh(this.effectShapes.spark, new THREE.MeshBasicMaterial({ color: colour, transparent: true, side: THREE.DoubleSide }));
       const ang = (i / n) * Math.PI * 2;
       const spread = kind === 'hit' ? 0.7 : 1.1;
       const start = new THREE.Vector3(a.place.x, a.height * 0.55, a.place.z);
@@ -316,7 +326,7 @@ export class BattleStage {
         else p.position.set(start.x + Math.cos(ang) * spread * k, start.y + Math.sin(ang) * spread * k * 0.8, start.z + Math.sin(ang * 1.7) * 0.3 * k);
         p.lookAt(this.camera.position);
         (p.material as THREE.MeshBasicMaterial).opacity = 1 - k;
-      }, () => this.scene.remove(p));
+      }, () => this.discard(p));
     }
   }
 
@@ -400,8 +410,26 @@ export class BattleStage {
     return sharedRenderer(this.width, this.height).domElement;
   }
 
+  /** Take a passing effect off the field, letting go of its material (its shape is shared). */
+  private discard(effect: THREE.Mesh): void {
+    this.scene.remove(effect);
+    (effect.material as THREE.Material).dispose();
+  }
+
+  /** How many passing effects are on the field now (for tests). */
+  get effectCount(): number {
+    const shapes = new Set<THREE.BufferGeometry>(Object.values(this.effectShapes));
+    let n = 0;
+    this.scene.traverse((o) => {
+      if (shapes.has((o as THREE.Mesh).geometry)) n++;
+    });
+    return n;
+  }
+
   dispose(): void {
     for (const t of this.textures.values()) t.dispose();
+    // Effects still in flight are in the scene and go below; their shared shapes once, here.
+    for (const g of Object.values(this.effectShapes)) g.dispose();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();

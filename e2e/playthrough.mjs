@@ -14,6 +14,7 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { freezeEnemies, newCampaign, openGame, OUT, thawEnemies } from './harness.mjs';
+import { equipArmy } from './quartermaster.mjs';
 
 const near = (a, b, d) => Math.hypot(a.x - b.x, a.y - b.y) <= d;
 const players = (s) => s.squads.filter((q) => q.side === 'player');
@@ -475,12 +476,18 @@ async function battle(g) {
 
 // --------------------------------------------------------------- campaign --
 
+let quartermasterVisits = 0;
+let quartermasterMisses = 0;
+
 /**
- * A plain commander, playing only through the map: a healthy squad marches
- * on the nearest stronghold we do not hold; a hurt one goes home to rest; the
- * weakest stays home to guard the keep. Plays until the campaign ends.
+ * A plain commander, playing as a player would: a healthy squad marches on
+ * the nearest stronghold we do not hold; a hurt one goes home to rest; one
+ * squad keeps the keep, the same one until it falls or is hurt. Every few
+ * days the quartermaster spends the treasury at the army screen (class
+ * changes, gear). Plays until the campaign ends or time runs out; `judge`
+ * records whether it was won.
  */
-async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sample } = {}) {
+async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sample, judge = true } = {}) {
   await thawEnemies(g);
   const start = Date.now();
   const log = [];
@@ -488,6 +495,8 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
   let sampled = 0;
   let seen = await g.battles();
   let lastRoll = 0;
+  let guardId = null;
+  let lastVisit = 0;
   let seenCaptures = await g.page.evaluate(() => window.__palatinus.captures.length);
   await g.page.keyboard.press('r');
   while (Date.now() - start < minutes * 60000) {
@@ -502,12 +511,20 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
       const m = membersOf(s, q);
       return m.reduce((a, c) => a + Math.max(0, c.hp), 0) / Math.max(1, m.reduce((a, c) => a + c.max, 0));
     };
-    const mine = players(s).sort((a, b) => strength(a) - strength(b));
-    const guard = mine[0];
+    const mine = players(s);
+    const homeOf = (q) => Math.hypot(q.x - hq.x, q.y - hq.y);
+    const isHurt = (q) => strength(q) < 0.55 || membersOf(s, q).filter((c) => c.hp <= 0).length >= 2;
+    // The keep's guard stays the same squad until it is hurt or gone; then the
+    // healthy squad nearest home takes over.
+    let guard = mine.find((q) => q.id === guardId);
+    if (!guard || isHurt(guard)) {
+      guard = mine.filter((q) => !isHurt(q)).sort((a, b) => homeOf(a) - homeOf(b))[0] ?? mine[0];
+      guardId = guard?.id ?? null;
+    }
     for (const q of mine) {
       if (q.moving) continue;
-      const atHome = Math.hypot(q.x - hq.x, q.y - hq.y) < 28;
-      const hurt = strength(q) < 0.55 || membersOf(s, q).filter((c) => c.hp <= 0).length >= 2;
+      const atHome = homeOf(q) < 28;
+      const hurt = isHurt(q);
       let goal = null;
       if (q === guard || hurt) {
         if (!atHome) goal = hq;
@@ -519,6 +536,15 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
         if (goal && Math.hypot(goal.x - q.x, goal.y - q.y) < 8) goal = null;
       }
       if (goal) await marchTo(g, q.id, goal.x, goal.y);
+    }
+    // The quartermaster, every five days the treasury has something to spend.
+    if (s.day >= lastVisit + 5 && s.goth > 400) {
+      lastVisit = s.day;
+      const done = await equipArmy(g);
+      log.push(`  day ${s.day} quartermaster: ${done.promoted.length} promoted${done.promoted.length ? ` (${done.promoted.join(', ')})` : ''}, ` +
+        `${done.equipped} equipped, ${done.bought} bought for ${done.spent} Goth${done.misses.length ? `; MISSED ${done.misses.join('; ')}` : ''}`);
+      quartermasterMisses += done.misses.length;
+      quartermasterVisits++;
     }
     // Every fight, where it happened and who won, so a lost campaign can be read back.
     const fought = await g.page.evaluate((from) => window.__palatinus.battles.slice(from), seen);
@@ -563,9 +589,12 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
   const s = await g.state();
   console.log(log.filter((l, i) => l.startsWith(' ') || i % 5 === 0 || i === log.length - 1).join('\n'));
   await g.shot(`campaign-${s.phase}`);
+  writeFileSync(join(OUT, `${g.tag}-campaign${judge ? '' : `-${Date.now()}`}.log`), log.join('\n'));
+  if (!judge) return s.phase;
   g.check('C1', 'a campaign comes to an end, won or lost', s.phase !== 'playing', `${s.phase} on day ${s.day} after ${await g.battles()} battles, ${((Date.now() - start) / 60000).toFixed(1)} min at ${g.speed}x`);
   g.check('C2', 'a plain strategy can win the campaign', s.phase === 'victory', log.at(-1));
-  writeFileSync(join(OUT, `${g.tag}-campaign.log`), log.join('\n'));
+  g.check('C3', 'the quartermaster can promote, equip and shop through the army screen', quartermasterVisits > 0 && quartermasterMisses === 0,
+    `${quartermasterVisits} visits, ${quartermasterMisses} misses`);
   return s.phase;
 }
 
@@ -583,13 +612,23 @@ async function soak(g) {
     samples.push(m);
   };
   await sample();
-  await campaign(g, { minutes: Number(process.env.E2E_SOAK_MINUTES ?? 12), sample });
+  // Plays on through as many campaigns as the time allows: a lost one is
+  // followed by a new one, as a player would.
+  const until = Date.now() + Number(process.env.E2E_SOAK_MINUTES ?? 12) * 60000;
+  let campaigns = 0;
+  while (Date.now() < until) {
+    const phase = await campaign(g, { minutes: (until - Date.now()) / 60000, sample, judge: false });
+    campaigns++;
+    if (phase === 'playing') break;
+    await g.click(400, 317, 600); // the ending panel's TITLE
+    await newCampaign(g);
+  }
   await sample();
   const firstBusy = samples.find((x) => x.battles >= 2) ?? samples[0];
   const last = samples.at(-1);
   const battles = last.battles - firstBusy.battles;
   writeFileSync(join(OUT, `${g.tag}-soak.json`), JSON.stringify(samples, null, 2));
-  g.check('S1', 'many battles are fought in a long run', last.battles >= 8, `${last.battles} battles`);
+  g.check('S1', 'many battles are fought in a long run', last.battles >= 8, `${last.battles} battles over ${campaigns} campaign${campaigns > 1 ? 's' : ''}`);
   // Allow some growth (new classes' sprites seen for the first time), not growth with every battle.
   g.check('S2', 'GPU geometries do not pile up battle after battle',
     last.gpu.geometries <= firstBusy.gpu.geometries + 60 + battles * 2, `${firstBusy.gpu.geometries} → ${last.gpu.geometries} over ${battles} battles`);
@@ -653,7 +692,7 @@ async function edges(g) {
 
   // Organizing in the middle of a march: the march carries on afterwards.
   const goal = { x: 300, y: 440 };
-  await marchTo(g, azure.id, goal.x, goal.y);
+  const ordered = await marchTo(g, azure.id, goal.x, goal.y);
   await g.wait(800);
   const mid = (await g.state()).squads.find((q) => q.id === azure.id);
   await g.click(742, 580, 500);
@@ -661,7 +700,8 @@ async function edges(g) {
   await g.wait(800);
   const after = (await g.state()).squads.find((q) => q.id === azure.id);
   g.check('X1', 'a march goes on after the army screen is opened and closed mid-way',
-    after.tx === mid.tx && after.ty === mid.ty && (after.moving || near(after, goal, 3)) && !near(after, mid, 0.5));
+    after.tx === mid.tx && after.ty === mid.ty && (after.moving || near(after, goal, 3)) && !near(after, mid, 0.5),
+    `ordered ${ordered}; mid ${JSON.stringify(mid)}; after ${JSON.stringify(after)}`);
 
   // A squad whose leader has fallen still marches, shows and fights.
   await g.mutate(([id]) => {
@@ -688,9 +728,10 @@ async function edges(g) {
   g.check('X3', 'a squad with everyone down is routed home when it meets the enemy', fought && !!l && near(l, hq, 28)
     && membersOf(s, l).every((c) => c.hp > 0), l ? `${Math.hypot(l.x - hq.x, l.y - hq.y).toFixed(0)}px from the keep` : 'squad gone');
 
-  // An empty treasury: no recruit, no purchase.
-  await g.mutate(() => { window.__palatinus.state().goth = 0; });
+  // An empty treasury: no recruit, no purchase. (Emptied once the army screen
+  // holds the map still, so no day's income lands in between.)
   await g.click(742, 580, 500);
+  await g.mutate(() => { window.__palatinus.state().goth = 0; });
   await g.click(106, 107 + 2 * 42);
   s = await g.state();
   const w = s.squads.find((q) => q.id === wolves.id);

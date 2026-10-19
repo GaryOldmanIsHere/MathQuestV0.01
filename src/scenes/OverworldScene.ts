@@ -12,7 +12,7 @@ import { mapFigureFor } from '../gfx3d/mapFigures';
 import { prepareSprites } from '../gfx3d/ob64Sprites';
 import { figureScale, OVERVIEW, panView } from '../gfx3d/worldMap';
 import { declutter } from '../gfx/declutter';
-import { exposeDebug, SPEED } from '../debug';
+import { DEBUG, exposeDebug, SPEED } from '../debug';
 import { rng } from '../data/names';
 import {
   CONTEST_RADIUS, ENGAGE_RADIUS, haltSquad, orderTo, retreatTarget, settleOffset, snapOrder, stepToward, strikeTarget, strongholdAt,
@@ -33,6 +33,10 @@ const DRAG_SLOP = 6;
 
 /** A campaign day, in ms of the map's clock. */
 const DAY_MS = 12000;
+
+/** For the automated playthrough: every stronghold that changed hands, and who stood near. */
+const captures: unknown[] = [];
+exposeDebug('captures', captures);
 
 export class OverworldScene extends Phaser.Scene {
   private views = new Map<number, SquadView>();
@@ -352,6 +356,16 @@ export class OverworldScene extends Phaser.Scene {
     );
     if (contested) return;
     if (node.owner !== sq.side) {
+      if (DEBUG) {
+        captures.push({
+          day: st.day, node: node.name, by: sq.name, from: node.owner,
+          near: st.squads.filter((o) => o !== sq && Phaser.Math.Distance.Between(o.x, o.y, node.x, node.y) < 60).map((o) => ({
+            name: o.name, side: o.side, dist: Math.round(Phaser.Math.Distance.Between(o.x, o.y, node.x, node.y)),
+            moving: o.moving, cooldown: Math.max(0, Math.round((this.cooldowns.get(o.id) ?? 0) - this.clock)),
+            recovering: this.isRecovering(o),
+          })),
+        });
+      }
       node.owner = sq.side;
       this.world?.setOwner(node.id, sq.side);
       this.toast(`${node.name} ${sq.side === 'player' ? 'liberated!' : 'has fallen!'}`, sq.side === 'player' ? '#90e090' : '#e09090');

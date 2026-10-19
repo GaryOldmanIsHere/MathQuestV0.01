@@ -393,12 +393,19 @@ async function selectSquad(g, id) {
 
 /** Order a selected squad to a map point by clicking the ground there. */
 async function marchTo(g, id, x, y) {
-  if (!(await selectSquad(g, id))) return false;
-  const p = await g.pointOnScreen(x, y);
-  if (!p.visible) return false;
-  await g.click(p.x, p.y);
-  const s = await g.state();
-  return s.squads.find((q) => q.id === id)?.moving ?? false;
+  // A click on one of our own squads selects it rather than ordering the
+  // march, and squads parked on a stronghold stand over it on screen. So, as
+  // a player would, try just beside the spot: an order that close to a
+  // stronghold still snaps onto it.
+  for (const [dx, dy] of [[0, 0], [20, 0], [-20, 0], [0, 20], [0, -20]]) {
+    if (!(await selectSquad(g, id))) return false;
+    const p = await g.pointOnScreen(x + dx, y + dy);
+    if (!p.visible) continue;
+    await g.click(p.x, p.y);
+    const s = await g.state();
+    if (s.squads.find((q) => q.id === id)?.moving) return true;
+  }
+  return false;
 }
 
 async function battle(g) {
@@ -481,6 +488,7 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
   let sampled = 0;
   let seen = await g.battles();
   let lastRoll = 0;
+  let seenCaptures = await g.page.evaluate(() => window.__palatinus.captures.length);
   await g.page.keyboard.press('r');
   while (Date.now() - start < minutes * 60000) {
     const s = await g.state();
@@ -521,6 +529,12 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
       log.push(`  day ${s.day} ${name(b.attackerId)} attacks ${name(b.defenderId)}${near ? ` at ${near.name}` : ''}: ${b.winner} wins`);
     }
     seen += fought.length;
+    const taken = await g.page.evaluate((from) => window.__palatinus.captures.slice(from), seenCaptures);
+    for (const c of taken) {
+      const near = c.near.map((o) => `${o.name} (${o.side}) ${o.dist}px${o.moving ? ' marching' : ''}${o.cooldown ? ` cooldown ${o.cooldown}ms` : ''}${o.recovering ? ' regrouping' : ''}`);
+      log.push(`  day ${c.day} ${c.by} takes ${c.node} from ${c.from}${near.length ? `; near: ${near.join(', ')}` : ''}`);
+    }
+    seenCaptures += taken.length;
     const level = (side) => {
       const ls = s.squads.filter((q) => q.side === side).flatMap((q) => membersOf(s, q)).map((c) => c.level);
       return (ls.reduce((a, b) => a + b, 0) / Math.max(1, ls.length)).toFixed(1);

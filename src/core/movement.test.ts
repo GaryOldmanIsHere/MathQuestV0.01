@@ -151,6 +151,24 @@ describe('retreat', () => {
     expect(target).toEqual({ x: nodes[0].x, y: nodes[0].y });
   });
 
+  it('drives a beaten garrison off the stronghold it holds, to its next one', () => {
+    const nodes: MapNode[] = NODES.map((n) => ({ ...n }));
+    nodes[8].owner = 'enemy'; // Castle Verlaine, where the garrison stands
+    nodes[6].owner = 'enemy'; // Stonegate
+    const castle = nodes[8];
+    const target = retreatTarget(nodes, 'enemy', castle.x + 5, castle.y, castle.x - 18, castle.y);
+    expect(target).toEqual({ x: nodes[6].x, y: nodes[6].y });
+  });
+
+  it('pushes a garrison with nowhere else to go out of its stronghold\'s reach', () => {
+    const nodes: MapNode[] = NODES.map((n) => ({ ...n }));
+    nodes[8].owner = 'enemy';
+    const castle = nodes[8];
+    const target = retreatTarget(nodes, 'enemy', castle.x, castle.y, castle.x - 18, castle.y);
+    expect(Math.hypot(target.x - castle.x, target.y - castle.y)).toBeGreaterThan(CAPTURE_RADIUS);
+    expect(target.x).toBeGreaterThan(castle.x); // away from the victor
+  });
+
   it('backs directly away from the victor when the side holds nothing', () => {
     const nodes: MapNode[] = NODES.map((n) => ({ ...n, owner: 'enemy' as const }));
     // beaten squad at (400,300), enemy pressing from the left

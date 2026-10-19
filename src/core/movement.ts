@@ -94,8 +94,10 @@ export function snapOrder(nodes: MapNode[], x: number, y: number): Point {
 
 /**
  * Where a beaten squad falls back to: the nearest stronghold its own side
- * holds. With no holdings left it simply backs directly away from the victor,
- * which keeps a rout from stranding it in place.
+ * holds, other than one it is standing on, for a beaten garrison is driven
+ * off its stronghold, leaving it to be taken. With nowhere else to go it
+ * backs directly away from the victor, which keeps a rout from stranding it
+ * in place.
  */
 export function retreatTarget(
   nodes: MapNode[],
@@ -109,6 +111,7 @@ export function retreatTarget(
   for (const n of nodes) {
     if (n.owner !== side) continue;
     const d = Math.hypot(n.x - x, n.y - y);
+    if (d < CAPTURE_RADIUS) continue;
     if (d < bestDist) {
       bestDist = d;
       best = n;

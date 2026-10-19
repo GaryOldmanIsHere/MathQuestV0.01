@@ -314,7 +314,13 @@ async function organize(g) {
     g.check('O15', 'a revival brings a fallen member back', false, 'no revival item in the starting stores');
   }
   const s5 = await g.state();
-  const sellId = rows2[0];
+  // The list as it stands now (a supply used up drops off it).
+  const sellId = (await g.page.evaluate(() => {
+    const st = window.__palatinus.state();
+    const order = { supply: 0, relic: 1, key: 2, gear: 3 };
+    return Object.keys(st.inventory).map(window.__palatinus.itemOf)
+      .sort((a, b) => order[a.kind] - order[b.kind] || a.name.localeCompare(b.name)).map((i) => i.id);
+  }))[0];
   const sellPrice = await g.page.evaluate((id) => Math.floor(window.__palatinus.itemOf(id).price / 2), sellId);
   const sellCount = s5.inventory[sellId];
   await g.click(738, 106 + 9);
@@ -423,7 +429,10 @@ async function battle(g) {
   if (result.defenderWiped) {
     g.check('B7', 'a wiped-out enemy squad is gone, and pays its spoils', !patrolNow && s.goth > before.goth, `+${s.goth - before.goth} Goth`);
   } else if (result.winner === 'attacker') {
-    g.check('B7', 'a beaten enemy squad falls back', !!patrolNow && patrolNow.moving);
+    // Moving away, or (at a fast clock) already back on one of its own strongholds.
+    const home = s.nodes.some((n) => n.owner === 'enemy' && near(patrolNow, n, 28));
+    g.check('B7', 'a beaten enemy squad falls back', !!patrolNow && (patrolNow.moving || home) && !near(patrolNow, patrol, 20),
+      `${patrolNow.moving ? 'moving' : 'halted'} ${Math.hypot(patrolNow.x - patrol.x, patrolNow.y - patrol.y).toFixed(0)}px from where it stood`);
   } else {
     const w = s.squads.find((q) => q.id === wolves.id);
     g.check('B7', 'a beaten squad of ours falls back', !w || w.moving || result.attackerWiped);

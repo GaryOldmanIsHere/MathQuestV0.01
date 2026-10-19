@@ -175,6 +175,10 @@ export async function equipArmy(g) {
   }
   await g.click(...BACK_TO_MAP, 400);
   // Back on the map: running, or already in a battle that broke out the moment it resumed.
-  if ((await g.active('Organize')) || !((await g.active('Battle')) || !(await g.paused('Overworld')))) done.misses.push('the map did not resume');
+  const resumed = await g.until(() => {
+    const sc = window.__palatinus.game.scene;
+    return !sc.isActive('Organize') && (sc.isActive('Battle') || !sc.isPaused('Overworld'));
+  }, null, 5000);
+  if (!resumed) done.misses.push('the map did not resume');
   return done;
 }

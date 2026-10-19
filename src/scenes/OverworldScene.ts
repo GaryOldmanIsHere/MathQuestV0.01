@@ -15,7 +15,7 @@ import { declutter } from '../gfx/declutter';
 import { DEBUG, exposeDebug, SPEED } from '../debug';
 import { rng } from '../data/names';
 import {
-  CONTEST_RADIUS, ENGAGE_RADIUS, haltSquad, orderTo, retreatTarget, settleOffset, snapOrder, stepToward, strikeTarget, strongholdAt,
+  CONTEST_RADIUS, haltSquad, orderTo, retreatTarget, settleOffset, snapOrder, squadsMeet, stepToward, strikeTarget, strongholdAt,
 } from '../core/movement';
 import type { Terrain } from '../core/terrain';
 import { buildTerrainGrid, MAP_H, speedMultiplierAt, terrainAtPoint } from '../core/terrain';
@@ -413,7 +413,7 @@ export class OverworldScene extends Phaser.Scene {
       for (const b of st.squads) {
         if (b.side !== 'enemy') continue;
         if ((this.cooldowns.get(a.id) ?? 0) > now || (this.cooldowns.get(b.id) ?? 0) > now) continue;
-        if (Phaser.Math.Distance.Between(a.x, a.y, b.x, b.y) < ENGAGE_RADIUS) {
+        if (squadsMeet(st.nodes, a, b)) {
           this.startBattle(a, b);
           return;
         }

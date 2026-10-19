@@ -163,3 +163,16 @@ export function strikeTarget(nodes: MapNode[], x: number, y: number, range = STR
   return best;
 }
 
+/**
+ * Whether two opposing squads meet in battle: when they come within
+ * ENGAGE_RADIUS of each other, or when both stand at the same stronghold
+ * (within CONTEST_RADIUS of it), since a stronghold cannot be shared. Without
+ * the second, a defender just outside an attacker's reach would still keep
+ * the attacker from taking the place, and neither would ever fight.
+ */
+export function squadsMeet(nodes: MapNode[], a: Point, b: Point): boolean {
+  if (Math.hypot(a.x - b.x, a.y - b.y) < ENGAGE_RADIUS) return true;
+  return nodes.some((n) =>
+    Math.hypot(a.x - n.x, a.y - n.y) < CONTEST_RADIUS && Math.hypot(b.x - n.x, b.y - n.y) < CONTEST_RADIUS);
+}
+

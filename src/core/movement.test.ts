@@ -11,6 +11,7 @@ import {
   settleOffset,
   snapOrder,
   stepToward,
+  squadsMeet,
   STRIKE_RANGE,
   strikeTarget,
   strongholdAt,
@@ -238,6 +239,41 @@ describe('squads parked at a stronghold', () => {
     expect(spots[0]).toEqual({ x: 0, y: 0 });
     const keys = new Set(spots.map((p) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`));
     expect(keys.size).toBe(spots.length);
+  });
+});
+
+describe('when opposing squads meet', () => {
+  const castle = NODES[8];
+
+  it('within reach of each other, anywhere', () => {
+    expect(squadsMeet(NODES, { x: 300, y: 100 }, { x: 300 + ENGAGE_RADIUS - 1, y: 100 })).toBe(true);
+    expect(squadsMeet(NODES, { x: 300, y: 100 }, { x: 300 + ENGAGE_RADIUS + 1, y: 100 })).toBe(false);
+  });
+
+  it('whenever both stand at the same stronghold, however far apart on it', () => {
+    const d = CONTEST_RADIUS - 2;
+    const attacker = { x: castle.x - d, y: castle.y };
+    const defender = { x: castle.x + d, y: castle.y };
+    expect(Math.hypot(attacker.x - defender.x, attacker.y - defender.y)).toBeGreaterThan(ENGAGE_RADIUS);
+    expect(squadsMeet(NODES, attacker, defender)).toBe(true);
+  });
+
+  it('not when only one of them is at the stronghold', () => {
+    const inside = { x: castle.x + 10, y: castle.y };
+    const outside = { x: castle.x + 10 + ENGAGE_RADIUS + 5, y: castle.y };
+    expect(squadsMeet(NODES, inside, outside)).toBe(false);
+  });
+
+  it('so no squad can keep a stronghold from being taken without being fought for it', () => {
+    // Anyone who contests the stronghold stands within reach of anyone on it.
+    for (let k = 0; k < 13; k++) {
+      const parked = { x: castle.x + settleOffset(k).x, y: castle.y + settleOffset(k).y };
+      for (let a = 0; a < 16; a++) {
+        const r = CONTEST_RADIUS - 0.5;
+        const contester = { x: castle.x + Math.cos(a) * r, y: castle.y + Math.sin(a) * r };
+        expect(squadsMeet(NODES, parked, contester)).toBe(true);
+      }
+    }
   });
 });
 

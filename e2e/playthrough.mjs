@@ -161,6 +161,7 @@ async function organize(g) {
   await freezeEnemies(g);
   const before = await g.state();
   await g.click(742, 580, 500);
+  await g.until(() => window.__palatinus.game.scene.isActive('Organize'), null, 10000);
   g.check('O1', 'ORGANIZE opens the army screen and holds the map still',
     (await g.active('Organize')) && (await g.paused('Overworld')));
   await g.wait(1000);
@@ -379,8 +380,13 @@ async function organize(g) {
 // ----------------------------------------------------------------- battle --
 
 /** Select one of our squads on the map, clicking it until it is the one selected. */
+/** The map takes no orders while a battle is fought: wait for it to be running. */
+const mapRunning = (g) =>
+  g.until(() => !window.__palatinus.game.scene.isActive('Battle') && !window.__palatinus.game.scene.isPaused('Overworld'), null, 120000);
+
 async function selectSquad(g, id) {
-  for (let k = 0; k < 6 && (await g.mapInfo()).selected !== id; k++) {
+  for (let k = 0; k < 8 && (await g.mapInfo()).selected !== id; k++) {
+    await mapRunning(g);
     const at = await g.squadOnScreen(id);
     if (!at) {
       await g.page.keyboard.press('r');
@@ -402,6 +408,7 @@ async function marchTo(g, id, x, y) {
     if (!(await selectSquad(g, id))) return false;
     const p = await g.pointOnScreen(x + dx, y + dy);
     if (!p.visible) continue;
+    await mapRunning(g);
     await g.click(p.x, p.y);
     const s = await g.state();
     if (s.squads.find((q) => q.id === id)?.moving) return true;
@@ -604,6 +611,9 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
 async function soak(g) {
   const samples = [];
   const sample = async () => {
+    // Between battles, so every sample counts the same things (a battle on
+    // the field holds its own sprites over the map's).
+    await g.until(() => !window.__palatinus.game.scene.isActive('Battle'), null, 60000);
     const m = await g.page.evaluate(() => ({
       gpu: window.__palatinus.gpu?.() ?? { geometries: 0, textures: 0 },
       heap: performance.memory?.usedJSHeapSize ?? 0,
@@ -691,17 +701,36 @@ async function edges(g) {
   const hq = s.nodes.find((n) => n.kind === 'hq-player');
 
   // Organizing in the middle of a march: the march carries on afterwards.
-  const goal = { x: 300, y: 440 };
-  const ordered = await marchTo(g, azure.id, goal.x, goal.y);
-  await g.wait(800);
-  const mid = (await g.state()).squads.find((q) => q.id === azure.id);
-  await g.click(742, 580, 500);
-  await g.click(106, 548, 500);
-  await g.wait(800);
-  const after = (await g.state()).squads.find((q) => q.id === azure.id);
-  g.check('X1', 'a march goes on after the army screen is opened and closed mid-way',
-    after.tx === mid.tx && after.ty === mid.ty && (after.moving || near(after, goal, 3)) && !near(after, mid, 0.5),
-    `ordered ${ordered}; mid ${JSON.stringify(mid)}; after ${JSON.stringify(after)}`);
+  // Back toward the keep, well away from where the squad stands (earlier
+  // sections may have left it anywhere). If the squad is drawn into a battle
+  // on the way, which turns it back, that try proves nothing: try again.
+  let x1 = { ok: false, detail: '' };
+  for (let attempt = 1; attempt <= 3 && !x1.ok; attempt++) {
+    s = await g.state();
+    const from = s.squads.find((q) => q.id === azure.id);
+    const goal = { x: (from.x + hq.x) / 2 + 20, y: (from.y + hq.y) / 2 + 20 };
+    const fought0 = await g.battles();
+    const ordered = await marchTo(g, azure.id, goal.x, goal.y);
+    await g.wait(800);
+    const mid = (await g.state()).squads.find((q) => q.id === azure.id);
+    const seen = ordered ? '' : JSON.stringify({ map: await g.mapInfo(), onScreen: await g.squadOnScreen(azure.id), shot: await g.shot('x1-not-ordered') });
+    await g.click(742, 580, 300);
+    await g.until(() => window.__palatinus.game.scene.isActive('Organize'), null, 10000);
+    await g.click(106, 548, 300);
+    await g.until(() => !window.__palatinus.game.scene.isActive('Organize') && !window.__palatinus.game.scene.isPaused('Overworld'), null, 10000);
+    await g.wait(800);
+    const after = (await g.state()).squads.find((q) => q.id === azure.id);
+    const drawnIn = await g.page.evaluate(([k, id]) => window.__palatinus.battles.slice(k).some((b) => b.attackerId === id || b.defenderId === id), [fought0, azure.id]);
+    x1 = {
+      // Still bound for where it was going, or arrived there (the game's own
+      // reading of the click, which the 3D ground puts a little off the aim).
+      ok: ((after.moving && after.tx === mid.tx && after.ty === mid.ty) || (mid.tx !== null && near(after, { x: mid.tx, y: mid.ty }, 3)))
+        && !near(after, mid, 0.5),
+      detail: `try ${attempt}${drawnIn ? ' (drawn into a battle on the way)' : ''}: ordered ${ordered}${seen ? ` (${seen})` : ''}; mid ${JSON.stringify(mid)}; after ${JSON.stringify(after)}`,
+    };
+    if (!drawnIn) break;
+  }
+  g.check('X1', 'a march goes on after the army screen is opened and closed mid-way', x1.ok, x1.detail);
 
   // A squad whose leader has fallen still marches, shows and fights.
   await g.mutate(([id]) => {
@@ -713,24 +742,34 @@ async function edges(g) {
 
   // Every member down: sent into the enemy, it is routed home rather than breaking anything.
   s = await g.state();
-  const foe = s.squads.find((q) => q.name === 'Border Patrol') ?? enemies(s)[0];
+  // The enemy squad nearest the keep, so the march is short.
+  const foe = enemies(s).sort((a, b) => Math.hypot(a.x - hq.x, a.y - hq.y) - Math.hypot(b.x - hq.x, b.y - hq.y))[0];
+  const n = await g.battles();
+  const sent = await marchTo(g, lances.id, foe.x, foe.y);
+  // Everyone down once it is under way (at the keep, the fallen would rise at the day's end).
+  await g.until(([id, x, y]) => {
+    const q = window.__palatinus.state().squads.find((o) => o.id === id);
+    return Math.hypot(q.x - x, q.y - y) > 30;
+  }, [lances.id, hq.x, hq.y], 30000);
   await g.mutate(([id]) => {
     const st = window.__palatinus.state();
     const q = st.squads.find((x) => x.id === id);
     for (const c of new Set(q.grid.filter((x) => x !== null))) st.chars.get(c).hp = 0;
   }, [lances.id]);
-  const n = await g.battles();
-  await marchTo(g, lances.id, foe.x, foe.y);
-  const fought = await g.until(([k]) => window.__palatinus.battles.length > k && !window.__palatinus.game.scene.isActive('Battle')
-    && window.__palatinus.game.scene.isActive('Overworld') && !window.__palatinus.game.scene.isPaused('Overworld'), [n], 90000);
+  // Its own battle, over, and the map running again.
+  const fought = await g.until(([k, id]) => window.__palatinus.battles.slice(k).some((b) => b.attackerId === id || b.defenderId === id)
+    && !window.__palatinus.game.scene.isActive('Battle') && !window.__palatinus.game.scene.isPaused('Overworld'), [n, lances.id], 120000);
   s = await g.state();
   const l = s.squads.find((q) => q.id === lances.id);
   g.check('X3', 'a squad with everyone down is routed home when it meets the enemy', fought && !!l && near(l, hq, 28)
-    && membersOf(s, l).every((c) => c.hp > 0), l ? `${Math.hypot(l.x - hq.x, l.y - hq.y).toFixed(0)}px from the keep` : 'squad gone');
+    && membersOf(s, l).every((c) => c.hp > 0),
+    `sent ${sent} against ${foe.name}; fought ${fought}; ` +
+    (l ? `${Math.hypot(l.x - hq.x, l.y - hq.y).toFixed(0)}px from the keep, HP ${membersOf(s, l).map((c) => c.hp).join('/')}` : 'squad gone'));
 
   // An empty treasury: no recruit, no purchase. (Emptied once the army screen
   // holds the map still, so no day's income lands in between.)
   await g.click(742, 580, 500);
+  await g.until(() => window.__palatinus.game.scene.isActive('Organize'), null, 10000);
   await g.mutate(() => { window.__palatinus.state().goth = 0; });
   await g.click(106, 107 + 2 * 42);
   s = await g.state();

@@ -17,7 +17,7 @@ import {
   strongholdAt,
 } from './movement';
 import { MAP_H, MAP_W } from './terrain';
-import { NODE_DEFS } from './state';
+import { NODE_DEFS, newCampaign } from './state';
 import { makeSquad } from './squad';
 import { makeCharacter } from './character';
 import type { MapNode, Squad } from './types';
@@ -146,17 +146,21 @@ describe('stronghold occupancy', () => {
 });
 
 describe('where the enemy strikes', () => {
-  const opening = () => NODE_DEFS.map((d): MapNode => ({
-    ...d, owner: d.kind === 'hq-player' ? 'player' : d.kind === 'town' ? 'neutral' : 'enemy',
-  }));
+  // Who holds what as a new campaign opens.
+  const opening = () => newCampaign().nodes;
+  // The roamers start on the towns of the middle and east (Midfield, Saltmarsh, Ashfield).
+  const roamers = [4, 5, 7];
 
-  it('leaves the keep alone on the first day: no roaming squad starts within reach', () => {
+  it('leaves the keep alone on the first day, taking unclaimed towns within reach instead', () => {
     const nodes = opening();
-    // The roamers start on the towns of the middle and east (Midfield, Saltmarsh, Ashfield).
-    for (const id of [4, 5, 7]) expect(strikeTarget(nodes, nodes[id].x, nodes[id].y)).toBeNull();
+    for (const id of roamers) {
+      const t = strikeTarget(nodes, nodes[id].x, nodes[id].y);
+      expect(t?.kind).not.toBe('hq-player');
+      if (t) expect(t.owner).toBe('neutral');
+    }
   });
 
-  it('strikes at the nearest holding within reach as the front moves up', () => {
+  it('strikes at the nearest of the player\'s holdings within reach, before any unclaimed place', () => {
     const nodes = opening();
     nodes[1].owner = 'player'; // Elm Vale taken
     nodes[2].owner = 'player'; // Riverwatch taken
@@ -170,11 +174,29 @@ describe('where the enemy strikes', () => {
     expect(strikeTarget(nodes, elmVale.x, elmVale.y)?.name).toBe('Fort Melchor');
   });
 
-  it('ignores what is not the player\'s, and anything out of range', () => {
-    const nodes = opening();
-    expect(strikeTarget(nodes, nodes[0].x + STRIKE_RANGE + 1, nodes[0].y)).toBeNull();
-    nodes[0].owner = 'enemy';
+  it('comes for the keep in the end even if the player never moves', () => {
+    // Each roaming squad takes what it strikes at, then strikes again from there.
+    for (const id of roamers) {
+      const nodes = opening();
+      let at = nodes[id];
+      at.owner = 'enemy'; // a squad takes the town it stands on at once
+      let steps = 0;
+      for (; steps < 6; steps++) {
+        const t = strikeTarget(nodes, at.x, at.y);
+        if (!t || t.kind === 'hq-player') break;
+        t.owner = 'enemy';
+        at = t;
+      }
+      expect(strikeTarget(nodes, at.x, at.y)?.kind, nodes[id].name).toBe('hq-player');
+      expect(steps).toBeLessThan(6);
+    }
+  });
+
+  it('ignores the enemy\'s own holdings, and anything out of range', () => {
+    const nodes = NODE_DEFS.map((d): MapNode => ({ ...d, owner: 'enemy' }));
     expect(strikeTarget(nodes, nodes[0].x, nodes[0].y)).toBeNull();
+    nodes[0].owner = 'player';
+    expect(strikeTarget(nodes, nodes[0].x + STRIKE_RANGE + 1, nodes[0].y)).toBeNull();
   });
 });
 

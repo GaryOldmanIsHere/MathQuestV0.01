@@ -148,19 +148,27 @@ export function haltSquad(sq: Squad): void {
   sq.targetY = null;
 }
 
-/** The player's holding an enemy squad at (x, y) strikes at: the nearest within reach, if any. */
+/**
+ * Where an enemy squad at (x, y) strikes: the nearest of the player's
+ * holdings within reach; failing that, the nearest unclaimed stronghold
+ * within reach, so the enemy's front creeps toward the player and the keep
+ * comes within reach in time, even of a player who never moves.
+ */
 export function strikeTarget(nodes: MapNode[], x: number, y: number, range = STRIKE_RANGE): MapNode | null {
-  let best: MapNode | null = null;
-  let bestDist = range;
-  for (const n of nodes) {
-    if (n.owner !== 'player') continue;
-    const d = Math.hypot(n.x - x, n.y - y);
-    if (d <= bestDist) {
-      bestDist = d;
-      best = n;
+  const nearest = (owner: MapNode['owner']) => {
+    let best: MapNode | null = null;
+    let bestDist = range;
+    for (const n of nodes) {
+      if (n.owner !== owner) continue;
+      const d = Math.hypot(n.x - x, n.y - y);
+      if (d <= bestDist) {
+        bestDist = d;
+        best = n;
+      }
     }
-  }
-  return best;
+    return best;
+  };
+  return nearest('player') ?? nearest('neutral');
 }
 
 /**

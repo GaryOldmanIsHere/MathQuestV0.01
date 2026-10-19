@@ -291,8 +291,9 @@ Clicks landing near a stronghold snap onto it so capturing stays easy to aim.
 A squad that halts within an uncontested stronghold's radius liberates it and
 flips its flag; owned strongholds generate income each day. Roaming enemy
 squads strike at the nearest player holding within a town's march of them and
-drive straight at it, so the fighting spreads from the front you open, while
-garrisons hold their forts. A routed squad regroups at the keep for a day, and
+drive straight at it; with none in reach they take the nearest unclaimed town
+instead, so their front creeps toward you and reaches the keep in time. Garrisons
+hold their forts. A routed squad regroups at the keep for a day, and
 while it does it cannot keep a stronghold from being taken. Taking Castle
 Verlaine wins the campaign; losing Fort Melchor ends it.
 

@@ -174,5 +174,5 @@ describe.skipIf(!spritesPresent)('extracted Ogre Battle 64 sprites', () => {
         expect(clips.idle.frames.length, `bundle ${r.bundle}`).toBeGreaterThan(0);
       }
     }
-  });
+  }, 30000); // every sheet of every class: slow when the suite runs in parallel
 });

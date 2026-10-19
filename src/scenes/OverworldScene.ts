@@ -397,8 +397,10 @@ export class OverworldScene extends Phaser.Scene {
 
       // Otherwise strike for the closest player holding within reach — straight
       // there, since the enemy is no more bound to the roads than the player is.
+      // Unclaimed ground it takes at a slower pace: some three days a town, so
+      // the front creeps on the keep rather than rushing it.
       const best = strikeTarget(st.nodes, sq.x, sq.y);
-      if (best && rng() < 0.6) this.orderMarch(sq, best.x, best.y);
+      if (best && rng() < (best.owner === 'player' ? 0.6 : 0.2)) this.orderMarch(sq, best.x, best.y);
     }
   }
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Terrain } from '../core/terrain';
-import { buildTerrainGrid, COLS, ROWS, TILE } from '../core/terrain';
-import { newCampaign } from '../core/state';
+import { buildTerrainGrid, COLS, MAP_H, MAP_W, ROWS, TILE } from '../core/terrain';
+import { newCampaign, NODE_DEFS } from '../core/state';
 import {
-  clampView, figureScale, FIGURE_FULL_AT, heightAt, heightField, lerpView, mirror, octant, OVERVIEW, panView, screenOctant, SUB, toMap, toWorld,
+  clampView, figureScale, FIGURE_FULL_AT, heightAt, heightField, lerpView, mirror, octant, OVERVIEW, panView, PARKED_MARGIN, parkedAt, screenOctant, SUB, toMap, toWorld,
   VERTS_X, VERTS_Z, VIEW_LIMITS, viewCamera, WATER_LEVEL, WORLD_D, WORLD_W, zoomView,
 } from './worldMap';
 
@@ -142,6 +142,40 @@ describe('figures on the map', () => {
     expect(figureScale(FIGURE_FULL_AT)).toBe(1);
     expect(figureScale(OVERVIEW.distance)).toBeCloseTo(OVERVIEW.distance / FIGURE_FULL_AT);
     expect(figureScale(VIEW_LIMITS.maxDistance)).toBeGreaterThan(figureScale(OVERVIEW.distance - 10));
+  });
+});
+
+describe('squads parked at a stronghold', () => {
+  const far = figureScale(OVERVIEW.distance);
+
+  it('stand in front of it, toward the camera, fanned out', () => {
+    const [a, b] = [parkedAt(400, 300, 0, 2, 0, 1), parkedAt(400, 300, 1, 2, 0, 1)];
+    // From the south (yaw 0) the camera's side is south: larger y.
+    expect(a.y).toBeGreaterThan(300);
+    expect(b.y).toBeGreaterThan(300);
+    expect(a.x).not.toBeCloseTo(b.x);
+  });
+
+  it('stay on the map at every stronghold, from the whole-map view, however many are parked', () => {
+    for (const n of NODE_DEFS) {
+      for (const count of [1, 2, 4]) {
+        for (let i = 0; i < count; i++) {
+          for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+            const p = parkedAt(n.x, n.y, i, count, yaw, far);
+            expect(p.x, `${n.name}`).toBeGreaterThanOrEqual(PARKED_MARGIN);
+            expect(p.x, `${n.name}`).toBeLessThanOrEqual(MAP_W - PARKED_MARGIN);
+            expect(p.y, `${n.name}`).toBeGreaterThanOrEqual(PARKED_MARGIN);
+            expect(p.y, `${n.name}`).toBeLessThanOrEqual(MAP_H - PARKED_MARGIN);
+          }
+        }
+      }
+    }
+  });
+
+  it('stand behind a stronghold on the southern edge rather than off the map', () => {
+    const saltmarsh = NODE_DEFS.find((n) => n.name === 'Saltmarsh')!;
+    const p = parkedAt(saltmarsh.x, saltmarsh.y, 0, 2, 0, far);
+    expect(p.y).toBeLessThan(saltmarsh.y);
   });
 });
 

@@ -205,6 +205,36 @@ export function figureScale(distance: number): number {
   return Math.max(1, distance / FIGURE_FULL_AT);
 }
 
+/** How far inside the map's edges a parked squad is always drawn. */
+export const PARKED_MARGIN = 12;
+
+/**
+ * Where the `index`th of `count` squads parked at a stronghold at (x, y) is
+ * drawn: in an arc in front of it on the camera's side (the camera, turned
+ * by `yaw`, stands toward (sin yaw, cos yaw) on the map), spreading as their
+ * figures `grow`. Where that arc would leave the map, as before a stronghold
+ * on the southern edge seen from the south, it stands behind the building
+ * instead; either way it stays on the map, where it can be seen and clicked.
+ */
+export function parkedAt(
+  x: number, y: number, index: number, count: number, yaw: number, grow: number,
+): { x: number; y: number } {
+  const toward = Math.PI / 2 - yaw;
+  const r = (count > 1 ? 30 : 22) * grow;
+  const spot = (facing: number) => {
+    const angle = facing + (index - (count - 1) / 2) * 0.62;
+    return { x: x + Math.cos(angle) * r, y: y + Math.sin(angle) * r };
+  };
+  const inside = (p: { x: number; y: number }) =>
+    p.x >= PARKED_MARGIN && p.x <= MAP_W - PARKED_MARGIN && p.y >= PARKED_MARGIN && p.y <= MAP_H - PARKED_MARGIN;
+  let p = spot(toward);
+  if (!inside(p)) p = spot(toward + Math.PI);
+  return {
+    x: Math.min(MAP_W - PARKED_MARGIN, Math.max(PARKED_MARGIN, p.x)),
+    y: Math.min(MAP_H - PARKED_MARGIN, Math.max(PARKED_MARGIN, p.y)),
+  };
+}
+
 /** Zoom by a factor (below 1 closer), easing the camera down as it nears the ground. */
 export function zoomView(v: MapView, factor: number): MapView {
   const distance = v.distance * factor;

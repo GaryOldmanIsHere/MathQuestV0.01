@@ -10,7 +10,7 @@ import { drawPanel, makeButton, SMALL_STYLE, TEXT_STYLE, hpColor } from '../gfx/
 import { WorldStage } from '../gfx3d/world';
 import { mapFigureFor } from '../gfx3d/mapFigures';
 import { prepareSprites } from '../gfx3d/ob64Sprites';
-import { figureScale, OVERVIEW, panView } from '../gfx3d/worldMap';
+import { figureScale, OVERVIEW, panView, parkedAt } from '../gfx3d/worldMap';
 import { declutter } from '../gfx/declutter';
 import { DEBUG, exposeDebug, SPEED } from '../debug';
 import { rng } from '../data/names';
@@ -236,18 +236,11 @@ export class OverworldScene extends Phaser.Scene {
     const near = (s: Squad, n: MapNode) => !s.moving && Math.hypot(n.x - s.x, n.y - s.y) < 50;
     const n = st.nodes.find((o) => near(sq, o));
     if (!n) return { x: sq.x, y: sq.y };
-    // The squads parked at a stronghold stand in an arc in front of it, on
-    // the camera's side, spreading further as the camera draws back and
-    // their figures grow.
+    // The squads parked at a stronghold stand in an arc in front of it,
+    // spreading further as the camera draws back and their figures grow.
     const parked = st.squads.filter((o) => near(o, n)).sort((a, b) => a.id - b.id);
-    const i = parked.indexOf(sq);
     const view = this.world?.view;
-    const grow = figureScale(view?.distance ?? 0);
-    // The camera stands toward (sin yaw, cos yaw) on the map.
-    const toward = Math.PI / 2 - (view?.yaw ?? 0);
-    const angle = toward + (i - (parked.length - 1) / 2) * 0.62;
-    const r = (parked.length > 1 ? 30 : 22) * grow;
-    return { x: n.x + Math.cos(angle) * r, y: n.y + Math.sin(angle) * r };
+    return parkedAt(n.x, n.y, parked.indexOf(sq), parked.length, view?.yaw ?? 0, figureScale(view?.distance ?? 0));
   }
 
   private routeOf(sq: Squad): { x: number; y: number } | null {

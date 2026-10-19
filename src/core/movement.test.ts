@@ -11,6 +11,8 @@ import {
   settleOffset,
   snapOrder,
   stepToward,
+  STRIKE_RANGE,
+  strikeTarget,
   strongholdAt,
 } from './movement';
 import { MAP_H, MAP_W } from './terrain';
@@ -139,6 +141,39 @@ describe('stronghold occupancy', () => {
     ];
     expect(strongholdAt(near, 105, 100, 40)?.id).toBe(0);
     expect(strongholdAt(near, 125, 100, 40)?.id).toBe(1);
+  });
+});
+
+describe('where the enemy strikes', () => {
+  const opening = () => NODE_DEFS.map((d): MapNode => ({
+    ...d, owner: d.kind === 'hq-player' ? 'player' : d.kind === 'town' ? 'neutral' : 'enemy',
+  }));
+
+  it('leaves the keep alone on the first day: no roaming squad starts within reach', () => {
+    const nodes = opening();
+    // The roamers start on the towns of the middle and east (Midfield, Saltmarsh, Ashfield).
+    for (const id of [4, 5, 7]) expect(strikeTarget(nodes, nodes[id].x, nodes[id].y)).toBeNull();
+  });
+
+  it('strikes at the nearest holding within reach as the front moves up', () => {
+    const nodes = opening();
+    nodes[1].owner = 'player'; // Elm Vale taken
+    nodes[2].owner = 'player'; // Riverwatch taken
+    expect(strikeTarget(nodes, nodes[4].x, nodes[4].y)?.name).toBe('Elm Vale'); // from Midfield, a step nearer
+    expect(strikeTarget(nodes, nodes[5].x, nodes[5].y)?.name).toBe('Riverwatch'); // from Saltmarsh
+  });
+
+  it('can reach the keep from a town next to it', () => {
+    const nodes = opening();
+    const elmVale = nodes[1];
+    expect(strikeTarget(nodes, elmVale.x, elmVale.y)?.name).toBe('Fort Melchor');
+  });
+
+  it('ignores what is not the player\'s, and anything out of range', () => {
+    const nodes = opening();
+    expect(strikeTarget(nodes, nodes[0].x + STRIKE_RANGE + 1, nodes[0].y)).toBeNull();
+    nodes[0].owner = 'enemy';
+    expect(strikeTarget(nodes, nodes[0].x, nodes[0].y)).toBeNull();
   });
 });
 

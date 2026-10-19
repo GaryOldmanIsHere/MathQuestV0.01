@@ -20,6 +20,14 @@ export const ENGAGE_RADIUS = 18;
 export const CONTEST_RADIUS = 30;
 
 /**
+ * How far an enemy squad looks for a holding of the player's to strike: a
+ * town's march from its neighbours, so the war spreads from the front the
+ * player opens rather than every roaming squad making straight for the keep
+ * on the first day.
+ */
+export const STRIKE_RANGE = 220;
+
+/**
  * Where the `index`th squad to halt at a stronghold stands, from its
  * centre: the first on it, the rest in rings close about it. Every place is
  * near enough that the squad holds the stronghold, counts against anyone
@@ -139,3 +147,19 @@ export function haltSquad(sq: Squad): void {
   sq.targetX = null;
   sq.targetY = null;
 }
+
+/** The player's holding an enemy squad at (x, y) strikes at: the nearest within reach, if any. */
+export function strikeTarget(nodes: MapNode[], x: number, y: number, range = STRIKE_RANGE): MapNode | null {
+  let best: MapNode | null = null;
+  let bestDist = range;
+  for (const n of nodes) {
+    if (n.owner !== 'player') continue;
+    const d = Math.hypot(n.x - x, n.y - y);
+    if (d <= bestDist) {
+      bestDist = d;
+      best = n;
+    }
+  }
+  return best;
+}
+

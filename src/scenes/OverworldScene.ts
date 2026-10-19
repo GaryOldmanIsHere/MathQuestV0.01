@@ -15,7 +15,7 @@ import { declutter } from '../gfx/declutter';
 import { exposeDebug, SPEED } from '../debug';
 import { rng } from '../data/names';
 import {
-  CONTEST_RADIUS, ENGAGE_RADIUS, haltSquad, orderTo, retreatTarget, settleOffset, snapOrder, stepToward, strongholdAt,
+  CONTEST_RADIUS, ENGAGE_RADIUS, haltSquad, orderTo, retreatTarget, settleOffset, snapOrder, stepToward, strikeTarget, strongholdAt,
 } from '../core/movement';
 import type { Terrain } from '../core/terrain';
 import { buildTerrainGrid, MAP_H, speedMultiplierAt, terrainAtPoint } from '../core/terrain';
@@ -388,19 +388,9 @@ export class OverworldScene extends Phaser.Scene {
       const here = strongholdAt(st.nodes, sq.x, sq.y);
       if (here && here.owner === 'enemy' && (here.kind === 'hq-enemy' || here.kind === 'fort')) continue;
 
-      // Otherwise strike for the closest player holding — straight there, since
-      // the enemy is no more bound to the roads than the player is.
-      const targets = st.nodes.filter((n) => n.owner === 'player');
-      if (targets.length === 0) continue;
-      let best: MapNode | null = null;
-      let bestDist = Infinity;
-      for (const t of targets) {
-        const d = Phaser.Math.Distance.Between(sq.x, sq.y, t.x, t.y);
-        if (d < bestDist) {
-          bestDist = d;
-          best = t;
-        }
-      }
+      // Otherwise strike for the closest player holding within reach — straight
+      // there, since the enemy is no more bound to the roads than the player is.
+      const best = strikeTarget(st.nodes, sq.x, sq.y);
       if (best && rng() < 0.6) this.orderMarch(sq, best.x, best.y);
     }
   }

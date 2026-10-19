@@ -289,9 +289,12 @@ enemy castle, towns, and forts. Select a squad and click *anywhere* — squads
 march in a straight line to any point you pick, not along a fixed network.
 Clicks landing near a stronghold snap onto it so capturing stays easy to aim.
 A squad that halts within an uncontested stronghold's radius liberates it and
-flips its flag; owned strongholds generate income each day. Enemy squads pick
-the nearest player holding and drive straight at it, while garrisons hold their
-forts. Taking Castle Verlaine wins the campaign; losing Fort Melchor ends it.
+flips its flag; owned strongholds generate income each day. Roaming enemy
+squads strike at the nearest player holding within a town's march of them and
+drive straight at it, so the fighting spreads from the front you open, while
+garrisons hold their forts. A routed squad regroups at the keep for a day, and
+while it does it cannot keep a stronghold from being taken. Taking Castle
+Verlaine wins the campaign; losing Fort Melchor ends it.
 
 **Terrain that costs time, never access.** Nothing on the map is impassable —
 you can always go anywhere — but the ground decides how fast you get there.

@@ -26,7 +26,8 @@ export async function openGame({ url = 'http://localhost:5173/', speed = 4, tag 
   });
   // E2E_DATA=builtin plays on the built-in data even where OB64's is extracted,
   // by answering the game's requests for it as if the files were not there.
-  if (process.env.E2E_DATA === 'builtin') await page.route('**/ob64/**', (r) => r.fulfill({ status: 404, body: '' }));
+  // Only the extracted folder at the site's root: the game's own code lives under src/ob64/.
+  if (process.env.E2E_DATA === 'builtin') await page.route(/^https?:\/\/[^/]+\/ob64\//, (r) => r.fulfill({ status: 404, body: '' }));
   await page.goto(`${url}?debug&speed=${speed}`, { waitUntil: 'networkidle' });
   // Generous: two runs side by side share the CPU with a software GPU.
   await page.waitForFunction(() => window.__palatinus?.game?.scene?.isActive('Title'), null, { timeout: 120000 });

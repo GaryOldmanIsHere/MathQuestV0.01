@@ -480,6 +480,7 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
   let last = '';
   let sampled = 0;
   let seen = await g.battles();
+  let lastRoll = 0;
   await g.page.keyboard.press('r');
   while (Date.now() - start < minutes * 60000) {
     const s = await g.state();
@@ -527,6 +528,14 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
     const line = `day ${s.day}: ${s.nodes.filter((n) => n.owner === 'player').length}/9 held, ` +
       `${players(s).length} vs ${enemies(s).length} squads, ${s.goth} Goth, ${seen} battles, ` +
       `levels ${level('player')} vs ${level('enemy')}`;
+    // Where each of our squads is and how it stands, every so often.
+    if (s.day % 10 === 0 && s.day !== lastRoll) {
+      lastRoll = s.day;
+      const near = (q) => s.nodes.find((n) => Math.hypot(n.x - q.x, n.y - q.y) < 30)?.name ?? `${Math.round(q.x)},${Math.round(q.y)}`;
+      log.push(`  roll day ${s.day}: ` + players(s).map((q) =>
+        `${q.name} at ${near(q)} ${Math.round(strength(q) * 100)}%${q.moving ? ` marching to ${Math.round(q.tx)},${Math.round(q.ty)}` : ''}`,
+      ).join('; '));
+    }
     if (line !== last) {
       log.push(line);
       last = line;

@@ -103,8 +103,14 @@ export function makeCharacter(classId: string, level: number, opts?: {
   };
 }
 
+/**
+ * Experience from one level to the next. A soldier who comes through a fight
+ * earns some 20 to 30, so this asks three or four fights a level in the early
+ * ranks: a campaign of forty-odd battles raises its veterans the few levels
+ * the castle at its end calls for.
+ */
 export function expToNext(level: number): number {
-  return 40 + level * 25;
+  return 20 + level * 10;
 }
 
 /** Grant exp; returns number of levels gained. */

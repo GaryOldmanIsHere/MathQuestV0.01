@@ -6,8 +6,9 @@ import { rng } from '../data/names';
 import { effectiveResist, effectiveStats, familyOf, weaponOf } from './items';
 
 // One Ogre Battle engagement: every combatant acts once in agility order,
-// attack shape determined by their row on the 3x3 grid. The side that dealt
-// more total damage wins the clash; the loser is pushed back on the map.
+// attack shape determined by their row on the 3x3 grid. The side that lost
+// the smaller share of its strength wins the clash; the loser is pushed back
+// on the map.
 
 export interface Combatant {
   char: Character;
@@ -93,6 +94,19 @@ function targetPool(enemies: Combatant[]): Combatant[] {
   return alive.sort((a, b) => rank(a.row) - rank(b.row));
 }
 
+/**
+ * Who wins a clash neither side was wiped out in, from the share of its
+ * strength each side lost: the one that lost clearly less (by a tenth) wins,
+ * else both withdraw. Shares, not raw damage: a lone champion who fells two
+ * of five foes but is himself cut nearly to the ground has lost the clash,
+ * however hard his blows landed.
+ */
+export function judgeClash(attackerLost: number, defenderLost: number): 'attacker' | 'defender' | 'draw' {
+  if (defenderLost > attackerLost * 1.1) return 'attacker';
+  if (attackerLost > defenderLost * 1.1) return 'defender';
+  return 'draw';
+}
+
 export function simulateBattle(
   attacker: { squad: Squad; chars: Map<number, Character> },
   defender: { squad: Squad; chars: Map<number, Character> },
@@ -112,6 +126,10 @@ export function simulateBattle(
 
   const atk = make(attacker);
   const def = make(defender);
+  // Each side's strength going in, to judge its losses against.
+  const strength = (side: Combatant[]) => side.reduce((sum, c) => sum + c.char.stats.hp, 0);
+  const atkStrength = Math.max(1, strength(atk));
+  const defStrength = Math.max(1, strength(def));
   const events: BattleEvent[] = [];
   const damageBy = { attacker: 0, defender: 0 };
   const expGained = new Map<number, number>();
@@ -206,9 +224,7 @@ export function simulateBattle(
   let winner: 'attacker' | 'defender' | 'draw';
   if (defenderWiped && !attackerWiped) winner = 'attacker';
   else if (attackerWiped && !defenderWiped) winner = 'defender';
-  else if (damageBy.attacker > damageBy.defender * 1.1) winner = 'attacker';
-  else if (damageBy.defender > damageBy.attacker * 1.1) winner = 'defender';
-  else winner = 'draw';
+  else winner = judgeClash(damageBy.defender / atkStrength, damageBy.attacker / defStrength);
 
   // Only the player's army learns from battle. The enemy's squads keep the
   // levels the campaign gives them, as Ogre Battle's do: a garrison that

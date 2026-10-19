@@ -28,7 +28,8 @@ export async function openGame({ url = 'http://localhost:5173/', speed = 4, tag 
   // by answering the game's requests for it as if the files were not there.
   if (process.env.E2E_DATA === 'builtin') await page.route('**/ob64/**', (r) => r.fulfill({ status: 404, body: '' }));
   await page.goto(`${url}?debug&speed=${speed}`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => window.__palatinus?.game?.scene?.isActive('Title'), null, { timeout: 30000 });
+  // Generous: two runs side by side share the CPU with a software GPU.
+  await page.waitForFunction(() => window.__palatinus?.game?.scene?.isActive('Title'), null, { timeout: 120000 });
   const box = await page.locator('canvas').boundingBox();
   const g = { browser, page, errors, box, tag, speed, checks: [], shots: 0 };
 

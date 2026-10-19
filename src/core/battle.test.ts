@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { elementBonus, simulateBattle } from './battle';
+import { elementBonus, judgeClash, simulateBattle } from './battle';
 import { makeCharacter } from './character';
 import { makeSquad } from './squad';
 import type { Character, Squad } from './types';
@@ -86,6 +86,35 @@ describe('engagement resolution', () => {
     ], chars);
     simulateBattle({ squad: a, chars }, { squad: b, chars });
     for (const c of chars.values()) expect(c.hp).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('judging a clash', () => {
+  it('goes to the side that lost the smaller share of its strength', () => {
+    expect(judgeClash(0.2, 0.5)).toBe('attacker');
+    expect(judgeClash(0.5, 0.2)).toBe('defender');
+    expect(judgeClash(0.5, 0.52)).toBe('draw');
+  });
+
+  it('judges every battle no one was wiped out of by those shares', () => {
+    let judged = 0;
+    for (let k = 0; k < 40; k++) {
+      const chars = new Map<number, Character>();
+      const five = squadOf('player', [
+        { classId: 'fighter', level: 5, cell: 2 }, { classId: 'fighter', level: 5, cell: 5 },
+        { classId: 'cleric', level: 5, cell: 8 }, { classId: 'archer', level: 5, cell: 0 },
+        { classId: 'archer', level: 5, cell: 3 },
+      ], chars);
+      const champion = squadOf('enemy', [{ classId: 'black-knight', level: 4 + (k % 6), cell: 2 }], chars);
+      const strength = (sq: Squad) => sq.grid.filter((id) => id !== null).reduce((a, id) => a + chars.get(id!)!.stats.hp, 0);
+      const [mine, theirs] = [strength(five), strength(champion)];
+      const result = simulateBattle({ squad: five, chars }, { squad: champion, chars });
+      if (result.attackerWiped || result.defenderWiped) continue;
+      const end = result.events.at(-1) as { attackerDamage: number; defenderDamage: number };
+      expect(result.winner).toBe(judgeClash(end.defenderDamage / mine, end.attackerDamage / theirs));
+      judged++;
+    }
+    expect(judged).toBeGreaterThan(0);
   });
 });
 

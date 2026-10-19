@@ -308,9 +308,9 @@ engagement resolves automatically, and plays out on the 3D battlefield. Each squ
 middle, or back — which in turn decides which attack they use and how many
 times it lands. A knight in front swings twice; an archer gains a third shot
 from the back rank; clerics only heal from the rear. Combatants act in agility
-order, attacks target the enemy's nearest live rank first, and the side dealing
-more damage wins the clash and drives the loser back onto its own nearest
-holding. Because squads move freely, engagements happen wherever two forces
+order, attacks target the enemy's nearest live rank first, and the side that
+lost the smaller share of its strength wins the clash and drives the loser back
+onto its own nearest holding. Because squads move freely, engagements happen wherever two forces
 meet — you can intercept a march in open country, and be intercepted yourself.
 Wiped enemy squads are destroyed; wiped player squads rout home to the keep at
 low strength.

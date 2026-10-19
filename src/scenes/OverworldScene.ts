@@ -31,6 +31,9 @@ interface SquadView {
 /** How far the pointer must travel before a press becomes a drag. */
 const DRAG_SLOP = 6;
 
+/** A campaign day, in ms of the map's clock. */
+const DAY_MS = 12000;
+
 export class OverworldScene extends Phaser.Scene {
   private views = new Map<number, SquadView>();
   private selected: Squad | null = null;
@@ -43,6 +46,8 @@ export class OverworldScene extends Phaser.Scene {
   private hintText!: Phaser.GameObjects.Text;
   private battleActive = false;
   private cooldowns = new Map<number, number>(); // squad id -> map time when it may fight again
+  /** Routed squads, by id, and the map time they have rested enough to stand and fight. */
+  private recovering = new Map<number, number>();
   /** The map's own clock, in ms: it runs only while the map does. */
   private clock = 0;
   private aiTimer = 0;
@@ -63,6 +68,7 @@ export class OverworldScene extends Phaser.Scene {
     this.aiTimer = 0;
     this.dayTimer = 0;
     this.cooldowns.clear();
+    this.recovering.clear();
     this.terrain = buildTerrainGrid(st.nodes);
 
     // The map in 3D, grown from the same terrain grid marching is charged on,
@@ -339,8 +345,10 @@ export class OverworldScene extends Phaser.Scene {
   private tryCapture(sq: Squad, node: MapNode): void {
     const st = getState();
     const hostile = sq.side === 'player' ? 'enemy' : 'player';
+    // A routed squad still regrouping holds nothing: it cannot stop a capture.
     const contested = st.squads.some(
-      (o) => o.side === hostile && Phaser.Math.Distance.Between(o.x, o.y, node.x, node.y) < CONTEST_RADIUS,
+      (o) => o.side === hostile && !this.isRecovering(o) &&
+        Phaser.Math.Distance.Between(o.x, o.y, node.x, node.y) < CONTEST_RADIUS,
     );
     if (contested) return;
     if (node.owner !== sq.side) {
@@ -349,6 +357,24 @@ export class OverworldScene extends Phaser.Scene {
       this.toast(`${node.name} ${sq.side === 'player' ? 'liberated!' : 'has fallen!'}`, sq.side === 'player' ? '#90e090' : '#e09090');
       if (node.kind === 'hq-enemy' && sq.side === 'player') this.endCampaign('victory');
       if (node.kind === 'hq-player' && sq.side === 'enemy') this.endCampaign('defeat');
+    }
+  }
+
+  private isRecovering(sq: Squad): boolean {
+    return (this.recovering.get(sq.id) ?? 0) > this.clock;
+  }
+
+  /**
+   * A squad standing on a stronghold it does not hold takes it as soon as no
+   * one is left to dispute it, not only on the moment it arrives.
+   */
+  private pressClaims(): void {
+    const st = getState();
+    for (const sq of st.squads) {
+      if (sq.moving || this.isRecovering(sq)) continue;
+      const node = strongholdAt(st.nodes, sq.x, sq.y);
+      if (node && node.owner !== sq.side) this.tryCapture(sq, node);
+      if (st.phase !== 'playing') return;
     }
   }
 
@@ -434,6 +460,10 @@ export class OverworldScene extends Phaser.Scene {
           haltSquad(sq);
           this.settle(sq, hq);
           for (const c of members) c.hp = Math.max(1, Math.floor(c.stats.hp * 0.25));
+          // It sits out a day to regroup, so it is not thrown straight back at
+          // whoever routed it (perhaps camped on the keep itself).
+          this.cooldowns.set(sq.id, now + DAY_MS);
+          this.recovering.set(sq.id, now + DAY_MS);
           this.toast(`${sq.name} routed! They regroup at the keep.`, '#e0b060');
         }
       } else {
@@ -572,6 +602,8 @@ export class OverworldScene extends Phaser.Scene {
 
     this.steerCamera(dt);
     for (const sq of st.squads) this.stepSquad(sq, dt);
+    this.pressClaims();
+    if (st.phase !== 'playing') return;
     this.checkEncounters();
 
     this.aiTimer += dt;
@@ -580,7 +612,7 @@ export class OverworldScene extends Phaser.Scene {
       this.aiTick();
     }
     this.dayTimer += dt;
-    if (this.dayTimer > 12) {
+    if (this.dayTimer > DAY_MS / 1000) {
       this.dayTimer = 0;
       st.day++;
       const income = st.nodes.filter((n) => n.owner === 'player').length * 50;

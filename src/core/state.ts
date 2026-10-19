@@ -117,11 +117,11 @@ export function newCampaign(): GameState {
   enemyAt(3, 'Highcliff Garrison', [['knight', 6], ['fighter', 4], ['fighter', 4], ['wizard', 6]]);
   enemyAt(6, 'Stonegate Watch', [['phalanx', 7], ['fighter', 5], ['skeleton', 5], ['witch', 7]]);
   // Large beasts and golems fill two of a squad's five places.
-  enemyAt(7, 'Ash Raiders', [['berserker', 6], ['hellhound', 5], ['sorceress', 6], ['fighter', 5]]);
+  enemyAt(7, 'Ash Raiders', [['berserker', 5], ['hellhound', 5], ['sorceress', 5], ['fighter', 5]]);
   enemyAt(4, 'Border Patrol', [['soldier', 5], ['militia', 4], ['bowman', 4], ['medic', 4]]);
-  enemyAt(5, 'Risen Host', [['risen-knight', 8], ['risen-soldier', 6], ['risen-archer', 6], ['risen-archmage', 7]]);
-  enemyAt(8, 'Verlaine Guard', [['black-knight', 9], ['golem', 7], ['ghost', 6], ['wizard', 7]]);
-  enemyAt(8, 'Dragon Wing', [['wyvern', 7], ['dragon-tamer', 7], ['archer', 6]]);
+  enemyAt(5, 'Risen Host', [['risen-knight', 6], ['risen-soldier', 5], ['risen-archer', 5], ['risen-archmage', 5]]);
+  enemyAt(8, 'Verlaine Guard', [['black-knight', 7], ['golem', 4], ['ghost', 6], ['wizard', 7]]);
+  enemyAt(8, 'Dragon Wing', [['wyvern', 6], ['dragon-tamer', 6], ['archer', 6]]);
 
   return { chars, squads, nodes, goth: 500, inventory: starterInventory(), day: 1, phase: 'playing' };
 }

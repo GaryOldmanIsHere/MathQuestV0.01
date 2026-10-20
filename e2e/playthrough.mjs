@@ -10,6 +10,13 @@
 // E2E_DATA=builtin, on the built-in data. E2E_SPEED (1-8) runs the game
 // faster; E2E_TAG names the run. Screenshots and a JSON report land in
 // e2e-results/.
+//
+// The victory, defeat and soak sections play whole campaigns in real time,
+// and the commander here must keep up with the game: every look and click
+// waits on a frame, and a software GPU draws only a few a second. On a slow
+// machine the commander falls behind and can lose a campaign a player would
+// win (checks C1 and C2), so run those at a lower E2E_SPEED there (2 to 4).
+// The other sections do not depend on the machine's speed.
 
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';

@@ -9,8 +9,8 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
-      // The two engines in chunks of their own, cached apart from the game.
-      output: { manualChunks: { phaser: ['phaser'], three: ['three'] } },
+      // The 3D engine in a chunk of its own, cached apart from the game.
+      output: { manualChunks: { three: ['three', 'three/webgpu', 'three/tsl'] } },
     },
   },
 });

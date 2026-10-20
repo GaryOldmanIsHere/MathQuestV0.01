@@ -5,12 +5,11 @@ import type { Anim, SpriteFrame, SpriteSet } from './sprites';
 import { chooseView, frameAt } from './sprites';
 import type { Placement, Shot } from './layout';
 import { cameraPosition, FOV, lerpShot, WIDE } from './layout';
-import { sharedRenderer } from './renderer';
 
 // The 3D battlefield. Ogre Battle 64 stands its 2D sprites on polygon
 // ground under a moving camera; so does this. The stage owns a Three.js
-// scene drawn into its own canvas, which the Phaser BattleScene shows as a
-// texture and writes its interface over.
+// scene and its camera, which the engine draws; the battle screen lays its
+// interface over them.
 //
 // Everything here is presentation. The battle itself has already been
 // decided by simulateBattle; the stage only acts out its event log.
@@ -63,8 +62,12 @@ const THEMES: Record<FieldTheme, { ground: number[]; sky: number; fog: number; d
 };
 
 export class BattleStage {
-  private scene = new THREE.Scene();
-  private camera: THREE.PerspectiveCamera;
+  /** What the engine draws: the field, and the camera over it. */
+  readonly scene = new THREE.Scene();
+  readonly camera: THREE.PerspectiveCamera;
+  /** The view's size on screen, in CSS pixels (project() works in these). */
+  private width = 1;
+  private height = 1;
   private actors = new Map<number, Actor>();
   private textures = new Map<SpriteFrame['image'], THREE.Texture>();
   /**
@@ -81,13 +84,26 @@ export class BattleStage {
   private shot: Shot = WIDE;
   private shake = 0;
 
-  constructor(private width: number, private height: number) {
-    this.camera = new THREE.PerspectiveCamera(FOV, width / height, 0.1, 200);
+  constructor() {
+    this.camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 200);
     this.scene.add(new THREE.HemisphereLight(0xe8f0ff, 0x506040, 1.3));
     const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
     sun.position.set(-6, 12, 8);
     this.scene.add(sun);
     this.applyShot();
+  }
+
+  /** Fit the camera to the view's size on screen. */
+  resize(width: number, height: number): void {
+    this.width = Math.max(1, width);
+    this.height = Math.max(1, height);
+    this.camera.aspect = this.width / this.height;
+    this.camera.updateProjectionMatrix();
+  }
+
+  /** The view's width over its height, for framing shots. */
+  get aspect(): number {
+    return this.width / this.height;
   }
 
   // ------------------------------------------------------------ the field --
@@ -402,14 +418,9 @@ export class BattleStage {
     }
     this.applyShot();
     this.shake *= 0.86;
-    sharedRenderer(this.width, this.height).render(this.scene, this.camera);
   }
 
   /** The canvas the last update drew into; copy it out before anything else renders. */
-  get canvas(): HTMLCanvasElement {
-    return sharedRenderer(this.width, this.height).domElement;
-  }
-
   /** Take a passing effect off the field, letting go of its material (its shape is shared). */
   private discard(effect: THREE.Mesh): void {
     this.scene.remove(effect);

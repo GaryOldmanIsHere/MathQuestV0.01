@@ -3,7 +3,6 @@ import type { MapNode } from '../core/types';
 import type { Terrain } from '../core/terrain';
 import { COLS, MAP_H, MAP_W, ROAD_WIDTH, ROWS, TILE, terrainAtTile } from '../core/terrain';
 import type { SpriteImage } from './sprites';
-import { sharedRenderer } from './renderer';
 import type { MapView } from './worldMap';
 import {
   clampView, figureScale, heightAt, heightField, lerpView, MARGIN, mirror, OVERVIEW, screenOctant, SUB, VERTS_X, VERTS_Z, viewCamera,
@@ -66,8 +65,9 @@ function seeded(seed: number): () => number {
 const lambert = (color: number) => new THREE.MeshLambertMaterial({ color, flatShading: true });
 
 export class WorldStage {
-  private scene = new THREE.Scene();
-  private camera: THREE.PerspectiveCamera;
+  /** What the engine draws: the world, and the camera over it. */
+  readonly scene = new THREE.Scene();
+  readonly camera: THREE.PerspectiveCamera;
   private ground: THREE.Mesh | null = null;
   private field: Float32Array = new Float32Array(VERTS_X * VERTS_Z);
   private water: THREE.Mesh | null = null;
@@ -85,8 +85,12 @@ export class WorldStage {
   private shown: MapView = OVERVIEW;
   private raycaster = new THREE.Raycaster();
 
-  constructor(private width: number, private height: number) {
-    this.camera = new THREE.PerspectiveCamera(36, width / height, 0.5, 260);
+  /** The view's size on screen, in CSS pixels (project() and pick() work in these). */
+  private width = 1;
+  private height = 1;
+
+  constructor() {
+    this.camera = new THREE.PerspectiveCamera(36, 1, 0.5, 260);
     this.scene.background = new THREE.Color(0x9cc0e0);
     this.scene.fog = new THREE.Fog(0x9cc0e0, 90, 190);
     this.scene.add(new THREE.HemisphereLight(0xf0f4ff, 0x4a5a3a, 1.25));
@@ -100,6 +104,14 @@ export class WorldStage {
     this.selection.visible = false;
     this.scene.add(this.selection);
     this.applyView();
+  }
+
+  /** Fit the camera to the view's size on screen. */
+  resize(width: number, height: number): void {
+    this.width = Math.max(1, width);
+    this.height = Math.max(1, height);
+    this.camera.aspect = this.width / this.height;
+    this.camera.updateProjectionMatrix();
   }
 
   // --------------------------------------------------------------- the land --
@@ -496,12 +508,6 @@ export class WorldStage {
       const m = this.water.material as THREE.MeshPhongMaterial;
       m.opacity = 0.76 + Math.sin(this.clock / 900) * 0.04;
     }
-    sharedRenderer(this.width, this.height).render(this.scene, this.camera);
-  }
-
-  /** The canvas the last update drew into; copy it out before anything else renders. */
-  get canvas(): HTMLCanvasElement {
-    return sharedRenderer(this.width, this.height).domElement;
   }
 
   private textureOf(image: SpriteImage): THREE.Texture {

@@ -67,15 +67,16 @@ export const DIAGONAL = -0.24;
 /** The opening and resting view: the whole field, from the diagonal, a little above. */
 export const WIDE: Shot = { target: [0, 0.6, 0], azimuth: DIAGONAL, elevation: 0.5, distance: 17 };
 
-/** The battle camera's field of view, in degrees (vertical), and the screen's shape. */
+/** The battle camera's field of view, in degrees (vertical), and the screen's shape it is framed for by default. */
 export const FOV = 38;
 export const ASPECT = 800 / 600;
 
 /**
  * A closer view on a unit about to act and the units it acts on, from the
- * same diagonal, drawn back just far enough that all of them are in frame.
+ * same diagonal, drawn back just far enough that all of them are in frame
+ * on a screen `aspect` times as wide as it is tall.
  */
-export function frameAction(actor: Placement, targets: Placement[]): Shot {
+export function frameAction(actor: Placement, targets: Placement[], aspect = ASPECT): Shot {
   const pts = [actor, ...targets];
   const xs = pts.map((p) => p.x);
   const zs = pts.map((p) => p.z);
@@ -87,7 +88,7 @@ export function frameAction(actor: Placement, targets: Placement[]): Shot {
   // Wide enough for the spread across, with a body's width to spare at each
   // side (more for great beasts), and for the spread in depth.
   const across = maxX - minX + (large ? 4.4 : 3);
-  const half = Math.atan(Math.tan((FOV / 2) * (Math.PI / 180)) * ASPECT) * 0.8;
+  const half = Math.atan(Math.tan((FOV / 2) * (Math.PI / 180)) * aspect) * 0.8;
   const distance = Math.min(WIDE.distance + 2, Math.max(9.5, across / 2 / Math.tan(half) + (maxZ - minZ) * 0.5 + 3));
   return {
     target: [(minX + maxX) / 2, 0.8, (minZ + maxZ) / 2],

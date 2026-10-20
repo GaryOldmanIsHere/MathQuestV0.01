@@ -1,9 +1,9 @@
-import type Phaser from 'phaser';
 import type { ClassDef } from '../core/types';
 import type { SpriteImage, SpriteSet } from './sprites';
 import { frameAt } from './sprites';
 import type { MapFigure } from './world';
 import { ob64SpriteSet, spriteClassOf } from './ob64Sprites';
+import { unitImage } from '../gfx/unitImages';
 
 // The figure a squad shows on the campaign map: its leader, standing or on
 // the march, turned the way it is going.
@@ -64,7 +64,7 @@ const cache = new Map<string, MapFigure>();
  * side's colours when its sprites are prepared, else the drawing its menus
  * use.
  */
-export function mapFigureFor(scene: Phaser.Scene, def: ClassDef, side: 'player' | 'enemy'): MapFigure {
+export function mapFigureFor(def: ClassDef, side: 'player' | 'enemy'): MapFigure {
   const key = `${def.id}|${side}`;
   let f = cache.get(key);
   if (f) return f;
@@ -76,7 +76,7 @@ export function mapFigureFor(scene: Phaser.Scene, def: ClassDef, side: 'player' 
   }
   f = cache.get(def.palette);
   if (!f) {
-    const src = scene.textures.get(`unit-${def.palette}`).getSourceImage() as HTMLCanvasElement;
+    const src = unitImage(def.palette);
     // Ogre Battle 64's standing poses face left; Palatinus's pixel art faces right.
     f = stillFigure(src, src.width, src.height, spriteClassOf(def) !== undefined ? 'left' : 'right');
     cache.set(def.palette, f);

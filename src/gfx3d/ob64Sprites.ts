@@ -1,5 +1,5 @@
-import type Phaser from 'phaser';
 import type { ClassDef } from '../core/types';
+import { setUnitImage } from '../gfx/unitImages';
 import { allClasses } from '../data/registry';
 import { buildClips } from '../ob64/sprites';
 import type { ClipName, SpriteRef } from '../ob64/sprites';
@@ -58,10 +58,10 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
 /**
  * Load the manifest and the portrait atlas, if they were extracted, and make
- * each Ogre Battle 64 class's portrait its `unit-<palette>` texture. Call
- * before the pixel-art textures are painted, which leave existing ones be.
+ * each Ogre Battle 64 class's portrait its picture. Call before the pixel art
+ * is painted, which leaves existing pictures be.
  */
-export async function loadOb64Sprites(scene: Phaser.Scene): Promise<void> {
+export async function loadOb64Sprites(): Promise<void> {
   try {
     manifest = await fetchJson<Manifest>('ob64/sprites/manifest.json');
     // Older manifests are laid out differently; extract again for these.
@@ -75,12 +75,11 @@ export async function loadOb64Sprites(scene: Phaser.Scene): Promise<void> {
       const id = spriteClassOf(def);
       const p = id !== undefined ? manifest.portraits[id] : undefined;
       if (!p) continue;
-      const key = `unit-${def.palette}`;
-      if (scene.textures.exists(key)) scene.textures.remove(key);
-      const tex = scene.textures.createCanvas(key, p.w, p.h);
-      if (!tex) continue;
-      tex.getContext().drawImage(atlas, p.x, p.y, p.w, p.h, 0, 0, p.w, p.h);
-      tex.refresh();
+      const canvas = document.createElement('canvas');
+      canvas.width = p.w;
+      canvas.height = p.h;
+      canvas.getContext('2d')!.drawImage(atlas, p.x, p.y, p.w, p.h, 0, 0, p.w, p.h);
+      setUnitImage(def.palette, canvas);
     }
   } catch (err) {
     console.warn('Ogre Battle 64 sprites present but unreadable; using the original art.', err);

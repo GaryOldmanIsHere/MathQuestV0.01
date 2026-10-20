@@ -15,8 +15,9 @@
     "e2e": "node e2e/playthrough.mjs"
   },
   "dependencies": {
+    "@fontsource/alegreya-sans": "^5.3.0",
+    "@fontsource/cinzel": "^5.3.0",
     "@types/three": "^0.185.0",
-    "phaser": "^3.85.0",
     "three": "^0.185.1"
   },
   "devDependencies": {

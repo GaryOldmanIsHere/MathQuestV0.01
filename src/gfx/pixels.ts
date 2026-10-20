@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import { hasUnitImage, setUnitImage } from './unitImages';
 import type { ClassDef } from '../core/types';
 
 // Hand-authored 12x16 chibi sprite templates + per-class palette swaps,
@@ -310,13 +310,14 @@ export const CLASS_ART: Record<string, { template: string; palette: Palette }> =
 export const SPRITE_W = 12;
 export const SPRITE_H = 16;
 
-function paint(scene: Phaser.Scene, texKey: string, art: { template: string; palette: Palette }): void {
-  if (scene.textures.exists(texKey)) return;
+function paint(key: string, art: { template: string; palette: Palette }): void {
+  if (hasUnitImage(key)) return;
   const tpl = TEMPLATES[art.template];
   if (!tpl) throw new Error(`missing template ${art.template}`);
-  const canvas = scene.textures.createCanvas(texKey, SPRITE_W, SPRITE_H);
-  if (!canvas) return;
-  const ctx = canvas.getContext();
+  const canvas = document.createElement('canvas');
+  canvas.width = SPRITE_W;
+  canvas.height = SPRITE_H;
+  const ctx = canvas.getContext('2d')!;
   for (let y = 0; y < tpl.length; y++) {
     const row = tpl[y];
     if (row.length !== SPRITE_W) throw new Error(`template ${art.template} row ${y} width ${row.length}`);
@@ -327,12 +328,12 @@ function paint(scene: Phaser.Scene, texKey: string, art: { template: string; pal
       ctx.fillRect(x, y, 1, 1);
     }
   }
-  canvas.refresh();
+  setUnitImage(key, canvas);
 }
 
-/** Render every hand-made palette-swapped sprite into a texture named `unit-<key>`. */
-export function buildUnitTextures(scene: Phaser.Scene): void {
-  for (const [key, art] of Object.entries(CLASS_ART)) paint(scene, `unit-${key}`, art);
+/** Paint every hand-made palette-swapped sprite, as the picture for its key. */
+export function buildUnitImages(): void {
+  for (const [key, art] of Object.entries(CLASS_ART)) paint(key, art);
 }
 
 function hsl(h: number, s: number, l: number): string {
@@ -397,7 +398,7 @@ export function artFor(def: ClassDef): { template: string; palette: Palette } {
   };
 }
 
-/** Make sure every class in the active dataset has a `unit-<palette>` texture. */
-export function buildClassTextures(scene: Phaser.Scene, classes: ClassDef[]): void {
-  for (const def of classes) paint(scene, `unit-${def.palette}`, artFor(def));
+/** Make sure every class in the active dataset has a picture. */
+export function buildClassImages(classes: ClassDef[]): void {
+  for (const def of classes) paint(def.palette, artFor(def));
 }

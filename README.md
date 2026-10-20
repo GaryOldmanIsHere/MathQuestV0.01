@@ -495,11 +495,14 @@ src/
     timers.ts      things to do after a while, on a screen's own clock
   screens/
     title.ts       the title, over the realm turning slowly
-    map.ts         the campaign map: camera and clicks, march orders, capture, enemy AI, encounters, the HUD
+    map.ts         the campaign map: camera and clicks, march orders, capture, enemy AI, encounters
+    mapHud.ts      the map's instruments: the day and sky, the treasury, the squads' cards, the small map
+    settings.ts    the settings sheet: the graphics preset and the keys
     battle.ts      plays back the simulated engagement on the 3D stage
     organize.ts    the army screen: formations, gear, class changes, items, the shop, recruits
   ui/
     dom.ts         building the interface from plain HTML elements
+    icons.ts       the interface's icons, drawn as SVG line drawings
     styles.css     the interface's look: translucent night-blue panels framed in gold
   gfx/
     unitImages.ts  every class's picture, as a canvas, whichever art it has
@@ -514,6 +517,7 @@ tools/
   png.ts           a minimal PNG writer for the portrait atlas
   art-preview.*    a page showing every painted frame of chosen classes (dev only)
   fx-preview.*     a battlefield for looking at each effect, a step at a time (dev only)
+  ui-preview.*     the interface's pieces on one page: icons, buttons, rows, bars (dev only)
 ```
 
 The simulation in `src/core/` depends on no renderer — battles resolve as
@@ -523,14 +527,46 @@ colours taken from its palette in `gfx/pixels.ts`. Fonts and
 any other third-party assets are listed, with their licences, in
 [CREDITS.md](CREDITS.md).
 
+## The interface
+
+The interface is HTML laid over the 3D view: translucent night-blue panels with
+gilded corners, set in Cinzel and Alegreya Sans. Its icons are drawn in code as
+SVG line drawings (`src/ui/icons.ts`), and `tools/ui-preview.html` shows every
+piece while the dev server runs.
+
+* **The campaign map's instruments** (`src/screens/mapHud.ts`):
+  * the day, the hour and the weather, top left;
+  * the treasury and the strongholds held, top right;
+  * down the left, a card for each of the army's squads, with its leader's
+    face, its orders ("Marching on Elm Vale", "Holding Fort Melchor",
+    "Regrouping", "In battle") and its strength;
+  * a small map of the whole realm, with the strongholds in their owners'
+    colours, every squad, and the view marked on it.
+
+  Click a squad's card, or press its number (**1** to **9**), to choose it and
+  bring it into view. Click the small map to look there. Stronghold names
+  carry their owner's colour, the chosen squad's name stands out, and notices
+  carry an icon.
+* **Battles** (see above) head the field with each side's card: the leader's
+  face, the side's role and name, and a strength bar for the whole squad that
+  falls as its members are struck. The banner below marks what is being done,
+  and the outcome reports what each side dealt and who rose a level.
+* **The army screen** lists the squads with their leaders' faces. Each
+  member's tile shows their level, element and strength, with a crown for the
+  leader. The sheet draws strength as a bar, stats as meters, resistances as
+  chips marked with their elements, and gear by the place it is worn.
+* **The title** has a menu panel with **Settings**: the graphics preset and the
+  keys. The same sheet opens from the map's status bar. **O** opens the army
+  screen and **Esc** closes it.
+
 ## Graphics
 
 The game draws straight into a full-window canvas at the display's own
 resolution, with WebGPU where the browser has it and WebGL2 otherwise. Every
 frame passes through ambient occlusion, bloom, tone mapping, a vignette and
 edge smoothing. Four presets, *Low* to *Ultra*, trade sharpness and effects
-against frame rate; the game picks one to suit the machine, and the title
-screen changes it (the choice is kept in this browser).
+against frame rate; the game picks one to suit the machine, and the settings
+sheet changes it (the choice is kept in this browser).
 
 * **F3** (or `?fps`) shows the frame rate, the backend, the preset and the
   resolution drawn.
@@ -553,7 +589,7 @@ pack by `npm run pack:models -- path/to/pack` (`tools/pack-models.ts`).
 
 ## Tests
 
-`npm test` runs 323 tests (306 without extracted ROM data), mostly over the simulation core: the rules
+`npm test` runs 327 tests (310 without extracted ROM data), mostly over the simulation core: the rules
 more than the rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,
@@ -587,7 +623,10 @@ drains its chip only after a beat, keeps a whole run of quick blows in the
 chip, and rises to a heal; each kind of battlefield gives the squads level
 ground, rises into hills beyond (falling away under a shore's water), and
 keeps its trees and boulders off the battle line and out from before the
-camera.
+camera. The map's instruments name the hours of the
+day aright, tell a squad's orders (fighting, regrouping, marching on a
+stronghold or holding one) and measure its strength; and every icon is drawn
+within its square.
 
 The suite is mutation-checked rather than trusted on a green run. Deliberately
 breaking the holy-damage bonus, front-rank targeting, road stamping, flier

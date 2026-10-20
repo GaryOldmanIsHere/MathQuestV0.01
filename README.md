@@ -1,9 +1,10 @@
 # Palatinus Tactics
 
 A playable real-time strategy RPG in the tradition of the late-90s "march your
-squads across a liberation map" tactics games. Built with Phaser 3 +
-TypeScript, with the campaign map and its battles in 3D by Three.js, running
-entirely in the browser. All art and text in this repository are original; Ogre Battle 64's
+squads across a liberation map" tactics games. Built with TypeScript and
+Three.js: the campaign map and its battles are drawn in 3D by WebGPU (or
+WebGL2 where the browser lacks it) at the display's own resolution, with the
+interface in HTML over them, running entirely in the browser. All art and text in this repository are original; Ogre Battle 64's
 own art appears only when extracted locally from your own ROM (below).
 
 ## Running it
@@ -31,9 +32,10 @@ expansion · 190 classes*: the game's 106, plus the expansion below.
 **What stays on your machine.** The extractor reads your ROM and writes
 `public/ob64/data.json` and the unit sprites in `public/ob64/sprites/`. That folder is git-ignored and must stay that way: it
 is copyrighted game data, and this repository only ever contains the code that
-reads it. The ROM dump itself is ignored too. Note that `npm run build` copies
-`public/` into `dist/`, so don't publish a build made while the data is
-present. Without the extracted file, the game simply runs on its originals,
+reads it. The ROM dump itself is ignored too. `npm run build` leaves
+`public/ob64/` out of `dist/` even when it is present, so a build is always
+safe to publish; for a private build that plays on the data, run
+`PALATINUS_INCLUDE_OB64=1 npm run build`. Without the extracted file, the game simply runs on its originals,
 which is also what CI and anyone else who clones the repo gets.
 
 The extractor checks the dump's SHA-1 (`d26b14be…`) and refuses anything else,
@@ -346,7 +348,7 @@ panel; its places used, the treasury and the shop rank sit below. *Shop*,
 
 ```
 src/
-  core/         pure simulation, no Phaser
+  core/         pure simulation, no rendering
     types.ts       shared types, grid/row mapping, elements and resistances
     character.ts   lineage, stat generation and level-up rolls, class change, alignment
     items.ts       gear and its rules, effective stats and resistances, supplies, shop, spoils
@@ -382,33 +384,57 @@ src/
     world.ts       the 3D campaign map: ground, water, woods, strongholds, squads, camera, picking
     worldMap.ts    the map's shape in 3D: world coordinates, heights from the terrain grid, the camera's views
     mapFigures.ts  a squad's figure on the map: the leader walking, turned the way it marches
-    renderer.ts    the one WebGL renderer the map and battles share
+  render/
+    engine.ts      the one renderer (WebGPU or WebGL2) and its finishing chain: AO, bloom, tone mapping, vignette, AA
+    quality.ts     the quality presets, the first guess for a machine, and the player's kept choice
+  app/
+    app.ts         the shell: a base screen and one over it, the frame loop, the frame-rate overlay (F3)
+    timers.ts      things to do after a while, on a screen's own clock
+  screens/
+    title.ts       the title, over the realm turning slowly
+    map.ts         the campaign map: camera and clicks, march orders, capture, enemy AI, encounters, the HUD
+    battle.ts      plays back the simulated engagement on the 3D stage
+    organize.ts    the army screen: formations, gear, class changes, items, the shop, recruits
+  ui/
+    dom.ts         building the interface from plain HTML elements
+    styles.css     the interface's look: translucent night-blue panels framed in gold
   gfx/
-    unitIcon.ts    a class's standing figure for menus and the map, whichever art it has
+    unitImages.ts  every class's picture, as a canvas, whichever art it has
+    unitIcon.ts    a class's standing figure for menus, at a given height
     pixels.ts      pixel sprite templates, per-class palettes, stand-in art for the rest
-    ui.ts          menu styling: translucent panels framed in gold, after Ogre Battle 64's windows
     declutter.ts   keeps screen labels (names over units) from sitting on one another
-  scenes/
-    BootScene      loads extracted data if present, renders all textures
-    TitleScene
-    OverworldScene the 3D map's camera and clicks, march orders, capture, enemy AI, encounter detection
-    BattleScene    plays back the simulated engagement on the 3D stage
-    OrganizeScene  formation editing and promotions
+  main.ts        boot: the renderer, the class data and art, the screens
 tools/
   extract-ob64.ts  `npm run extract:ob64`: verifies the dump, writes public/ob64/
   scrape-expansion.ts `npm run scrape:expansion`: the two class sources, as facts
   png.ts           a minimal PNG writer for the portrait atlas
 ```
 
-The simulation in `src/core/` has no Phaser dependency — battles resolve as
-pure functions over game state and emit an event log that `BattleScene` merely
-animates. Sprites are authored as small ASCII templates in `gfx/pixels.ts` and
-palette-swapped per class into canvas textures at boot, so the whole game ships
-without a single binary asset.
+The simulation in `src/core/` depends on no renderer — battles resolve as
+pure functions over game state and emit an event log that the battle screen
+merely animates. Sprites are authored as small ASCII templates in
+`gfx/pixels.ts` and palette-swapped per class into canvases at boot. Fonts and
+any other third-party assets are listed, with their licences, in
+[CREDITS.md](CREDITS.md).
+
+## Graphics
+
+The game draws straight into a full-window canvas at the display's own
+resolution, with WebGPU where the browser has it and WebGL2 otherwise. Every
+frame passes through ambient occlusion, bloom, tone mapping, a vignette and
+edge smoothing. Four presets, *Low* to *Ultra*, trade sharpness and effects
+against frame rate; the game picks one to suit the machine, and the title
+screen changes it (the choice is kept in this browser).
+
+* **F3** (or `?fps`) shows the frame rate, the backend, the preset and the
+  resolution drawn.
+* `?quality=low` (… `ultra`) picks a preset for one visit; `?webgl` forces the
+  WebGL2 path.
+* Should a WebGPU device be lost, the game reloads itself on WebGL2.
 
 ## Tests
 
-`npm test` runs 271 tests (254 without extracted ROM data) over the simulation core — the rules, not the
+`npm test` runs 298 tests (281 without extracted ROM data) over the simulation core — the rules, not the
 rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,

@@ -5,6 +5,7 @@ import type { Anim, SpriteFrame, SpriteSet } from './sprites';
 import { chooseView, frameAt } from './sprites';
 import type { Placement, Shot } from './layout';
 import { cameraPosition, FOV, lerpShot, WIDE } from './layout';
+import { outlineNormals } from '../art/normals';
 
 // The 3D battlefield. Ogre Battle 64 stands its 2D sprites on polygon
 // ground under a moving camera; so does this. The stage owns a Three.js
@@ -29,7 +30,7 @@ interface Actor {
   place: Placement;
   root: THREE.Group;
   body: THREE.Mesh;
-  mat: THREE.MeshBasicMaterial;
+  mat: THREE.MeshStandardMaterial;
   shadow: THREE.Mesh;
   anim: Anim;
   animT: number;
@@ -202,7 +203,8 @@ export class BattleStage {
   // ------------------------------------------------------------ the units --
 
   addUnit(id: number, set: SpriteSet, place: Placement): void {
-    const mat = new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
+    // Lit by the field's lights and shaded by the sprite's normal map.
+    const mat = new THREE.MeshStandardMaterial({ transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85, metalness: 0 });
     const body = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
     const shadow = new THREE.Mesh(
       new THREE.CircleGeometry(place.large ? 1.1 : 0.42, 14),
@@ -463,16 +465,16 @@ export class BattleStage {
     this.camera.lookAt(this.shot.target[0], this.shot.target[1], this.shot.target[2]);
   }
 
-  private textureOf(frame: SpriteFrame): THREE.Texture {
-    let tex = this.textures.get(frame.image);
+  private textureOf(image: SpriteFrame['image'], normals = false): THREE.Texture {
+    let tex = this.textures.get(image);
     if (!tex) {
-      tex = new THREE.Texture(frame.image as HTMLCanvasElement);
+      tex = new THREE.Texture(image as HTMLCanvasElement);
       tex.magFilter = THREE.NearestFilter;
       tex.minFilter = THREE.NearestFilter;
       tex.generateMipmaps = false;
-      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.colorSpace = normals ? THREE.NoColorSpace : THREE.SRGBColorSpace;
       tex.needsUpdate = true;
-      this.textures.set(frame.image, tex);
+      this.textures.set(image, tex);
     }
     return tex;
   }
@@ -487,10 +489,13 @@ export class BattleStage {
   private drawActor(a: Actor): void {
     const { view, mirror } = chooseView(a.set, this.screenFacing(a));
     const frame = frameAt(view.anims[a.anim], a.animT).frame;
-    const tex = this.textureOf(frame);
-    if (a.mat.map !== tex) {
+    const tex = this.textureOf(frame.image);
+    const normal = this.textureOf(frame.normal ?? outlineNormals(frame.image), true);
+    if (a.mat.map !== tex || a.mat.normalMap !== normal) {
+      const fresh = !a.mat.map || !a.mat.normalMap;
       a.mat.map = tex;
-      a.mat.needsUpdate = true;
+      a.mat.normalMap = normal;
+      if (fresh) a.mat.needsUpdate = true;
     }
     const img = frame.image as { width: number; height: number };
     const scale = (a.place.large ? a.set.largeScale : 1) / a.set.pixelsPerUnit;

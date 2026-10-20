@@ -14,6 +14,12 @@ export type SpriteImage = HTMLCanvasElement | HTMLImageElement | ImageBitmap;
 
 export interface SpriteFrame {
   image: SpriteImage;
+  /**
+   * Which way the drawing's surface faces at each pixel (a normal map), so
+   * the scene's lights can shade it. Sets without one have it made from the
+   * drawing's outline.
+   */
+  normal?: SpriteImage;
   /** The unit's feet, in pixels from the image's left and top. */
   anchorX: number;
   anchorY: number;

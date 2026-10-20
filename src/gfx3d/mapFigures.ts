@@ -2,8 +2,8 @@ import type { ClassDef } from '../core/types';
 import type { SpriteImage, SpriteSet } from './sprites';
 import { frameAt } from './sprites';
 import type { MapFigure } from './world';
-import { ob64SpriteSet, spriteClassOf } from './ob64Sprites';
-import { unitImage } from '../gfx/unitImages';
+import { ob64SpriteSet } from './ob64Sprites';
+import { paintedSet } from '../art/sheet';
 
 // The figure a squad shows on the campaign map: its leader, standing or on
 // the march, turned the way it is going.
@@ -52,7 +52,7 @@ export function setFigure(set: SpriteSet, scale = 1): MapFigure {
       else if (screenOctant >= 5 && screenOctant <= 7) view = back;
       facing = sideOf(screenOctant) ?? facing;
       const f = frameAt(view.anims[moving ? 'walk' : 'idle'], ms).frame;
-      return { image: f.image, anchorX: f.anchorX, anchorY: f.anchorY, mirror: view.faces !== facing };
+      return { image: f.image, normal: f.normal, anchorX: f.anchorX, anchorY: f.anchorY, mirror: view.faces !== facing };
     },
   };
 }
@@ -61,25 +61,16 @@ const cache = new Map<string, MapFigure>();
 
 /**
  * A class's figure on the map: Ogre Battle 64's walking figure in its
- * side's colours when its sprites are prepared, else the drawing its menus
- * use.
+ * side's colours when its sprites are prepared, else the class painted in
+ * full.
  */
 export function mapFigureFor(def: ClassDef, side: 'player' | 'enemy'): MapFigure {
   const key = `${def.id}|${side}`;
   let f = cache.get(key);
-  if (f) return f;
-  const set = ob64SpriteSet(def, side);
-  if (set) {
+  if (!f) {
+    const set = ob64SpriteSet(def, side) ?? paintedSet(def);
     f = setFigure(set, def.size === 2 ? set.largeScale : 1);
     cache.set(key, f);
-    return f;
-  }
-  f = cache.get(def.palette);
-  if (!f) {
-    const src = unitImage(def.palette);
-    // Ogre Battle 64's standing poses face left; Palatinus's pixel art faces right.
-    f = stillFigure(src, src.width, src.height, spriteClassOf(def) !== undefined ? 'left' : 'right');
-    cache.set(def.palette, f);
   }
   return f;
 }

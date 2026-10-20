@@ -8,6 +8,7 @@ import { bakedModel, hasWorldModels, worldModel } from './models';
 import { grassField, groundMaterial, waterMaterial, windSwayed } from './landscape';
 import type { Weather } from './atmosphere';
 import { Atmosphere } from './atmosphere';
+import { outlineNormals } from '../art/normals';
 import type { MapView } from './worldMap';
 import {
   clampView, figureScale, heightAt, heightField, lerpView, MARGIN, mirror, OVERVIEW, screenOctant, SUB, VERTS_X, VERTS_Z, viewCamera,
@@ -30,7 +31,7 @@ export interface MapFigure {
    * clockwise in eighths: 2 toward the camera, 4 left, 6 away) `ms` into its
    * walk, or standing. `mirror` flips it.
    */
-  frame(screenOctant: number, ms: number, moving: boolean): { image: SpriteImage; anchorX: number; anchorY: number; mirror: boolean };
+  frame(screenOctant: number, ms: number, moving: boolean): { image: SpriteImage; normal?: SpriteImage; anchorX: number; anchorY: number; mirror: boolean };
   /** How many of the drawing's pixels make one world unit. */
   pixelsPerUnit: number;
 }
@@ -70,7 +71,7 @@ interface Building {
 interface SquadMesh {
   root: THREE.Group;
   body: THREE.Mesh;
-  mat: THREE.MeshBasicMaterial;
+  mat: THREE.MeshStandardMaterial;
   base: THREE.Mesh;
   figure: MapFigure;
   x: number;
@@ -484,7 +485,8 @@ export class WorldStage {
     let s = this.squads.get(id);
     if (!s) {
       const root = new THREE.Group();
-      const mat = new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.4, side: THREE.DoubleSide });
+      // Lit by the sun and the sky, shaded by the figure's normal map, as an HD-2D sprite is.
+      const mat = new THREE.MeshStandardMaterial({ transparent: true, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.85, metalness: 0 });
       const body = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
       body.castShadow = true;
       root.add(body);
@@ -670,20 +672,20 @@ export class WorldStage {
     const flat = this.atmosphere?.flatLight;
     for (const s of this.squads.values()) {
       s.t += dtMs;
-      // Figures and their rings take the hour's light.
-      if (flat) {
-        s.mat.color.copy(flat);
-        (s.base.material as THREE.MeshBasicMaterial).color.setHex(SIDE_COLOUR[s.side]).multiply(flat);
-      }
+      // Rings take the hour's light (the figures are lit by the scene's lights).
+      if (flat) (s.base.material as THREE.MeshBasicMaterial).color.setHex(SIDE_COLOUR[s.side]).multiply(flat);
       const h = this.groundAt(s.x, s.y);
       const wx = s.x / TILE;
       const wz = s.y / TILE;
       // The way the squad marches, as the camera sees it.
       const f = s.figure.frame(screenOctant(s.heading[0], s.heading[1], yaw), s.t, s.moving);
       const tex = this.textureOf(f.image);
-      if (s.mat.map !== tex) {
+      const normal = this.textureOf(f.normal ?? outlineNormals(f.image), true);
+      if (s.mat.map !== tex || s.mat.normalMap !== normal) {
+        const fresh = !s.mat.map || !s.mat.normalMap;
         s.mat.map = tex;
-        s.mat.needsUpdate = true;
+        s.mat.normalMap = normal;
+        if (fresh) s.mat.needsUpdate = true;
       }
       const img = f.image as { width: number; height: number };
       const scale = grow / s.figure.pixelsPerUnit;
@@ -723,14 +725,14 @@ export class WorldStage {
 
   }
 
-  private textureOf(image: SpriteImage): THREE.Texture {
+  private textureOf(image: SpriteImage, normals = false): THREE.Texture {
     let tex = this.textures.get(image);
     if (!tex) {
       tex = new THREE.Texture(image as HTMLCanvasElement);
       tex.magFilter = THREE.NearestFilter;
       tex.minFilter = THREE.NearestFilter;
       tex.generateMipmaps = false;
-      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.colorSpace = normals ? THREE.NoColorSpace : THREE.SRGBColorSpace;
       tex.needsUpdate = true;
       this.textures.set(image, tex);
     }

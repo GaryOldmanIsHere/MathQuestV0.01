@@ -16,6 +16,7 @@ import { withExpansion } from './expansion';
 import type { Ob64Data } from './ob64/decode';
 import { loadOb64Sprites } from './gfx3d/ob64Sprites';
 import { loadWorldModels } from './gfx3d/models';
+import { paintPortraits } from './art/sheet';
 import { buildClassImages, buildUnitImages } from './gfx/pixels';
 import { exposeDebug } from './debug';
 import { TitleScreen } from './screens/title';
@@ -60,6 +61,8 @@ async function boot(): Promise<void> {
   await loadExtractedData();
   await loadOb64Sprites();
   await models;
+  // Painted portraits first; the pixel art fills in for any kind not painted.
+  paintPortraits(allClasses());
   buildUnitImages();
   buildClassImages(allClasses());
 

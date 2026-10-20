@@ -30,6 +30,8 @@ export interface AtmosphereOptions {
   particles: number;
   /** The stretch of land the clouds drift over, x and z (the campaign map's, unless given). */
   area?: { x0: number; z0: number; x1: number; z1: number };
+  /** Whether clouds' shadows drift over the land (they do unless told not to). */
+  clouds?: boolean;
 }
 
 export class Atmosphere {
@@ -78,7 +80,7 @@ export class Atmosphere {
     }
     this.sky = this.makeSky();
     scene.add(this.sky);
-    if (options.shadows > 0) this.makeClouds();
+    if (options.shadows > 0 && options.clouds !== false) this.makeClouds();
     if (options.particles > 0) {
       this.rain = this.makeRain(options.particles);
       this.snow = this.makeSnow(Math.round(options.particles * 0.6));

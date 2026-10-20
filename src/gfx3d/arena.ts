@@ -68,7 +68,8 @@ export class Arena {
   constructor(private scene: THREE.Scene, readonly theme: Terrain, o: ArenaOptions) {
     this.seed = o.seed;
     const rand = seeded(o.seed);
-    this.atmosphere = new Atmosphere(scene, { shadows: o.shadows, particles: o.particles, area: { x0: -45, z0: -40, x1: 45, z1: 25 } });
+    // No clouds' shadows: on a field this small, one would darken half a squad.
+    this.atmosphere = new Atmosphere(scene, { shadows: o.shadows, particles: o.particles, clouds: false });
     this.atmosphere.setHour(o.hour);
     this.atmosphere.setWeather(o.weather, true);
 

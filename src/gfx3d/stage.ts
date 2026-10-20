@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import type { Element } from '../core/types';
 import type { Terrain } from '../core/terrain';
 import type { Anim, SpriteFrame, SpriteSet } from './sprites';
 import { chooseView, frameAt } from './sprites';
@@ -8,11 +7,15 @@ import { cameraPosition, FOV, lerpShot, WIDE } from './layout';
 import { outlineNormals } from '../art/normals';
 import { Arena } from './arena';
 import type { ArenaOptions } from './arena';
+import { Particles, glowMaterial } from './vfx';
+import { Spells } from './spells';
+import type { FxHost, Spot } from './spells';
 
 // The 3D battlefield. Ogre Battle 64 stands its 2D sprites on polygon
 // ground under a moving camera; so does this. The stage owns a Three.js
 // scene and its camera, which the engine draws; the battle screen lays its
-// interface over them.
+// interface over them and directs what happens on it: who marches, runs in,
+// strikes, casts, flinches and falls, and where the camera looks.
 //
 // Everything here is presentation. The battle itself has already been
 // decided by simulateBattle; the stage only acts out its event log.
@@ -38,7 +41,7 @@ interface Actor {
   animT: number;
   onAnimDone?: () => void;
   height: number;
-  offset: THREE.Vector3; // lunges and recoils, on top of the placement
+  offset: THREE.Vector3; // marches, runs, hops and recoils, on top of the placement
   fallen: boolean;
 }
 
@@ -46,38 +49,55 @@ interface Actor {
 const FIGURE_GLOW = 0.32;
 /** How dark the soft patch under a figure's feet is. */
 const BLOB = 0.24;
+/** How near a unit runs in to strike: a body's length short of its target (more for great beasts). */
+const REACH = 1.3;
+const REACH_LARGE = 2.1;
+/** Flashes of light at once (each a light the figures and ground are lit by). */
+const FLASHES = 2;
 
-const ELEMENT_COLOUR: Record<Element | 'physical', number> = {
-  physical: 0xf0e8d0, wind: 0x9ae0ff, flame: 0xff8a3a, earth: 0xc8a060, water: 0x5aa0ff,
-  virtue: 0xfff2a0, bane: 0xb070ff, drakonite: 0xffd040,
-};
-
-export class BattleStage {
+export class BattleStage implements FxHost {
   /** What the engine draws: the field, and the camera over it. */
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
+  readonly particles: Particles;
+  readonly spells: Spells;
+  /** The miniature look while the battle plays (see engine.ts). */
+  tiltShift = 0.45;
   /** The view's size on screen, in CSS pixels (project() works in these). */
   private width = 1;
   private height = 1;
   private actors = new Map<number, Actor>();
   private textures = new Map<SpriteFrame['image'], THREE.Texture>();
-  /**
-   * The shapes the passing effects (bolts, sparks) are cut from, shared for
-   * the whole battle: an effect gone from the scene is gone from the graphics
-   * card too, so a long war does not pile them up.
-   */
-  private effectShapes = {
-    spark: new THREE.PlaneGeometry(0.12, 0.12),
-    blow: new THREE.SphereGeometry(0.09, 8, 6),
-    bolt: new THREE.SphereGeometry(0.2, 8, 6),
-  };
   private tweens: Tween[] = [];
   private shot: Shot = WIDE;
   private shake = 0;
+  /** The camera's push in on a blow, 0 to 1, easing out. */
+  private push = 0;
+  /** A blow's moment held still (hit-stop), ms left. */
+  private still = 0;
   private arena: Arena | null = null;
+  private flashes: { light: THREE.PointLight; until: number }[] = [];
+  private flashClock = 0;
+  private ring: THREE.Mesh;
+  private ringOn: Actor | null = null;
+  private ringT = 0;
 
   constructor() {
     this.camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 260);
+    this.particles = new Particles(this.scene);
+    this.spells = new Spells(this);
+    // The flashes' lights are always there, dark until wanted, so that a
+    // flash never changes what the scene's materials are drawn with.
+    for (let k = 0; k < FLASHES; k++) {
+      const light = new THREE.PointLight(0xffffff, 0, 7, 2);
+      this.scene.add(light);
+      this.flashes.push({ light, until: 0 });
+    }
+    // A ring of light under whoever acts.
+    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.56, 40), glowMaterial(0xffe6a0));
+    this.ring.rotation.x = -Math.PI / 2;
+    this.ring.visible = false;
+    this.scene.add(this.ring);
     this.applyShot();
   }
 
@@ -119,7 +139,7 @@ export class BattleStage {
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: BLOB, depthWrite: false }),
     );
     shadow.rotateX(-Math.PI / 2);
-    shadow.position.y = 0.02;
+    shadow.position.y = 0.03;
     const root = new THREE.Group();
     root.add(body, shadow);
     root.position.set(place.x, this.groundAt(place.x, place.z), place.z);
@@ -162,32 +182,64 @@ export class BattleStage {
     a.onAnimDone = done;
   }
 
-  /** Step toward a point and back: a melee blow lands at the turn. */
-  lunge(id: number, toward: [number, number], ms: number, atTurn?: () => void): void {
+  /** March onto the field from `dx` to the side of its place, as the battle opens. */
+  marchIn(id: number, dx: number, ms: number): void {
     const a = this.actors.get(id);
     if (!a) return;
+    a.offset.set(dx, 0, 0);
+    a.anim = 'walk';
+    this.tween(ms, (k) => a.offset.setX(dx * (1 - k) * (1 - k * 0.15)), () => {
+      a.offset.set(0, 0, 0);
+      if (a.anim === 'walk') a.anim = 'idle';
+    });
+  }
+
+  /** Run in to within striking reach of a point; `done` on arrival. */
+  advance(id: number, toward: [number, number], ms: number, done: () => void): void {
+    const a = this.actors.get(id);
+    if (!a) {
+      done();
+      return;
+    }
     const dx = toward[0] - a.place.x;
     const dz = toward[1] - a.place.z;
     const len = Math.hypot(dx, dz) || 1;
-    const reach = Math.max(0, len - (a.place.large ? 2.2 : 1.4));
-    let turned = false;
+    const reach = Math.max(0, len - (a.place.large ? REACH_LARGE : REACH));
+    const to = new THREE.Vector3((dx / len) * reach, 0, (dz / len) * reach);
+    a.anim = 'walk';
+    a.animT = 0;
+    this.tween(ms, (k) => a.offset.copy(to).multiplyScalar(k * k * (3 - 2 * k)), () => {
+      a.anim = 'idle';
+      done();
+    });
+  }
+
+  /** Back to its place after a blow, stepping backward. */
+  withdraw(id: number, ms: number): void {
+    const a = this.actors.get(id);
+    if (!a || a.fallen) return;
+    const from = a.offset.clone();
     this.tween(ms, (k) => {
-      const out = k < 0.5 ? k * 2 : (1 - k) * 2;
-      const ease = Math.sin((out * Math.PI) / 2);
-      a.offset.set((dx / len) * reach * ease, 0, (dz / len) * reach * ease);
-      if (!turned && k >= 0.5) {
-        turned = true;
-        atTurn?.();
-      }
+      a.offset.copy(from).multiplyScalar(1 - k * k * (3 - 2 * k));
+      // A little hop on the way.
+      a.offset.y = Math.sin(k * Math.PI) * 0.18;
     }, () => a.offset.set(0, 0, 0));
   }
 
+  /** A hop, for joy. */
+  hop(id: number, ms: number, height = 0.45): void {
+    const a = this.actors.get(id);
+    if (!a || a.fallen) return;
+    this.tween(ms, (k) => a.offset.setY(Math.sin(k * Math.PI) * height), () => a.offset.setY(0));
+  }
+
   /** A struck unit flinches back. */
-  recoil(id: number): void {
+  recoil(id: number, strength = 1): void {
     const a = this.actors.get(id);
     if (!a || a.fallen) return;
     const dir = -a.place.facing;
-    this.tween(220, (k) => a.offset.set(dir * Math.sin(k * Math.PI) * 0.25, 0, 0), () => a.offset.set(0, 0, 0));
+    const base = a.offset.x;
+    this.tween(240, (k) => a.offset.setX(base + dir * Math.sin(k * Math.PI) * 0.28 * strength), () => a.offset.setX(base));
   }
 
   /**
@@ -202,58 +254,14 @@ export class BattleStage {
     a.anim = 'fall';
     a.animT = 0;
     const tip = !a.set.ownFall;
+    if (this.ringOn === a) this.highlight(null);
     this.tween(tip ? 480 : 900, (k) => {
       if (tip) a.body.rotation.z = a.place.facing * k * (Math.PI / 2.2);
       a.mat.opacity = 1 - k * (tip ? 0.85 : 0.55);
       a.mat.alphaTest = 0.05;
       (a.shadow.material as THREE.MeshBasicMaterial).opacity = BLOB * (1 - k);
     });
-  }
-
-  /** A bolt of light from one unit to another; `hit` when it lands. */
-  projectile(from: number, to: number, element: Element | 'physical', ms: number, hit: () => void, arc = 0.8): void {
-    const a = this.actors.get(from);
-    const b = this.actors.get(to);
-    if (!a || !b) {
-      hit();
-      return;
-    }
-    const orb = new THREE.Mesh(
-      element === 'physical' ? this.effectShapes.blow : this.effectShapes.bolt,
-      new THREE.MeshBasicMaterial({ color: ELEMENT_COLOUR[element] }),
-    );
-    this.scene.add(orb);
-    const p0 = new THREE.Vector3(a.place.x, a.height * 0.6, a.place.z);
-    const p1 = new THREE.Vector3(b.place.x, b.height * 0.5, b.place.z);
-    this.tween(ms, (k) => {
-      orb.position.lerpVectors(p0, p1, k);
-      orb.position.y += Math.sin(k * Math.PI) * arc;
-    }, () => {
-      this.discard(orb);
-      hit();
-    });
-  }
-
-  /** A burst on a unit: blows spark, spells bloom in their element's colour, heals rise. */
-  burst(id: number, element: Element | 'physical', kind: 'hit' | 'spell' | 'heal'): void {
-    const a = this.actors.get(id);
-    if (!a) return;
-    const colour = kind === 'heal' ? 0x90ffa0 : ELEMENT_COLOUR[element];
-    const n = kind === 'hit' ? 6 : 14;
-    for (let i = 0; i < n; i++) {
-      const p = new THREE.Mesh(this.effectShapes.spark, new THREE.MeshBasicMaterial({ color: colour, transparent: true, side: THREE.DoubleSide }));
-      const ang = (i / n) * Math.PI * 2;
-      const spread = kind === 'hit' ? 0.7 : 1.1;
-      const start = new THREE.Vector3(a.place.x, a.height * 0.55, a.place.z);
-      p.position.copy(start);
-      this.scene.add(p);
-      this.tween(kind === 'heal' ? 700 : 420, (k) => {
-        if (kind === 'heal') p.position.set(start.x + Math.cos(ang) * 0.4, start.y - 0.5 + k * 1.6, start.z + Math.sin(ang) * 0.3);
-        else p.position.set(start.x + Math.cos(ang) * spread * k, start.y + Math.sin(ang) * spread * k * 0.8, start.z + Math.sin(ang * 1.7) * 0.3 * k);
-        p.lookAt(this.camera.position);
-        (p.material as THREE.MeshBasicMaterial).opacity = 1 - k;
-      }, () => this.discard(p));
-    }
+    a.body.castShadow = false;
   }
 
   /** Wash a unit in a colour for a moment. */
@@ -262,6 +270,49 @@ export class BattleStage {
     if (!a) return;
     a.mat.color.setHex(colour);
     this.tween(160, () => {}, () => a.mat.color.setHex(0xffffff));
+  }
+
+  /** Ring the unit about to act (null: no one). */
+  highlight(id: number | null): void {
+    this.ringOn = id === null ? null : this.actors.get(id) ?? null;
+    this.ring.visible = !!this.ringOn;
+    this.ringT = 0;
+  }
+
+  // ------------------------------------------------------------ effects --
+
+  /** Where a unit stands, for the effects (see spells.ts). */
+  spot(id: number): Spot | null {
+    const a = this.actors.get(id);
+    if (!a) return null;
+    const feet = a.root.position.clone();
+    return { feet, chest: feet.clone().add(new THREE.Vector3(0, a.height * 0.55, 0)), height: a.height };
+  }
+
+  /** A flash of light at a point, for `ms`, lighting the figures and the ground about it. */
+  light(at: THREE.Vector3, colour: number, peak: number, ms: number): void {
+    // The flash that ends soonest gives way.
+    const f = this.flashes.reduce((x, y) => (y.until < x.until ? y : x));
+    f.until = this.flashClock + ms;
+    f.light.color.setHex(colour);
+    f.light.position.copy(at).add(new THREE.Vector3(0, 0.3, 0.6));
+    const light = f.light;
+    const until = f.until;
+    this.tween(ms, (k) => {
+      if (f.until === until) light.intensity = peak * (k < 0.15 ? k / 0.15 : (1 - k) / 0.85);
+    }, () => {
+      if (f.until === until) light.intensity = 0;
+    });
+  }
+
+  /** Hold the moment still for `ms` (a blow's weight). */
+  hitStop(ms: number): void {
+    this.still = Math.max(this.still, ms);
+  }
+
+  /** Push the camera in a little, easing back out (a heavy blow). */
+  punch(amount = 1): void {
+    this.push = Math.max(this.push, amount);
   }
 
   // ------------------------------------------------------------ the camera --
@@ -305,6 +356,14 @@ export class BattleStage {
   // ------------------------------------------------------------ the frame --
 
   update(dtMs: number): void {
+    this.flashClock += dtMs;
+    // A held moment: nothing moves but the camera's shake.
+    if (this.still > 0) {
+      this.still -= dtMs;
+      this.applyShot();
+      this.shake *= 0.86;
+      return;
+    }
     for (const tw of [...this.tweens]) {
       tw.t += dtMs;
       const k = Math.min(1, tw.t / tw.dur);
@@ -333,34 +392,30 @@ export class BattleStage {
       a.shadow.position.y = 0.03 - a.offset.y;
       this.drawActor(a);
     }
+    if (this.ringOn) {
+      this.ringT += dtMs;
+      const p = this.ringOn.root.position;
+      this.ring.position.set(p.x, p.y - this.ringOn.offset.y + 0.05, p.z);
+      const pulse = 1 + Math.sin(this.ringT / 120) * 0.06;
+      this.ring.scale.setScalar((this.ringOn.place.large ? 2 : 1) * pulse);
+    }
+    this.push *= Math.pow(0.02, dtMs / 1000);
     this.applyShot();
     this.shake *= 0.86;
+    this.particles.update(dtMs, this.camera);
     this.arena?.update(dtMs, this.camera, new THREE.Vector3(...this.shot.target), this.shot.distance);
-  }
-
-  /** The canvas the last update drew into; copy it out before anything else renders. */
-  /** Take a passing effect off the field, letting go of its material (its shape is shared). */
-  private discard(effect: THREE.Mesh): void {
-    this.scene.remove(effect);
-    (effect.material as THREE.Material).dispose();
   }
 
   /** How many passing effects are on the field now (for tests). */
   get effectCount(): number {
-    const shapes = new Set<THREE.BufferGeometry>(Object.values(this.effectShapes));
-    let n = 0;
-    this.scene.traverse((o) => {
-      if (shapes.has((o as THREE.Mesh).geometry)) n++;
-    });
-    return n;
+    return this.spells.count;
   }
 
   dispose(): void {
     // The arena takes away its own (some of its shapes are the campaign map's too).
     this.arena?.dispose();
+    this.particles.dispose();
     for (const t of this.textures.values()) t.dispose();
-    // Effects still in flight are in the scene and go below; their shared shapes once, here.
-    for (const g of Object.values(this.effectShapes)) g.dispose();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();
@@ -368,19 +423,22 @@ export class BattleStage {
       if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
       else mat?.dispose();
     });
+    for (const f of this.flashes) f.light.dispose();
   }
 
   // ------------------------------------------------------------- internals --
 
-  private tween(dur: number, step: (k: number) => void, done?: () => void): void {
-    this.tweens.push({ t: 0, dur: Math.max(1, dur), step, done });
+  /** Run `step` over `ms` (k from 0 to 1), then `done`. */
+  tween(ms: number, step: (k: number) => void, done?: () => void): void {
+    this.tweens.push({ t: 0, dur: Math.max(1, ms), step, done });
   }
 
   private applyShot(): void {
-    const [x, y, z] = cameraPosition(this.shot);
+    const shot = this.push > 0.001 ? { ...this.shot, distance: this.shot.distance * (1 - this.push * 0.07) } : this.shot;
+    const [x, y, z] = cameraPosition(shot);
     const j = this.shake;
     this.camera.position.set(x + (Math.random() - 0.5) * j, y + (Math.random() - 0.5) * j, z);
-    this.camera.lookAt(this.shot.target[0], this.shot.target[1], this.shot.target[2]);
+    this.camera.lookAt(shot.target[0], shot.target[1], shot.target[2]);
   }
 
   private textureOf(image: SpriteFrame['image'], normals = false): THREE.Texture {

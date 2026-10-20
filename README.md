@@ -209,22 +209,42 @@ classes of each kind.
 
 ## Ogre Battle 64's sprites and the 3D battle
 
-Battles are staged in a real 3D scene: the two squads face each other on
-ground themed by where they met (grass, a road, forest, rocky hills or a
-river bank, with trees and rocks to match). The units are billboards, flat
-drawings that always face the camera, standing on that 3D field, as Ogre
-Battle 64 itself draws them.
+Battles are staged in a real 3D scene, made as the campaign map is
+(`src/gfx3d/arena.ts`): the same painted ground, pines and boulders, grass in
+the wind, under the hour and weather the squads met in, with the sun's
+shadows, rain, snow or mist. The field takes its look from where they met: a
+meadow, a road running across it, a forest clearing, a mountain pass or a
+shore. The units are billboards, flat drawings that always face the camera,
+standing on that 3D field as Ogre Battle 64 itself draws them, each casting
+its own shadow.
 
 As in Ogre Battle 64, each formation stands on the diagonal: each row nearer
 the camera stands a step to the right of the one behind it. The camera always
 looks across the field from a little to the attackers' side, which spreads
 the rows further apart rather than lining them up, so no unit hides another.
-* **The camera** sweeps down onto the field at the start.
-* **For each action** it frames the actor together with everyone it acts on,
-  drawn back just far enough to keep them all in view.
-* **At the end** it pulls back when the clash is done.
-* **Names and strength bars** move clear of one another where units stand
-  close.
+* **The opening.** The squads march on from either side as the camera sweeps
+  down onto the field.
+* **Each action.** The camera frames the actor together with everyone it acts
+  on, and a ring of light marks the one acting.
+  * Fighters run in, strike on their animation's own frame, and step back.
+  * Archers loose arrows that arc to their marks.
+  * Casters stand in a magic circle as light gathers in their hands, then cast
+    their element's spell: fire bursting, a column of water, a whirlwind,
+    stone spikes, a pillar of holy light, darkness drawing in, a dragon's
+    golden breath, or a healing light.
+* **Blows land.** Each lands with weight: the moment is held, the camera shakes
+  (and pushes in for a heavy blow), and the light of each blow and spell falls
+  on the figures and the ground about them.
+* **The end.** The camera pulls back when the clash is done, and the winners
+  hop for joy.
+* **Strength bars follow the blows as they land.** A blow cuts the bar and
+  leaves a pale chip that drains after a beat, and a heal shows its gain ahead
+  of the bar. The numbers pop up, larger for a heavy blow and tinted by
+  element. Names and bars move clear of one another where units stand close.
+
+The effects come from one pool of glowing particles and a few textures drawn
+in code (`src/gfx3d/vfx.ts`, `spells.ts`). `tools/fx-preview.html` stages
+each one on a field for a look, a step at a time.
 
 With the sprites extracted, each unit is drawn in Ogre Battle 64's own art:
 every animation the game gives it (breathing at rest, walking, its melee
@@ -451,7 +471,10 @@ src/
     sheet.ts       a class's full sprite set and its portrait, painted and kept
     normals.ts     a normal map for a sprite drawn without one, from its outline
   gfx3d/
-    stage.ts       the Three.js battlefield: ground, billboard units, camera shots, effects
+    stage.ts       the Three.js battlefield: billboard units, their moves, camera shots, flashes of light
+    arena.ts       the ground a battle is fought on, in the campaign map's manner, under its sky
+    spells.ts      blows, arrows, magic circles and each element's spell, as they look
+    vfx.ts         the pool of glowing particles, and the effects' textures
     layout.ts      where each squad member stands, and the camera's shots
     sprites.ts     what the stage needs from a unit's art; sets built from one still drawing
     ob64Sprites.ts loads the extracted sprites: portraits at boot, animated sets per battle
@@ -482,12 +505,14 @@ src/
     unitIcon.ts    a class's standing figure for menus, at a given height
     pixels.ts      pixel sprite templates, per-class palettes, stand-in art for the rest
     declutter.ts   keeps screen labels (names over units) from sitting on one another
+    strengthBar.ts a battle's strength bar: cut by each blow, a chip draining after
   main.ts        boot: the renderer, the class data and art, the screens
 tools/
   extract-ob64.ts  `npm run extract:ob64`: verifies the dump, writes public/ob64/
   scrape-expansion.ts `npm run scrape:expansion`: the two class sources, as facts
   png.ts           a minimal PNG writer for the portrait atlas
   art-preview.*    a page showing every painted frame of chosen classes (dev only)
+  fx-preview.*     a battlefield for looking at each effect, a step at a time (dev only)
 ```
 
 The simulation in `src/core/` depends on no renderer — battles resolve as
@@ -527,7 +552,7 @@ pack by `npm run pack:models -- path/to/pack` (`tools/pack-models.ts`).
 
 ## Tests
 
-`npm test` runs 316 tests (299 without extracted ROM data), mostly over the simulation core: the rules
+`npm test` runs 323 tests (306 without extracted ROM data), mostly over the simulation core: the rules
 more than the rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,
@@ -555,6 +580,13 @@ the lines between parts fall where they should, that pictures are shaded from
 the upper left and normal maps point the right way, and that every frame of
 every look, beast and spirit stays whole within its canvas, standing on its
 feet.
+
+The battle's look has tests of its own: a strength bar drops at once and
+drains its chip only after a beat, keeps a whole run of quick blows in the
+chip, and rises to a heal; each kind of battlefield gives the squads level
+ground, rises into hills beyond (falling away under a shore's water), and
+keeps its trees and boulders off the battle line and out from before the
+camera.
 
 The suite is mutation-checked rather than trusted on a green run. Deliberately
 breaking the holy-damage bonus, front-rank targeting, road stamping, flier

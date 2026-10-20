@@ -3,6 +3,8 @@ import type { MapNode } from '../core/types';
 import type { Terrain } from '../core/terrain';
 import { COLS, MAP_H, MAP_W, ROAD_WIDTH, ROWS, TILE, terrainAtTile } from '../core/terrain';
 import type { SpriteImage } from './sprites';
+import type { BuildingColour } from './models';
+import { bakedModel, hasWorldModels, worldModel } from './models';
 import type { MapView } from './worldMap';
 import {
   clampView, figureScale, heightAt, heightField, lerpView, MARGIN, mirror, OVERVIEW, screenOctant, SUB, VERTS_X, VERTS_Z, viewCamera,
@@ -34,6 +36,21 @@ export type Owner = MapNode['owner'];
 
 const OWNER_COLOUR: Record<Owner, number> = { player: 0x3a64e0, enemy: 0xd0402e, neutral: 0xd8d0b8 };
 const SIDE_COLOUR = { player: 0x4a6ae0, enemy: 0xd04838 };
+/** How far about a stronghold's centre (in tiles) no tree grows. */
+const CLEARING = 1.7;
+
+/** Which of the models' colours each owner's buildings wear. */
+const BUILDING_COLOUR: Record<Owner, BuildingColour> = { player: 'blue', enemy: 'red', neutral: 'yellow' };
+
+/** A building of a stronghold: which model (less its colour), and where it stands in the stronghold. */
+interface Building {
+  model: string;
+  x: number;
+  z: number;
+  turn: number;
+  scale: number;
+  object: THREE.Object3D;
+}
 
 interface SquadMesh {
   root: THREE.Group;
@@ -73,6 +90,10 @@ export class WorldStage {
   private water: THREE.Mesh | null = null;
   private flags = new Map<number, THREE.MeshLambertMaterial>();
   private flagCloths: THREE.Mesh[] = [];
+  /** Each stronghold's buildings, re-dressed in the new owner's colours when it changes hands. */
+  private buildings = new Map<number, { group: THREE.Group; parts: Building[] }>();
+  /** Windmill sails, turning. */
+  private sails: THREE.Object3D[] = [];
   private squads = new Map<number, SquadMesh>();
   private textures = new Map<SpriteImage, THREE.Texture>();
   private selection: THREE.Mesh;
@@ -162,13 +183,15 @@ export class WorldStage {
     );
     this.scene.add(this.water);
 
-    this.plantTrees(grid, rand);
+    this.plantTrees(grid, rand, nodes);
     for (const n of nodes) this.raiseStronghold(n, rand);
   }
 
   /** Woods on forest ground, and the odd tree in the open. */
-  private plantTrees(grid: Terrain[], rand: () => number): void {
+  private plantTrees(grid: Terrain[], rand: () => number, nodes: MapNode[]): void {
     const spots: [number, number, number][] = [];
+    // The ground about each stronghold is kept clear for its buildings.
+    const cleared = (x: number, y: number) => nodes.some((n) => Math.hypot(n.x - x, n.y - y) < CLEARING * TILE);
     for (let row = 0; row < ROWS; row++) {
       for (let col = 0; col < COLS; col++) {
         const t = terrainAtTile(grid, col, row);
@@ -176,11 +199,16 @@ export class WorldStage {
         for (let k = 0; k < n; k++) {
           const x = (col + 0.15 + rand() * 0.7) * TILE;
           const y = (row + 0.15 + rand() * 0.7) * TILE;
-          spots.push([x, y, 0.5 + rand() * 0.3]);
+          const size = 0.5 + rand() * 0.3;
+          if (!cleared(x, y)) spots.push([x, y, size]);
         }
       }
     }
     if (!spots.length) return;
+    if (this.plantModelTrees(spots, rand)) {
+      this.scatterRocks(grid, rand);
+      return;
+    }
     const crown = new THREE.InstancedMesh(new THREE.ConeGeometry(0.42, 1.25, 6), lambert(0xffffff), spots.length);
     const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.07, 0.09, 0.4, 5), lambert(0x6a4a2a), spots.length);
     const m = new THREE.Matrix4();
@@ -196,8 +224,140 @@ export class WorldStage {
     this.scene.add(trunk, crown);
   }
 
+  /** Woods of the models' pines, two kinds mixed, each turned and sized its own way. False without the models. */
+  private plantModelTrees(spots: [number, number, number][], rand: () => number): boolean {
+    const kinds = [bakedModel('tree_single_A'), bakedModel('tree_single_B')];
+    if (kinds.some((k) => !k)) return false;
+    const groups: [number, number, number][][] = [[], []];
+    for (const s of spots) groups[rand() < 0.55 ? 0 : 1].push(s);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    const tint = new THREE.Color();
+    groups.forEach((list, i) => {
+      if (!list.length) return;
+      const { geometry, material } = kinds[i]!;
+      const trees = new THREE.InstancedMesh(geometry, material, list.length);
+      list.forEach(([x, y, s], k) => {
+        const size = 0.62 + s * 0.5;
+        q.setFromAxisAngle(up, rand() * Math.PI * 2);
+        m.compose(new THREE.Vector3(x / TILE, heightAt(this.field, x, y) - 0.02, y / TILE), q, new THREE.Vector3(size, size * (0.9 + rand() * 0.25), size));
+        trees.setMatrixAt(k, m);
+        // Each tree a shade of its own: some darker, some yellower.
+        trees.setColorAt(k, tint.setHSL(0.18 + rand() * 0.1, 0.25, 0.78 + rand() * 0.22));
+      });
+      trees.castShadow = true;
+      trees.receiveShadow = true;
+      trees.userData.shared = true;
+      this.scene.add(trees);
+    });
+    return true;
+  }
+
+  /** Boulders strewn over the high ground. */
+  private scatterRocks(grid: Terrain[], rand: () => number): void {
+    const kinds = ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D'].map(bakedModel);
+    if (kinds.some((k) => !k)) return;
+    const spots: [number, number][][] = kinds.map(() => []);
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const t = terrainAtTile(grid, col, row);
+        const n = t === 'mountain' ? (rand() < 0.45 ? 1 : 0) : t === 'plain' && rand() < 0.012 ? 1 : 0;
+        for (let k = 0; k < n; k++) spots[Math.floor(rand() * kinds.length)].push([(col + rand()) * TILE, (row + rand()) * TILE]);
+      }
+    }
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    kinds.forEach((kind, i) => {
+      if (!spots[i].length) return;
+      const rocks = new THREE.InstancedMesh(kind!.geometry, kind!.material, spots[i].length);
+      spots[i].forEach(([x, y], k) => {
+        const s = 1.4 + rand() * 1.6;
+        q.setFromAxisAngle(up, rand() * Math.PI * 2);
+        m.compose(new THREE.Vector3(x / TILE, heightAt(this.field, x, y) - 0.03, y / TILE), q, new THREE.Vector3(s, s, s));
+        rocks.setMatrixAt(k, m);
+      });
+      rocks.castShadow = true;
+      rocks.receiveShadow = true;
+      rocks.userData.shared = true;
+      this.scene.add(rocks);
+    });
+  }
+
+  /**
+   * A stronghold of the models' buildings in its owner's colours: a castle
+   * for each side's seat, a watchtower for a fort, and for a town a church or
+   * windmill among cottages. False without the models.
+   */
+  private raiseModelStronghold(n: MapNode, rand: () => number): boolean {
+    if (!hasWorldModels()) return false;
+    const plan: Omit<Building, 'object'>[] = [];
+    if (n.kind === 'hq-player' || n.kind === 'hq-enemy') {
+      plan.push({ model: 'castle', x: 0, z: 0, turn: 0, scale: 1.0 });
+    } else if (n.kind === 'fort') {
+      plan.push({ model: 'tower_A', x: 0, z: -0.1, turn: rand() * 0.6 - 0.3, scale: 1.15 });
+      plan.push({ model: 'home_A', x: 0.8, z: 0.2, turn: -0.6, scale: 0.8 });
+    } else {
+      const landmark = n.id % 2 === 0 ? 'church' : 'windmill';
+      plan.push({ model: landmark, x: 0, z: -0.2, turn: rand() * 0.5 - 0.25, scale: 1.05 });
+      const around: [string, number, number][] = [['home_A', -1.08, 0.15], ['home_B', 1.1, 0.02], ['home_A', 0.32, -1.22], ['well', -0.55, 0.9]];
+      for (const [model, x, z] of around) {
+        if (model === 'well' && rand() < 0.4) continue;
+        plan.push({ model, x: x + (rand() - 0.5) * 0.15, z: z + (rand() - 0.5) * 0.15, turn: rand() * Math.PI * 2, scale: 0.8 + rand() * 0.12 });
+      }
+    }
+    const group = new THREE.Group();
+    const parts: Building[] = plan.map((p) => ({ ...p, object: new THREE.Object3D() }));
+    this.buildings.set(n.id, { group, parts });
+    this.dress(n.id, n.owner);
+    if (n.kind !== 'hq-player' && n.kind !== 'hq-enemy') {
+      // A pennant over the town in its owner's colour, seen from afar.
+      const top = n.kind === 'fort' ? 2.9 : 2.2;
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, top, 5), lambert(0x5a4a3a));
+      pole.position.set(0.55, top / 2, 0.5);
+      pole.castShadow = true;
+      const cloth = lambert(OWNER_COLOUR[n.owner]);
+      cloth.side = THREE.DoubleSide;
+      const pennant = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.3, 4, 1).translate(0.25, 0, 0), cloth);
+      pennant.position.set(0.57, top - 0.17, 0.5);
+      pennant.castShadow = true;
+      group.add(pole, pennant);
+      this.flags.set(n.id, cloth);
+      this.flagCloths.push(pennant);
+    }
+    group.position.set(n.x / TILE, heightAt(this.field, n.x, n.y) - 0.04, n.y / TILE);
+    this.scene.add(group);
+    return true;
+  }
+
+  /** Put up (or re-dress) a stronghold's buildings in an owner's colours. */
+  private dress(nodeId: number, owner: Owner): void {
+    const b = this.buildings.get(nodeId);
+    if (!b) return;
+    const colour = BUILDING_COLOUR[owner];
+    for (const part of b.parts) {
+      // A castle comes only in the two sides' colours.
+      const key = part.model === 'castle' && colour === 'yellow' ? 'castle_blue' : `${part.model}_${colour}`;
+      const object = worldModel(key);
+      if (!object) continue;
+      object.userData.shared = true;
+      object.position.set(part.x, 0, part.z);
+      object.rotation.y = part.turn;
+      object.scale.setScalar(part.scale);
+      b.group.remove(part.object);
+      this.sails = this.sails.filter((s) => !isWithin(s, part.object));
+      object.traverse((o) => {
+        if (o.name.includes('_fan')) this.sails.push(o);
+      });
+      b.group.add(object);
+      part.object = object;
+    }
+  }
+
   /** A stronghold as a small building on its ground: a castle, a fort or a town, flying its owner's flag. */
   private raiseStronghold(n: MapNode, rand: () => number): void {
+    if (this.raiseModelStronghold(n, rand)) return;
     const g = new THREE.Group();
     const stone = lambert(0xb8b0a0);
     const darkStone = lambert(0x8a8478);
@@ -265,6 +425,7 @@ export class WorldStage {
   /** Re-colour a stronghold's flag for its new owner. */
   setOwner(nodeId: number, owner: Owner): void {
     this.flags.get(nodeId)?.color.setHex(OWNER_COLOUR[owner]);
+    this.dress(nodeId, owner);
   }
 
   /** The ground's height under a map point. */
@@ -449,10 +610,11 @@ export class WorldStage {
     this.shown = lerpView(this.shown, this.wanted, 1 - Math.exp(-dtMs / 110));
     this.applyView();
 
-    // Flags stir in the wind.
+    // Flags stir in the wind, and the windmills turn.
     this.flagCloths.forEach((f, k) => {
       f.rotation.y = Math.sin(this.clock / 420 + k) * 0.35;
     });
+    for (const s of this.sails) s.rotation.z -= dtMs * 0.0012;
 
     const yaw = this.shown.yaw;
     const grow = figureScale(this.shown.distance);
@@ -527,6 +689,8 @@ export class WorldStage {
   dispose(): void {
     for (const t of this.textures.values()) t.dispose();
     this.scene.traverse((o) => {
+      // The models' geometry and materials are shared with the library, which outlives this map.
+      if (o.userData.shared || isShared(o)) return;
       const m = o as THREE.Mesh;
       m.geometry?.dispose();
       const mat = m.material as THREE.Material | THREE.Material[] | undefined;
@@ -537,6 +701,18 @@ export class WorldStage {
       }
     });
   }
+}
+
+/** Whether an object is, or lies within, another. */
+function isWithin(o: THREE.Object3D, ancestor: THREE.Object3D): boolean {
+  for (let p: THREE.Object3D | null = o; p; p = p.parent) if (p === ancestor) return true;
+  return false;
+}
+
+/** Whether an object lies within one of the models (whose parts are shared). */
+function isShared(o: THREE.Object3D): boolean {
+  for (let p = o.parent; p; p = p.parent) if (p.userData.shared) return true;
+  return false;
 }
 
 // ------------------------------------------------------------ ground paint --

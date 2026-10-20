@@ -15,6 +15,7 @@ import { convertDataset } from './ob64/convert';
 import { withExpansion } from './expansion';
 import type { Ob64Data } from './ob64/decode';
 import { loadOb64Sprites } from './gfx3d/ob64Sprites';
+import { loadWorldModels } from './gfx3d/models';
 import { buildClassImages, buildUnitImages } from './gfx/pixels';
 import { exposeDebug } from './debug';
 import { TitleScreen } from './screens/title';
@@ -24,7 +25,7 @@ import { OrganizeScreen } from './screens/organize';
 import type { ScreenName } from './app/app';
 
 // Boot: the renderer first (WebGPU, or WebGL2 where the browser lacks it),
-// then the class data and the units' art, then the title.
+// then the class data, the units' art and the world's models, then the title.
 
 /**
  * Use the Ogre Battle 64 tables if they have been extracted from the player's
@@ -55,8 +56,10 @@ async function boot(): Promise<void> {
     if (loading) loading.textContent = 'This browser cannot draw the game (it needs WebGPU or WebGL2).';
     return;
   }
+  const models = loadWorldModels();
   await loadExtractedData();
   await loadOb64Sprites();
+  await models;
   buildUnitImages();
   buildClassImages(allClasses());
 

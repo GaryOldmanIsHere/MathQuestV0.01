@@ -34,12 +34,12 @@ export interface QuadSpec {
   slots?: Partial<SlotMap>;
 }
 
-export const HOUND: QuadSpec = { w: 64, h: 50, len: 27, back: 20, girth: 6.8, legUp: 7, legLow: 6.5, neck: 8, head: 4.8, snout: 8.5, tail: 13, ears: true };
-export const DRAGON: QuadSpec = { w: 120, h: 100, len: 44, back: 34, girth: 12, legUp: 12, legLow: 11, neck: 20, head: 8.5, snout: 10, tail: 26, wings: true, horns: true };
+export const HOUND: QuadSpec = { w: 80, h: 50, len: 27, back: 20, girth: 6.8, legUp: 7, legLow: 6.5, neck: 8, head: 4.8, snout: 8.5, tail: 13, ears: true };
+export const DRAGON: QuadSpec = { w: 136, h: 100, len: 44, back: 34, girth: 12, legUp: 12, legLow: 11, neck: 20, head: 8.5, snout: 10, tail: 26, wings: true, horns: true };
 /** A horse's coat, mane, belly and hooves are its own colours (see HORSE_SLOT). */
 export const HORSE_SLOT = { coat: 12, blaze: 13, mane: 14, hoof: 15 } as const;
 export const HORSE: QuadSpec = {
-  w: 72, h: 80, len: 32, back: 26, girth: 8, legUp: 9.5, legLow: 9.5, neck: 14, head: 5, snout: 9.5, tail: 14, mane: true, ears: true, hooves: true,
+  w: 96, h: 80, len: 32, back: 26, girth: 8, legUp: 9.5, legLow: 9.5, neck: 14, head: 5, snout: 9.5, tail: 14, mane: true, ears: true, hooves: true,
   neckLift: 0.45,
   slots: { armour: HORSE_SLOT.coat, trim: HORSE_SLOT.blaze, hair: HORSE_SLOT.mane, dark: HORSE_SLOT.hoof, eye: HORSE_SLOT.hoof },
 };
@@ -249,7 +249,7 @@ function wing(r: Raster, S: SlotMap, spec: QuadSpec, shoulder: [number, number],
 
 // ------------------------------------------------------------------ ghost --
 
-export const GHOST_W = 48;
+export const GHOST_W = 64;
 export const GHOST_H = 64;
 
 export interface FloatPose {
@@ -273,7 +273,7 @@ export function floatBlend(a: FloatPose, b: FloatPose, t: number): FloatPose {
 export function paintGhost(pose: FloatPose, seen: 'front' | 'back'): Raster {
   const r = new Raster(GHOST_W, GHOST_H);
   const dir = seen === 'front' ? -1 : 1;
-  const cx = 24 + dir * pose.lean * 4;
+  const cx = GHOST_W / 2 + dir * pose.lean * 4;
   const top = 12 - pose.rise;
   // A shroud, wide at the shoulders, its hem trailing in tatters.
   r.beginPart();
@@ -307,13 +307,13 @@ export function paintGhost(pose: FloatPose, seen: 'front' | 'back'): Raster {
 
 // -------------------------------------------------------------------- sea --
 
-export const SEA_W = 64;
+export const SEA_W = 104;
 export const SEA_H = 64;
 
 export function paintSea(pose: FloatPose, seen: 'front' | 'back'): Raster {
   const r = new Raster(SEA_W, SEA_H);
   const dir = seen === 'front' ? -1 : 1;
-  const cx = 32 + dir * pose.lean * 3;
+  const cx = SEA_W / 2 + dir * pose.lean * 3;
   const cy = 30 - pose.rise * 0.5;
   // Tentacles, curling.
   const arms = 6;

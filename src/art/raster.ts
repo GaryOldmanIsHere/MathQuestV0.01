@@ -57,6 +57,29 @@ export class Raster {
     return x >= 0 && y >= 0 && x < this.w && y < this.h && this.slot[y * this.w + x] !== 0;
   }
 
+  /** The box round what is painted, `margin` pixels to spare (within the raster): x, y, width, height. */
+  bounds(margin = 1): [number, number, number, number] {
+    let x0 = this.w;
+    let y0 = this.h;
+    let x1 = -1;
+    let y1 = -1;
+    for (let y = 0; y < this.h; y++) {
+      for (let x = 0; x < this.w; x++) {
+        if (this.slot[y * this.w + x] === 0) continue;
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        y1 = y;
+      }
+    }
+    if (x1 < 0) return [0, 0, this.w, this.h];
+    x0 = Math.max(0, x0 - margin);
+    y0 = Math.max(0, y0 - margin);
+    x1 = Math.min(this.w - 1, x1 + margin);
+    y1 = Math.min(this.h - 1, y1 + margin);
+    return [x0, y0, x1 - x0 + 1, y1 - y0 + 1];
+  }
+
   private plot(x: number, y: number, z: number, slot: Slot, n: [number, number, number], shine: boolean): void {
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
     const k = y * this.w + x;

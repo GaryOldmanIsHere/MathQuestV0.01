@@ -24,17 +24,25 @@ const PIXELS_PER_UNIT = PERSON_PX / STANDS;
 
 type Colours = [number, number, number][];
 
-function canvasFrom(w: number, h: number, data: Uint8ClampedArray): HTMLCanvasElement {
+/** A canvas of the part of a raster-sized picture inside `box`. */
+function canvasFrom(w: number, data: Uint8ClampedArray, [bx, by, bw, bh]: [number, number, number, number]): HTMLCanvasElement {
+  const part = new Uint8ClampedArray(bw * bh * 4);
+  for (let y = 0; y < bh; y++) part.set(data.subarray(((by + y) * w + bx) * 4, ((by + y) * w + bx + bw) * 4), y * bw * 4);
   const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  c.getContext('2d')!.putImageData(new ImageData(data as Uint8ClampedArray<ArrayBuffer>, w, h), 0, 0);
+  c.width = bw;
+  c.height = bh;
+  c.getContext('2d')!.putImageData(new ImageData(part, bw, bh), 0, 0);
   return c;
 }
 
-/** A picture and its normal map from a painted raster. */
-export function imagesOf(r: Raster, colours: Colours, lit = false): { image: HTMLCanvasElement; normal: HTMLCanvasElement } {
-  return { image: canvasFrom(r.w, r.h, r.rgba(colours, lit)), normal: canvasFrom(r.w, r.h, r.normals()) };
+/**
+ * A picture and its normal map from a painted raster, cropped to what is
+ * painted (figures are painted on room enough for any swing), and where
+ * the crop's corner lies in the raster.
+ */
+export function imagesOf(r: Raster, colours: Colours, lit = false): { image: HTMLCanvasElement; normal: HTMLCanvasElement; x: number; y: number } {
+  const box = r.bounds();
+  return { image: canvasFrom(r.w, r.rgba(colours, lit), box), normal: canvasFrom(r.w, r.normals(), box), x: box[0], y: box[1] };
 }
 
 /** The coats a horse may have: bay, chestnut, black, grey, white (coat, blaze, mane, hoof). */
@@ -159,13 +167,21 @@ function painterFor(def: ClassDef, kind: FigureKind): Painter {
 }
 
 function viewOf(p: Painter, colours: Colours, seen: 'front' | 'back'): SpriteView {
+  // Each animation is painted the first time it is played: the map only
+  // ever wants a leader standing and walking.
   const anims = {} as Record<Anim, AnimClip>;
   for (const anim of ANIMS) {
-    const frames: SpriteFrame[] = p.frames(anim, seen).map((f) => {
-      const { image, normal } = imagesOf(f.raster, colours);
-      return { image, normal, anchorX: p.anchor[0], anchorY: p.anchor[1], ms: f.ms, hit: f.hit };
+    let clip: AnimClip | undefined;
+    Object.defineProperty(anims, anim, {
+      enumerable: true,
+      get: () => (clip ??= {
+        frames: p.frames(anim, seen).map((f): SpriteFrame => {
+          const { image, normal, x, y } = imagesOf(f.raster, colours);
+          return { image, normal, anchorX: p.anchor[0] - x, anchorY: p.anchor[1] - y, ms: f.ms, hit: f.hit };
+        }),
+        loop: anim === 'idle' || anim === 'walk',
+      }),
     });
-    anims[anim] = { frames, loop: anim === 'idle' || anim === 'walk' };
   }
   return { faces: seen === 'front' ? 'left' : 'right', seen, anims };
 }
@@ -195,31 +211,7 @@ export function paintedSet(def: ClassDef): SpriteSet {
 export function paintedPortrait(def: ClassDef): HTMLCanvasElement {
   const kind = figureKindOf(def);
   const r = painterFor(def, kind).portrait();
-  const { image } = imagesOf(r, coloursOf(def, kind), true);
-  return cropped(image, r);
-}
-
-/** A picture trimmed to what is painted, a pixel to spare. */
-function cropped(image: HTMLCanvasElement, r: Raster): HTMLCanvasElement {
-  let x0 = r.w;
-  let y0 = r.h;
-  let x1 = -1;
-  let y1 = -1;
-  for (let y = 0; y < r.h; y++) {
-    for (let x = 0; x < r.w; x++) {
-      if (!r.filled(x, y)) continue;
-      x0 = Math.min(x0, x);
-      y0 = Math.min(y0, y);
-      x1 = Math.max(x1, x);
-      y1 = Math.max(y1, y);
-    }
-  }
-  if (x1 < 0) return image;
-  const c = document.createElement('canvas');
-  c.width = x1 - x0 + 3;
-  c.height = y1 - y0 + 3;
-  c.getContext('2d')!.drawImage(image, x0 - 1, y0 - 1, c.width, c.height, 0, 0, c.width, c.height);
-  return c;
+  return imagesOf(r, coloursOf(def, kind), true).image;
 }
 
 /**

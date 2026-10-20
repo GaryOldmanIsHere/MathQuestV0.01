@@ -6,11 +6,11 @@ import { Raster } from './raster';
 // figure is seen three-quarters on, as Ogre Battle 64 shows its units: from
 // the front facing left, or from behind facing right.
 
-export const HUMAN_W = 48;
-export const HUMAN_H = 64;
+export const HUMAN_W = 112;
+export const HUMAN_H = 72;
 /** Where the feet stand. */
-export const FOOT_X = 24;
-export const FOOT_Y = 61;
+export const FOOT_X = 56;
+export const FOOT_Y = 69;
 
 export type WeaponKind = 'sword' | 'greatsword' | 'rapier' | 'axe' | 'hammer' | 'spear' | 'whip' | 'claw' | 'bow' | 'mace' | 'staff' | 'doll' | 'fan' | 'none';
 
@@ -408,9 +408,21 @@ function bow(r: Raster, hand: [number, number], forearm: number, dir: number, z:
   void forearm;
 }
 
+/** How far each weapon reaches from the hand, tip and head included. */
+const REACH: Partial<Record<WeaponKind, number>> = {
+  sword: 16, rapier: 18, greatsword: 23.5, axe: 17, hammer: 18, spear: 27, staff: 23, mace: 14, whip: 15,
+};
+
 /** A weapon in a hand, pointing along `angle` (from straight down, forward positive). */
 function weapon(r: Raster, kind: WeaponKind, hand: [number, number], angle: number, dir: number, z: number): void {
   const [hx, hy] = hand;
+  // A blade held low is lifted toward level rather than run into the ground.
+  const ground = r.h - 4;
+  const reach = REACH[kind] ?? 0;
+  if (reach > 0 && hy + Math.cos(angle) * reach > ground) {
+    const lift = Math.acos(Math.max(-1, Math.min(1, (ground - hy) / reach)));
+    angle = angle < 0 ? -lift : lift;
+  }
   const d = along(angle, dir);
   const at = (len: number): [number, number] => [hx + d[0] * len, hy + d[1] * len];
   const back = (len: number): [number, number] => [hx - d[0] * len, hy - d[1] * len];
@@ -453,11 +465,11 @@ function weapon(r: Raster, kind: WeaponKind, hand: [number, number], angle: numb
       break;
     }
     case 'spear': {
-      const [tx, ty] = at(24);
-      const [px, py] = back(6);
+      const [tx, ty] = at(21);
+      const [px, py] = back(5);
       r.capsule(px, py, tx, ty, 0.9, 0.9, z, SLOT.wood);
-      const [sx, sy] = at(23);
-      const [ex, ey] = at(29);
+      const [sx, sy] = at(20);
+      const [ex, ey] = at(26);
       r.capsule(sx, sy, ex, ey, 1.8, 0.3, z + 1, SLOT.metal, metal);
       break;
     }

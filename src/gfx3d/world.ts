@@ -6,6 +6,8 @@ import type { SpriteImage } from './sprites';
 import type { BuildingColour } from './models';
 import { bakedModel, hasWorldModels, worldModel } from './models';
 import { grassField, groundMaterial, waterMaterial, windSwayed } from './landscape';
+import type { Weather } from './atmosphere';
+import { Atmosphere } from './atmosphere';
 import type { MapView } from './worldMap';
 import {
   clampView, figureScale, heightAt, heightField, lerpView, MARGIN, mirror, OVERVIEW, screenOctant, SUB, VERTS_X, VERTS_Z, viewCamera,
@@ -35,6 +37,18 @@ export interface MapFigure {
 
 export type Owner = MapNode['owner'];
 
+export interface BuildOptions {
+  seed?: number;
+  /** Tufts of grass to a tile of open meadow. */
+  grass?: number;
+  /** The sun's shadows' sharpness, texels a side (0: none). */
+  shadows?: number;
+  /** The most raindrops or snowflakes falling at once. */
+  particles?: number;
+  /** Plain diffuse lighting and simpler water, for modest machines. */
+  simple?: boolean;
+}
+
 const OWNER_COLOUR: Record<Owner, number> = { player: 0x3a64e0, enemy: 0xd0402e, neutral: 0xd8d0b8 };
 const SIDE_COLOUR = { player: 0x4a6ae0, enemy: 0xd04838 };
 /** How far about a stronghold's centre (in tiles) no tree grows. */
@@ -62,6 +76,7 @@ interface SquadMesh {
   x: number;
   y: number;
   heading: [number, number];
+  side: 'player' | 'enemy';
   moving: boolean;
   t: number;
   height: number;
@@ -80,12 +95,23 @@ function seeded(seed: number): () => number {
   };
 }
 
+/** What a quality preset asks of the map. */
+export function worldDetail(s: { grass: number; shadows: number; particles: number; simpleShading: boolean }): BuildOptions {
+  return { grass: s.grass, shadows: s.shadows, particles: s.particles, simple: s.simpleShading };
+}
+
 const lambert = (color: number) => new THREE.MeshLambertMaterial({ color, flatShading: true });
 
 export class WorldStage {
   /** What the engine draws: the world, and the camera over it. */
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
+  /**
+   * The miniature look: how far the engine softens the land above and below
+   * the middle of the view. Strongest close in; gentle over the whole map,
+   * where every squad must still read.
+   */
+  tiltShift = 0.9;
   private ground: THREE.Mesh | null = null;
   private field: Float32Array = new Float32Array(VERTS_X * VERTS_Z);
   private water: THREE.Mesh | null = null;
@@ -97,6 +123,10 @@ export class WorldStage {
   private sails: THREE.Object3D[] = [];
   /** Materials made for this map over shared model geometry (disposed with it). */
   private ownMaterials: THREE.Material[] = [];
+  /** The sky, the light of the hour, and the weather. */
+  private atmosphere: Atmosphere | null = null;
+  /** Whether the map is drawn with the simpler materials. */
+  private simple = false;
   private squads = new Map<number, SquadMesh>();
   private textures = new Map<SpriteImage, THREE.Texture>();
   private selection: THREE.Mesh;
@@ -115,12 +145,6 @@ export class WorldStage {
 
   constructor() {
     this.camera = new THREE.PerspectiveCamera(36, 1, 0.5, 260);
-    this.scene.background = new THREE.Color(0x9cc0e0);
-    this.scene.fog = new THREE.Fog(0x9cc0e0, 90, 190);
-    this.scene.add(new THREE.HemisphereLight(0xf0f4ff, 0x4a5a3a, 1.25));
-    const sun = new THREE.DirectionalLight(0xfff0d8, 1.7);
-    sun.position.set(-30, 40, 18);
-    this.scene.add(sun);
     this.selection = new THREE.Mesh(
       new THREE.RingGeometry(0.62, 0.8, 28).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ color: 0xf0e090, transparent: true, opacity: 0.9, depthWrite: false }),
@@ -142,9 +166,13 @@ export class WorldStage {
 
   /**
    * Raise the map from the terrain grid: ground, roads, water, woods,
-   * strongholds, and (`grass` tufts to a tile of meadow) the grass.
+   * strongholds, (`grass` tufts to a tile of meadow) the grass, and the sky
+   * over it (`shadows` their sharpness, 0 for none; `particles` the most
+   * raindrops or snowflakes falling at once).
    */
-  build(grid: Terrain[], nodes: MapNode[], { seed = 1, grass = 0 }: { seed?: number; grass?: number } = {}): void {
+  build(grid: Terrain[], nodes: MapNode[], { seed = 1, grass = 0, shadows = 0, particles = 0, simple = false }: BuildOptions = {}): void {
+    this.simple = simple;
+    this.atmosphere = new Atmosphere(this.scene, { shadows, particles });
     this.field = heightField(grid, seed);
     const rand = seeded(seed * 9973 + 7);
 
@@ -173,14 +201,14 @@ export class WorldStage {
     geo.setAttribute('color', new THREE.BufferAttribute(colours, 3));
     geo.computeVertexNormals();
     // Painted in the GPU from where each kind of ground lies (src/gfx3d/landscape.ts).
-    this.ground = new THREE.Mesh(geo, groundMaterial(grid, nodes));
+    this.ground = new THREE.Mesh(geo, groundMaterial(grid, nodes, simple));
     this.ground.receiveShadow = true;
     this.scene.add(this.ground);
 
     // Water: one sheet at the waterline, showing wherever the ground dips under it.
     this.water = new THREE.Mesh(
       new THREE.PlaneGeometry(wide, deep).rotateX(-Math.PI / 2).translate(WORLD_W / 2, WATER_LEVEL, WORLD_D / 2),
-      waterMaterial(this.field),
+      waterMaterial(this.field, simple),
     );
     this.water.receiveShadow = true;
     this.scene.add(this.water);
@@ -241,7 +269,7 @@ export class WorldStage {
     groups.forEach((list, i) => {
       if (!list.length) return;
       const { geometry, material } = kinds[i]!;
-      const swaying = windSwayed(material);
+      const swaying = windSwayed(material, this.simple);
       this.ownMaterials.push(swaying);
       const trees = new THREE.InstancedMesh(geometry, swaying, list.length);
       list.forEach(([x, y, s], k) => {
@@ -428,6 +456,16 @@ export class WorldStage {
     this.scene.add(g);
   }
 
+  /** The hour over the map (0 midnight, 0.5 noon). */
+  setHour(hour: number): void {
+    this.atmosphere?.setHour(hour);
+  }
+
+  /** The weather over the map; it comes on over a few seconds, or `now`. */
+  setWeather(w: Weather, now = false): void {
+    this.atmosphere?.setWeather(w, now);
+  }
+
   /** Re-colour a stronghold's flag for its new owner. */
   setOwner(nodeId: number, owner: Owner): void {
     this.flags.get(nodeId)?.color.setHex(OWNER_COLOUR[owner]);
@@ -448,13 +486,14 @@ export class WorldStage {
       const root = new THREE.Group();
       const mat = new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.4, side: THREE.DoubleSide });
       const body = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+      body.castShadow = true;
       root.add(body);
       const base = new THREE.Mesh(
         new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2),
         new THREE.MeshBasicMaterial({ color: SIDE_COLOUR[side], transparent: true, opacity: 0.45, depthWrite: false }),
       );
       this.scene.add(root, base);
-      s = { root, body, mat, base, figure, x, y, heading: [side === 'player' ? 1 : -1, 0], moving, t: Math.random() * 1000, height: 1.4 };
+      s = { root, body, mat, base, figure, x, y, heading: [side === 'player' ? 1 : -1, 0], side, moving, t: Math.random() * 1000, height: 1.4 };
       this.squads.set(id, s);
     }
     const dx = x - s.x;
@@ -615,6 +654,10 @@ export class WorldStage {
     this.clock += dtMs;
     this.shown = lerpView(this.shown, this.wanted, 1 - Math.exp(-dtMs / 110));
     this.applyView();
+    const focusX = this.shown.x * TILE;
+    const focusY = this.shown.z * TILE;
+    this.atmosphere?.update(dtMs, this.camera, new THREE.Vector3(this.shown.x, this.groundAt(focusX, focusY), this.shown.z), this.shown.distance);
+    this.tiltShift = THREE.MathUtils.mapLinear(THREE.MathUtils.clamp(this.shown.distance, 14, 56), 14, 56, 0.9, 0.4);
 
     // Flags stir in the wind, and the windmills turn.
     this.flagCloths.forEach((f, k) => {
@@ -624,8 +667,14 @@ export class WorldStage {
 
     const yaw = this.shown.yaw;
     const grow = figureScale(this.shown.distance);
+    const flat = this.atmosphere?.flatLight;
     for (const s of this.squads.values()) {
       s.t += dtMs;
+      // Figures and their rings take the hour's light.
+      if (flat) {
+        s.mat.color.copy(flat);
+        (s.base.material as THREE.MeshBasicMaterial).color.setHex(SIDE_COLOUR[s.side]).multiply(flat);
+      }
       const h = this.groundAt(s.x, s.y);
       const wx = s.x / TILE;
       const wz = s.y / TILE;
@@ -689,6 +738,7 @@ export class WorldStage {
   }
 
   dispose(): void {
+    this.atmosphere?.dispose();
     for (const t of this.textures.values()) t.dispose();
     for (const m of this.ownMaterials) m.dispose();
     this.scene.traverse((o) => {

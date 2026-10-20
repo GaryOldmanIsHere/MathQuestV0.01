@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import type { Node } from 'three/webgpu';
-import { mrt, normalView, output, pass, renderOutput, smoothstep, uv, vec3, vec4 } from 'three/tsl';
+import { abs, mix, mrt, normalView, output, pass, renderOutput, screenUV, smoothstep, uniform, uv, vec3, vec4 } from 'three/tsl';
+import { gaussianBlur } from 'three/addons/tsl/display/GaussianBlurNode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
@@ -18,7 +19,15 @@ import { defaultQuality, QUALITIES, savedQuality, SETTINGS } from './quality';
 export interface View {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
+  /**
+   * The miniature look (where the preset allows it): how far, 0 to 1, the
+   * land above and below the middle of the view goes out of focus.
+   */
+  tiltShift?: number;
 }
+
+/** How far the tilt-shift blurs now (the view's own setting, read each frame). */
+const tiltShiftStrength = uniform(0);
 
 interface Pipeline {
   scene: THREE.Scene;
@@ -111,6 +120,7 @@ export class Engine {
 
   /** Draw a view through the finishing chain (or straight, with ?nopost, for finding faults). */
   render(view: View): void {
+    tiltShiftStrength.value = view.tiltShift ?? 0;
     if (NO_POST) {
       this.renderer.render(view.scene, view.camera);
       return;
@@ -132,7 +142,7 @@ export class Engine {
     this.pipeline = null;
   }
 
-  private buildPipeline({ scene, camera }: View): THREE.RenderPipeline {
+  private buildPipeline({ scene, camera, tiltShift }: View): THREE.RenderPipeline {
     const s = this.settings;
     const pipeline = new THREE.RenderPipeline(this.renderer);
     const scenePass = pass(scene, camera);
@@ -147,6 +157,12 @@ export class Engine {
     if (s.bloom) {
       const glow = bloom(colour, 0.32, 0.45, 0.82);
       lit = lit.add(glow);
+    }
+    if (tiltShift !== undefined && s.tiltShift) {
+      // A band across the middle of the view in focus, the rest blurred: the land looks like a model of itself.
+      const soft = gaussianBlur(lit, null, 3, { resolutionScale: 0.5 });
+      const away = smoothstep(0.12, 0.42, abs(screenUV.y.sub(0.53)));
+      lit = vec4(mix(lit.rgb, soft.rgb, away.mul(tiltShiftStrength)), lit.a);
     }
     // A gentle darkening toward the corners, as a lens gives.
     const fromCentre = uv().sub(0.5).length();

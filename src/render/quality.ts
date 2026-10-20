@@ -19,13 +19,19 @@ export interface QualitySettings {
   shadows: number;
   /** Tufts of grass to a tile of open meadow on the campaign map (none on low). */
   grass: number;
+  /** The most raindrops or snowflakes falling at once. */
+  particles: number;
+  /** The miniature look: the land above and below the middle of the view softly out of focus. */
+  tiltShift: boolean;
+  /** Plain diffuse lighting on the map's ground, water and woods (for modest machines). */
+  simpleShading: boolean;
 }
 
 export const SETTINGS: Record<Quality, QualitySettings> = {
-  low: { pixelRatioCap: 1, bloom: false, ambientOcclusion: false, antialias: 'fxaa', shadows: 0, grass: 0 },
-  medium: { pixelRatioCap: 1.5, bloom: true, ambientOcclusion: false, antialias: 'fxaa', shadows: 1024, grass: 6 },
-  high: { pixelRatioCap: 2, bloom: true, ambientOcclusion: true, antialias: 'smaa', shadows: 2048, grass: 12 },
-  ultra: { pixelRatioCap: 2.5, bloom: true, ambientOcclusion: true, antialias: 'smaa', shadows: 4096, grass: 20 },
+  low: { pixelRatioCap: 1, bloom: false, ambientOcclusion: false, antialias: 'fxaa', shadows: 0, grass: 0, particles: 1500, tiltShift: false, simpleShading: true },
+  medium: { pixelRatioCap: 1.5, bloom: true, ambientOcclusion: false, antialias: 'fxaa', shadows: 1024, grass: 6, particles: 4000, tiltShift: true, simpleShading: false },
+  high: { pixelRatioCap: 2, bloom: true, ambientOcclusion: true, antialias: 'smaa', shadows: 2048, grass: 12, particles: 8000, tiltShift: true, simpleShading: false },
+  ultra: { pixelRatioCap: 2.5, bloom: true, ambientOcclusion: true, antialias: 'smaa', shadows: 4096, grass: 20, particles: 14000, tiltShift: true, simpleShading: false },
 };
 
 /**

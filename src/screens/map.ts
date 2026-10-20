@@ -6,7 +6,9 @@ import { classOf, itemOf } from '../data/registry';
 import { moveSpeed, squadMemberIds, squadType, SQUAD_TYPE_LABEL } from '../core/squad';
 import { addLoot, rollLoot } from '../core/items';
 import { restSquads } from '../core/camp';
-import { WorldStage } from '../gfx3d/world';
+import { WorldStage, worldDetail } from '../gfx3d/world';
+import type { Weather } from '../gfx3d/sky';
+import { hourOf, weatherOn } from '../gfx3d/sky';
 import { mapFigureFor } from '../gfx3d/mapFigures';
 import { prepareSprites } from '../gfx3d/ob64Sprites';
 import { figureScale, OVERVIEW, panView, parkedAt } from '../gfx3d/worldMap';
@@ -67,6 +69,8 @@ export class MapScreen implements Screen {
   private press: { x: number; y: number; lastX: number; lastY: number; button: number; dragging: boolean } | null = null;
   private held = new Set<string>();
   private battleActive = false;
+  /** Set by the automated playthrough to hold the hour and weather where it put them. */
+  private skyFixed = false;
   private cooldowns = new Map<number, number>(); // squad id -> map time when it may fight again
   /** Routed squads, by id, and the map time they have rested enough to stand and fight. */
   private recovering = new Map<number, number>();
@@ -84,8 +88,10 @@ export class MapScreen implements Screen {
     const st = getState();
     this.terrain = buildTerrainGrid(st.nodes);
     // The map in 3D, grown from the same terrain grid marching is charged on.
-    this.world.build(this.terrain, st.nodes, { grass: app.engine.settings.grass });
+    this.world.build(this.terrain, st.nodes, worldDetail(app.engine.settings));
     this.world.setView(OVERVIEW, true);
+    this.world.setHour(hourOf(0));
+    this.world.setWeather(weatherOn(st.day), true);
 
     this.labels = el('div', { class: 'map-labels' });
     for (const n of st.nodes) {
@@ -649,6 +655,11 @@ export class MapScreen implements Screen {
         this.step(stepMs);
       }
     }
+    // The hour and the weather follow the campaign's days (unless a test has fixed them).
+    if (!this.skyFixed) {
+      this.world.setHour(hourOf(st.day - 1 + this.dayTimer / (DAY_MS / 1000)));
+      this.world.setWeather(weatherOn(st.day));
+    }
     // The world goes on moving (flags, the camera) even once the campaign is over.
     this.drawWorld(st.phase === 'playing' ? deltaMs : frameMs);
     const owned = st.nodes.filter((n) => n.owner === 'player').length;
@@ -671,6 +682,11 @@ export class MapScreen implements Screen {
       view: () => ({ ...world.view }),
       hint: () => this.hint.textContent,
       setView: (v: Parameters<WorldStage['setView']>[0]) => world.setView(v, true),
+      setSky: (hour: number, weather: Weather) => {
+        this.skyFixed = true;
+        world.setHour(hour);
+        world.setWeather(weather, true);
+      },
     });
   }
 }

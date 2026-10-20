@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { MeshStandardNodeMaterial } from 'three/webgpu';
+import { MeshLambertNodeMaterial, MeshPhongNodeMaterial, MeshStandardNodeMaterial } from 'three/webgpu';
 import type { Node } from 'three/webgpu';
 import {
-  clamp, color, float, mix, mx_fractal_noise_float, mx_noise_float, mx_worley_noise_float, normalize, normalWorld,
+  clamp, color, float, mix, normalize, normalWorld,
   positionGeometry, positionLocal, positionWorld, sin, cos, smoothstep, texture, time, transformNormalToView, uniform, vec2, vec3,
   vertexColor,
 } from 'three/tsl';
@@ -11,6 +11,9 @@ import type { Terrain } from '../core/terrain';
 import { COLS, ROAD_WIDTH, ROWS, TILE, terrainAtTile } from '../core/terrain';
 import { VERTS_X, VERTS_Z, WATER_LEVEL, WORLD_D, WORLD_W } from './worldMap';
 
+// Each material has a simpler form for modest machines (`simple`): plain
+// diffuse lighting in place of the physically based kind, one layer of waves.
+//
 // The campaign map's living surfaces, painted in the GPU: ground that
 // blends meadow, woodland floor, worn earth, rock, sand and snow by what the
 // terrain grid says lies there and how the land lies; water that ripples,
@@ -20,6 +23,87 @@ import { VERTS_X, VERTS_Z, WATER_LEVEL, WORLD_D, WORLD_W } from './worldMap';
 
 /** How hard the wind blows: 0 still, 1 a fresh breeze. */
 export const wind = uniform(0.6);
+/** How wet the land is after rain: 0 dry, 1 soaked (darker, glossier ground, rougher water). */
+export const wetness = uniform(0);
+/** How much snow lies on the land: 0 none, 1 a white blanket. */
+export const snowCover = uniform(0);
+
+// ------------------------------------------------------------------- noise --
+
+/** Texels a side of the noise texture. */
+const NOISE = 256;
+let noiseTex: THREE.DataTexture | null = null;
+
+/**
+ * Noise worked out once and kept in a texture that tiles seamlessly: red
+ * the lie of the land (several octaves), green patches, blue fine grain,
+ * alpha cells like a painter's dabs. Sampling it costs a GPU far less than
+ * working noise out at every point, which matters on modest machines.
+ */
+export function noiseTexture(): THREE.DataTexture {
+  if (noiseTex) return noiseTex;
+  let seed = 7;
+  const rand = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  // Value noise on a lattice of `cells` a side that wraps, smoothly interpolated.
+  const lattice = (cells: number) => {
+    const v = new Float32Array(cells * cells);
+    for (let k = 0; k < v.length; k++) v[k] = rand();
+    return (x: number, y: number) => {
+      const fx = (x / NOISE) * cells;
+      const fy = (y / NOISE) * cells;
+      const i = Math.floor(fx);
+      const j = Math.floor(fy);
+      const u = fx - i;
+      const w = fy - j;
+      const su = u * u * (3 - 2 * u);
+      const sw = w * w * (3 - 2 * w);
+      const at = (a: number, b: number) => v[((b + cells) % cells) * cells + ((a + cells) % cells)];
+      return (at(i, j) * (1 - su) + at(i + 1, j) * su) * (1 - sw) + (at(i, j + 1) * (1 - su) + at(i + 1, j + 1) * su) * sw;
+    };
+  };
+  const octaves = [lattice(4), lattice(8), lattice(16), lattice(32)];
+  const patch = lattice(16);
+  const grain = lattice(64);
+  // Cells: the distance to the nearest of one scattered point per cell, wrapping.
+  const CELLS = 32;
+  const points = Array.from({ length: CELLS * CELLS }, () => [rand(), rand()]);
+  const cellular = (x: number, y: number) => {
+    const fx = (x / NOISE) * CELLS;
+    const fy = (y / NOISE) * CELLS;
+    const i = Math.floor(fx);
+    const j = Math.floor(fy);
+    let best = 9;
+    for (let dj = -1; dj <= 1; dj++) {
+      for (let di = -1; di <= 1; di++) {
+        const pt = points[((j + dj + CELLS) % CELLS) * CELLS + ((i + di + CELLS) % CELLS)];
+        best = Math.min(best, Math.hypot(i + di + pt[0] - fx, j + dj + pt[1] - fy));
+      }
+    }
+    return Math.min(1, best);
+  };
+  const data = new Uint8Array(NOISE * NOISE * 4);
+  for (let y = 0; y < NOISE; y++) {
+    for (let x = 0; x < NOISE; x++) {
+      const o = (y * NOISE + x) * 4;
+      const broad = (octaves[0](x, y) * 0.5 + octaves[1](x, y) * 0.27 + octaves[2](x, y) * 0.15 + octaves[3](x, y) * 0.08);
+      data[o] = Math.round(broad * 255);
+      data[o + 1] = Math.round(patch(x, y) * 255);
+      data[o + 2] = Math.round(grain(x, y) * 255);
+      data[o + 3] = Math.round(cellular(x, y) * 255);
+    }
+  }
+  noiseTex = new THREE.DataTexture(data, NOISE, NOISE, THREE.RGBAFormat);
+  noiseTex.wrapS = THREE.RepeatWrapping;
+  noiseTex.wrapT = THREE.RepeatWrapping;
+  noiseTex.magFilter = THREE.LinearFilter;
+  noiseTex.minFilter = THREE.LinearMipmapLinearFilter;
+  noiseTex.generateMipmaps = true;
+  noiseTex.needsUpdate = true;
+  return noiseTex;
+}
 
 // ------------------------------------------------------------------ ground --
 
@@ -98,7 +182,7 @@ function groundMix(grid: Terrain[], nodes: MapNode[]): HTMLCanvasElement {
  * colour as a painter would lay it. The ground's vertex colours dim the land
  * beyond the campaign.
  */
-export function groundMaterial(grid: Terrain[], nodes: MapNode[]): THREE.Material {
+export function groundMaterial(grid: Terrain[], nodes: MapNode[], simple = false): THREE.Material {
   const mixMap = new THREE.CanvasTexture(groundMix(grid, nodes));
   mixMap.wrapS = THREE.MirroredRepeatWrapping;
   mixMap.wrapT = THREE.MirroredRepeatWrapping;
@@ -108,11 +192,12 @@ export function groundMaterial(grid: Terrain[], nodes: MapNode[]): THREE.Materia
   const y = positionWorld.y;
   const slope = float(1).sub(normalWorld.y);
 
-  // Noise at three scales: the lie of the land, patches, and brush dabs.
-  const broad = mx_fractal_noise_float(p.mul(0.07), 3).mul(0.5).add(0.5);
-  const patch = mx_noise_float(p.mul(0.32)).mul(0.5).add(0.5);
-  const dab = mx_worley_noise_float(p.mul(2.4));
-  const grain = mx_noise_float(p.mul(9)).mul(0.5).add(0.5);
+  // Noise at four scales: the lie of the land, patches, grain, and brush dabs.
+  const noise = texture(noiseTexture());
+  const broad = noise.sample(p.mul(0.0175)).r;
+  const patch = noise.sample(p.mul(0.02)).g;
+  const grain = noise.sample(p.mul(0.14)).b;
+  const dab = noise.sample(p.mul(0.075)).a;
   const lift = dab.mul(0.16).add(grain.mul(0.08)).add(0.88);
 
   let meadow: Node<'vec3'> = mix(color(0x3f7a26), color(0x6c9e33), broad);
@@ -135,9 +220,20 @@ export function groundMaterial(grid: Terrain[], nodes: MapNode[]): THREE.Materia
   ground = mix(ground, earth, roadAmount);
   ground = mix(ground, sand, sandAmount);
   ground = mix(ground, snow, snowAmount);
+  // Fallen snow settles on whatever lies flat enough, thinnest on the roads.
+  const settled = snowCover.mul(smoothstep(0.55, 0.2, slope)).mul(smoothstep(0.25, 0.65, patch.add(snowCover.mul(0.6)))).mul(float(1).sub(roadAmount.mul(0.5)));
+  ground = mix(ground, snow, clamp(settled, 0, 1));
+  // Rain darkens the earth.
+  ground = ground.mul(float(1).sub(wetness.mul(0.28)));
 
-  const material = new MeshStandardNodeMaterial({ roughness: 0.94, metalness: 0 });
+  if (simple) {
+    const material = new MeshLambertNodeMaterial();
+    material.colorNode = ground.mul(lift).mul(vertexColor());
+    return material;
+  }
+  const material = new MeshStandardNodeMaterial({ metalness: 0 });
   material.colorNode = ground.mul(lift).mul(vertexColor());
+  material.roughnessNode = float(0.94).sub(wetness.mul(0.42));
   return material;
 }
 
@@ -161,7 +257,7 @@ function heightTexture(field: Float32Array): THREE.DataTexture {
  * further out, with small waves running over it that catch the sun and a
  * line of froth that comes and goes along every shore.
  */
-export function waterMaterial(field: Float32Array): THREE.Material {
+export function waterMaterial(field: Float32Array, simple = false): THREE.Material {
   const heights = texture(heightTexture(field));
   const p = positionWorld.xz;
   // The ground under this point of water (the field's vertices span the map exactly).
@@ -170,25 +266,42 @@ export function waterMaterial(field: Float32Array): THREE.Material {
 
   // Waves: two sets of noise drifting against each other; their slope tilts the surface.
   const t = time;
+  const noise = texture(noiseTexture());
   const wave = (q: Node<'vec2'>) =>
-    mx_noise_float(vec3(q.mul(1.1), t.mul(0.45))).mul(0.6).add(mx_noise_float(vec3(q.mul(2.9).add(vec2(t.mul(0.21), t.mul(-0.17))), t.mul(0.8))).mul(0.4));
-  const e = 0.06;
-  const h0 = wave(p);
-  const hx = wave(p.add(vec2(e, 0)));
-  const hz = wave(p.add(vec2(0, e)));
-  const tilt = float(0.32).mul(wind.mul(0.6).add(0.4));
-  const surface = normalize(vec3(h0.sub(hx).div(e).mul(tilt), 1, h0.sub(hz).div(e).mul(tilt)));
+    noise.sample(q.mul(0.045).add(vec2(t.mul(0.011), t.mul(0.007)))).g.mul(0.6)
+      .add(noise.sample(q.mul(0.12).add(vec2(t.mul(-0.013), t.mul(0.017)))).b.mul(0.4)).mul(2);
+  const tilt = float(0.32).mul(wind.mul(0.6).add(0.4)).add(wetness.mul(0.25));
+  let surface: Node<'vec3'>;
+  if (simple) {
+    // One drifting sample, its two channels read as the surface's slope.
+    const s = noise.sample(p.mul(0.08).add(vec2(t.mul(0.012), t.mul(0.009))));
+    surface = normalize(vec3(s.g.sub(0.5).mul(tilt).mul(3), 1, s.b.sub(0.5).mul(tilt).mul(3)));
+  } else {
+    const e = 0.08;
+    const h0 = wave(p);
+    const hx = wave(p.add(vec2(e, 0)));
+    const hz = wave(p.add(vec2(0, e)));
+    surface = normalize(vec3(h0.sub(hx).div(e).mul(tilt), 1, h0.sub(hz).div(e).mul(tilt)));
+  }
 
   const shallow = color(0x3e9a9a);
   const deep = color(0x143a72);
   const body = mix(shallow, deep, smoothstep(0.02, 0.6, depth));
   // Froth: a thin band along the shore, broken and breathing.
-  const froth = smoothstep(0.07, 0.0, depth).mul(smoothstep(0.35, 0.75, mx_noise_float(vec3(p.mul(3.2), t.mul(0.6))).mul(0.5).add(0.5).add(sin(t.mul(1.3).add(depth.mul(40))).mul(0.15))));
+  const froth = smoothstep(0.07, 0.0, depth).mul(smoothstep(0.35, 0.75, noise.sample(p.mul(0.2).add(vec2(t.mul(0.02), 0))).b.add(sin(t.mul(1.3).add(depth.mul(40))).mul(0.15))));
 
+  const opacity = clamp(smoothstep(0.0, 0.5, depth).mul(0.35).add(0.6).add(froth.mul(0.3)), 0, 0.97);
+  if (simple) {
+    const material = new MeshPhongNodeMaterial({ shininess: 90, specular: 0x8899aa, transparent: true, depthWrite: false });
+    material.colorNode = mix(body, color(0xf2f6f4), froth);
+    material.normalNode = transformNormalToView(surface);
+    material.opacityNode = opacity;
+    return material;
+  }
   const material = new MeshStandardNodeMaterial({ roughness: 0.12, metalness: 0, transparent: true });
   material.colorNode = mix(body, color(0xf2f6f4), froth);
   material.normalNode = transformNormalToView(surface);
-  material.opacityNode = clamp(smoothstep(0.0, 0.5, depth).mul(0.35).add(0.6).add(froth.mul(0.3)), 0, 0.97);
+  material.opacityNode = opacity;
   material.roughnessNode = mix(float(0.1), float(0.6), froth);
   material.depthWrite = false;
   return material;
@@ -201,9 +314,11 @@ export function waterMaterial(field: Float32Array): THREE.Material {
  * stands above its model's foot, the further it moves, each tree in its own
  * time.
  */
-export function windSwayed(base: THREE.Material, reach = 0.09): THREE.Material {
+export function windSwayed(base: THREE.Material, simple = false, reach = 0.09): THREE.Material {
   const source = base as THREE.MeshStandardMaterial;
-  const material = new MeshStandardNodeMaterial({ map: source.map, color: source.color, roughness: 0.85, metalness: 0 });
+  const material = simple
+    ? new MeshLambertNodeMaterial({ map: source.map, color: source.color })
+    : new MeshStandardNodeMaterial({ map: source.map, color: source.color, roughness: 0.85, metalness: 0 });
   material.positionNode = swayed(reach);
   return material;
 }

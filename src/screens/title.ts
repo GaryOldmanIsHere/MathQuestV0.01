@@ -5,7 +5,7 @@ import type { Quality } from '../render/quality';
 import { newCampaign } from '../core/state';
 import { buildTerrainGrid } from '../core/terrain';
 import { allClasses, datasetLabel, datasetSource } from '../data/registry';
-import { WorldStage } from '../gfx3d/world';
+import { WorldStage, worldDetail } from '../gfx3d/world';
 import { OVERVIEW } from '../gfx3d/worldMap';
 import { unitIcon } from '../gfx/unitIcon';
 import { button, el } from '../ui/dom';
@@ -22,8 +22,11 @@ export class TitleScreen implements Screen {
 
   constructor(app: App, onNewCampaign: () => void) {
     const nodes = newCampaign().nodes;
-    this.world.build(buildTerrainGrid(nodes), nodes, { grass: app.engine.settings.grass });
+    this.world.build(buildTerrainGrid(nodes), nodes, worldDetail(app.engine.settings));
     this.world.setView({ ...OVERVIEW, distance: OVERVIEW.distance * 0.72, pitch: 0.62 }, true);
+    // A clear evening, the sun low and golden.
+    this.world.setHour(0.69);
+    this.world.setWeather('clear', true);
 
     const authentic = datasetSource() === 'ob64';
     const parade = allClasses().filter((c) => c.playable).slice(0, 24);

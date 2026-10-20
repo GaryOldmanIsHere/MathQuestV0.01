@@ -16,7 +16,10 @@ import { declutter } from '../gfx/declutter';
 import { spriteSetFor } from '../gfx3d/unitArt';
 import { prepareSprites } from '../gfx3d/ob64Sprites';
 import { exposeDebug, SPEED } from '../debug';
-import { el, hpColour } from '../ui/dom';
+import { el, fill, hpColour } from '../ui/dom';
+import { icon } from '../ui/icons';
+import type { IconName } from '../ui/icons';
+import { unitIcon } from '../gfx/unitIcon';
 import { ELEMENT_COLOUR } from '../gfx3d/spells';
 import type { Hue } from '../gfx3d/spells';
 import { StrengthBar } from '../gfx/strengthBar';
@@ -60,6 +63,8 @@ export class BattleScreen implements Screen {
   private places = new Map<number, Placement>();
   private layer: HTMLElement;
   private banner: HTMLElement;
+  /** Each side's whole strength, over the field: falling as its members are struck. */
+  private sides: { facing: 1 | -1; bar: StrengthBar; fill: HTMLElement; chip: HTMLElement }[] = [];
   private attacker: Squad;
   private defender: Squad;
   private disposed = false;
@@ -81,7 +86,8 @@ export class BattleScreen implements Screen {
 
     this.layer = el('div', { class: 'battle-labels' });
     this.banner = el('div', { class: 'battle-banner', ui: 'battle-banner' }, 'The squads close…');
-    this.root = el('div', { class: 'screen battle-screen', ui: 'battle' }, this.layer, this.banner);
+    // The battle opens on a flash of light.
+    this.root = el('div', { class: 'screen battle-screen', ui: 'battle' }, this.layer, this.banner, el('div', { class: 'battle-wipe' }));
 
     // Units appear once their sprites are ready: Ogre Battle 64's are fetched
     // and drawn for this battle; the original art is at hand already.
@@ -128,18 +134,21 @@ export class BattleScreen implements Screen {
       }
     }
 
-    // Who fights whom, over the field.
-    this.root.prepend(el('div', { class: 'battle-heads' },
-      el('div', { class: 'battle-head is-attacker' }, el('span', { class: 'role' }, 'Attacker'), this.headline(this.attacker)),
-      el('div', { class: 'battle-head is-defender' }, el('span', { class: 'role' }, 'Defender'), this.headline(this.defender)),
-    ));
+    // Who fights whom, over the field, and the clash's name as the squads march on.
+    this.root.prepend(el('div', { class: 'battle-heads' }, this.sideCard(this.attacker, 1), this.sideCard(this.defender, -1)));
+    const versus = el('div', { class: 'versus', 'aria-hidden': 'true' },
+      el('span', { class: 'versus-name is-attacker' }, this.attacker.name),
+      el('span', { class: 'versus-mark' }, 'vs'),
+      el('span', { class: 'versus-name is-defender' }, this.defender.name),
+    );
+    versus.style.animationDuration = `${(MARCH_MS + 500) / SPEED}ms`;
+    versus.addEventListener('animationend', () => versus.remove());
+    this.root.append(versus);
     // The squads march on from either side as the camera sweeps down onto the field.
     for (const [id, p] of this.places) stage.marchIn(id, -p.facing * (6 + Math.random() * 1.5), MARCH_MS + Math.random() * 250);
     stage.cut({ ...WIDE, distance: WIDE.distance + 8, elevation: 0.78, azimuth: -0.55 }, 0);
     stage.cut(WIDE, MARCH_MS + 200);
-    this.timers.after(MARCH_MS, () => {
-      this.banner.textContent = 'The squads clash!';
-    });
+    this.timers.after(MARCH_MS, () => this.say('The squads clash!', 'sword'));
 
     const result = simulateBattle({ squad: this.attacker, chars: st.chars }, { squad: this.defender, chars: st.chars });
     exposeDebug('lastBattle', {
@@ -156,7 +165,9 @@ export class BattleScreen implements Screen {
         const winnerName =
           result.winner === 'attacker' ? this.attacker.name :
           result.winner === 'defender' ? this.defender.name : null;
-        this.showOutcome(winnerName ? `${winnerName} wins the clash!` : 'Both sides withdraw…', result.levelUps);
+        const end = result.events.find((e) => e.kind === 'end');
+        const dealt = end?.kind === 'end' ? [end.attackerDamage, end.defenderDamage] as const : [0, 0] as const;
+        this.showOutcome(winnerName ? `${winnerName} wins the clash!` : 'Both sides withdraw…', result.levelUps, result.winner, dealt);
         this.timers.after(2000, () => {
           const outcome: BattleResult = { attackerId: this.attacker.id, defenderId: this.defender.id, winner: result.winner };
           this.app.close(this);
@@ -189,6 +200,7 @@ export class BattleScreen implements Screen {
       l.chip.style.width = `${(l.bar.chip * 100).toFixed(1)}%`;
       l.chip.classList.toggle('is-gain', l.bar.chipKind === 'gain');
     });
+    this.drawSides(ms);
   }
 
   private headline(sq: Squad): string {
@@ -216,8 +228,8 @@ export class BattleScreen implements Screen {
     const weapon = weaponOf(actor);
     const blow = attack.type === 'melee' || attack.type === 'ranged';
     const hue: Hue = (attack.element ?? (blow ? weapon?.element : undefined) ?? 'physical') as Hue;
-    this.banner.textContent = `${actor.name}: ${attack.name}!`;
-    this.banner.dataset.hue = attack.type === 'heal' ? 'heal' : hue;
+    const mark: IconName = attack.type === 'heal' ? 'heart' : attack.type === 'magic' ? (hue as IconName) : attack.type === 'ranged' ? (weapon?.type === 'bow' ? 'bow' : 'physical') : 'sword';
+    this.say(`${actor.name}: ${attack.name}!`, mark, attack.type === 'heal' ? 'heal' : hue);
     stage.highlight(ev.actorId);
     const targets = [...new Set(ev.targetIds)].filter((id) => stage.has(id));
     stage.cut(frameAction(place, targets.map((t) => this.places.get(t)!).filter(Boolean), stage.aspect), 320);
@@ -355,16 +367,68 @@ export class BattleScreen implements Screen {
     this.layer.append(t);
   }
 
-  private showOutcome(msg: string, levelUps: Map<number, number>): void {
+  /** The banner below the field: what is happening now, with its mark. */
+  private say(text: string, mark: IconName, hue = ''): void {
+    fill(this.banner, icon(mark, 20), el('span', {}, text));
+    this.banner.dataset.hue = hue;
+  }
+
+  /** A side's card: its leader's face, its role and name, and its whole strength. */
+  private sideCard(sq: Squad, facing: 1 | -1): HTMLElement {
     const st = getState();
-    const ups: string[] = [];
-    for (const [id] of levelUps) {
-      const c = st.chars.get(id);
-      if (c) ups.push(`${c.name} reached Lv ${c.level}!`);
+    const leader = st.chars.get(sq.leaderId);
+    const fillBar = el('div', { class: 'bar-fill' });
+    const chip = el('div', { class: 'bar-chip' });
+    const members = [...this.labels.entries()].filter(([id]) => this.places.get(id)?.facing === facing).map(([, l]) => l);
+    const ratio = members.reduce((s, l) => s + l.hp, 0) / Math.max(1, members.reduce((s, l) => s + l.char.stats.hp, 0));
+    this.sides.push({ facing, bar: new StrengthBar(ratio), fill: fillBar, chip });
+    return el('div', { class: `side-card panel ${facing === 1 ? 'is-attacker' : 'is-defender'} is-${sq.side}-side` },
+      el('div', { class: 'side-face' }, leader ? unitIcon(classOf(leader.classId).palette, 46) : null),
+      el('div', { class: 'side-role' }, facing === 1 ? 'Attacker' : 'Defender'),
+      el('div', { class: 'side-name', title: this.headline(sq) }, this.headline(sq)),
+      el('div', { class: 'bar' }, chip, fillBar),
+    );
+  }
+
+  /** Each side's strength bar, following its members' as they are struck. */
+  private drawSides(ms: number): void {
+    for (const side of this.sides) {
+      let hp = 0;
+      let max = 0;
+      for (const [id, l] of this.labels) {
+        if (this.places.get(id)?.facing !== side.facing) continue;
+        hp += l.hp;
+        max += l.char.stats.hp;
+      }
+      side.bar.set(hp / Math.max(1, max));
+      side.bar.step(ms);
+      side.fill.style.width = `${(side.bar.fill * 100).toFixed(1)}%`;
+      side.fill.style.background = hpColour(side.bar.fill);
+      side.chip.style.width = `${(side.bar.chip * 100).toFixed(1)}%`;
+      side.chip.classList.toggle('is-gain', side.bar.chipKind === 'gain');
     }
-    this.root.append(el('div', { class: 'battle-outcome panel', ui: 'battle-outcome' },
+  }
+
+  private showOutcome(msg: string, levelUps: Map<number, number>, winner: 'attacker' | 'defender' | 'draw', dealt: readonly [number, number]): void {
+    const st = getState();
+    // A loss is a loss for the player's side, whichever side that was.
+    const ours = this.attacker.side === 'player' ? 'attacker' : this.defender.side === 'player' ? 'defender' : null;
+    const lost = ours !== null && winner !== 'draw' && winner !== ours;
+    const ups = [...levelUps.keys()].flatMap((id) => {
+      const c = st.chars.get(id);
+      return c ? [c] : [];
+    });
+    this.root.append(el('div', { class: `battle-outcome panel ${lost ? 'is-loss' : ''}`, ui: 'battle-outcome', role: 'status' },
       el('h2', {}, msg),
-      ups.length ? el('p', { class: 'level-ups' }, ups.slice(0, 3).join(' · ')) : null,
+      el('div', { class: 'outcome-tally' },
+        el('span', {}, `${this.attacker.name} dealt `, el('b', {}, dealt[0])),
+        el('span', {}, `${this.defender.name} dealt `, el('b', {}, dealt[1])),
+      ),
+      ups.length ? el('div', { class: 'level-ups' }, ...ups.slice(0, 6).map((c, k) => {
+        const chipEl = el('span', { class: 'level-up' }, unitIcon(classOf(c.classId).palette, 26), `${c.name} · Lv ${c.level}`);
+        chipEl.style.animationDelay = `${(200 + k * 120) / SPEED}ms`;
+        return chipEl;
+      })) : null,
     ));
   }
 }

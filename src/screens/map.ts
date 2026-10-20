@@ -84,7 +84,7 @@ export class MapScreen implements Screen {
     const st = getState();
     this.terrain = buildTerrainGrid(st.nodes);
     // The map in 3D, grown from the same terrain grid marching is charged on.
-    this.world.build(this.terrain, st.nodes);
+    this.world.build(this.terrain, st.nodes, { grass: app.engine.settings.grass });
     this.world.setView(OVERVIEW, true);
 
     this.labels = el('div', { class: 'map-labels' });

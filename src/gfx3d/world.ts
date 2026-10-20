@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import type { MapNode } from '../core/types';
 import type { Terrain } from '../core/terrain';
-import { COLS, MAP_H, MAP_W, ROAD_WIDTH, ROWS, TILE, terrainAtTile } from '../core/terrain';
+import { COLS, MAP_H, MAP_W, ROWS, TILE, terrainAtTile } from '../core/terrain';
 import type { SpriteImage } from './sprites';
 import type { BuildingColour } from './models';
 import { bakedModel, hasWorldModels, worldModel } from './models';
+import { grassField, groundMaterial, waterMaterial, windSwayed } from './landscape';
 import type { MapView } from './worldMap';
 import {
   clampView, figureScale, heightAt, heightField, lerpView, MARGIN, mirror, OVERVIEW, screenOctant, SUB, VERTS_X, VERTS_Z, viewCamera,
@@ -94,6 +95,8 @@ export class WorldStage {
   private buildings = new Map<number, { group: THREE.Group; parts: Building[] }>();
   /** Windmill sails, turning. */
   private sails: THREE.Object3D[] = [];
+  /** Materials made for this map over shared model geometry (disposed with it). */
+  private ownMaterials: THREE.Material[] = [];
   private squads = new Map<number, SquadMesh>();
   private textures = new Map<SpriteImage, THREE.Texture>();
   private selection: THREE.Mesh;
@@ -137,8 +140,11 @@ export class WorldStage {
 
   // --------------------------------------------------------------- the land --
 
-  /** Raise the map from the terrain grid: ground, roads, water, woods and strongholds. */
-  build(grid: Terrain[], nodes: MapNode[], seed = 1): void {
+  /**
+   * Raise the map from the terrain grid: ground, roads, water, woods,
+   * strongholds, and (`grass` tufts to a tile of meadow) the grass.
+   */
+  build(grid: Terrain[], nodes: MapNode[], { seed = 1, grass = 0 }: { seed?: number; grass?: number } = {}): void {
     this.field = heightField(grid, seed);
     const rand = seeded(seed * 9973 + 7);
 
@@ -159,32 +165,30 @@ export class WorldStage {
       const h = heightAt(this.field, mirror(wx, WORLD_W) * TILE, mirror(wz, WORLD_D) * TILE);
       pos.setY(k, h);
       uv.setXY(k, wx / WORLD_W, 1 - wz / WORLD_D);
-      // High ground pales to bare rock and snow; the land beyond the campaign darkens.
-      const pale = Math.max(0, Math.min(1, (h - 1.6) / 1.6));
+      // The land beyond the campaign darkens.
       const out = Math.max(0, -wx, wx - WORLD_W, -wz, wz - WORLD_D);
       const dim = 1 - Math.min(1, out / 1.5) * 0.35;
-      const c = new THREE.Color(1, 1, 1).lerp(new THREE.Color(1.25, 1.25, 1.3), pale).multiplyScalar(dim);
-      colours.set([c.r, c.g, c.b], k * 3);
+      colours.set([dim, dim, dim], k * 3);
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colours, 3));
     geo.computeVertexNormals();
-    const map = new THREE.CanvasTexture(groundTexture(grid, nodes, seed));
-    map.colorSpace = THREE.SRGBColorSpace;
-    map.wrapS = THREE.MirroredRepeatWrapping;
-    map.wrapT = THREE.MirroredRepeatWrapping;
-    map.anisotropy = 4;
-    this.ground = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map, vertexColors: true }));
+    // Painted in the GPU from where each kind of ground lies (src/gfx3d/landscape.ts).
+    this.ground = new THREE.Mesh(geo, groundMaterial(grid, nodes));
+    this.ground.receiveShadow = true;
     this.scene.add(this.ground);
 
     // Water: one sheet at the waterline, showing wherever the ground dips under it.
     this.water = new THREE.Mesh(
       new THREE.PlaneGeometry(wide, deep).rotateX(-Math.PI / 2).translate(WORLD_W / 2, WATER_LEVEL, WORLD_D / 2),
-      new THREE.MeshPhongMaterial({ color: 0x2e6eb8, transparent: true, opacity: 0.78, shininess: 80, specular: 0x88aacc }),
+      waterMaterial(this.field),
     );
+    this.water.receiveShadow = true;
     this.scene.add(this.water);
 
     this.plantTrees(grid, rand, nodes);
     for (const n of nodes) this.raiseStronghold(n, rand);
+    const tufts = grassField(grid, nodes, (x, y) => heightAt(this.field, x, y), grass, rand);
+    if (tufts) this.scene.add(tufts);
   }
 
   /** Woods on forest ground, and the odd tree in the open. */
@@ -237,7 +241,9 @@ export class WorldStage {
     groups.forEach((list, i) => {
       if (!list.length) return;
       const { geometry, material } = kinds[i]!;
-      const trees = new THREE.InstancedMesh(geometry, material, list.length);
+      const swaying = windSwayed(material);
+      this.ownMaterials.push(swaying);
+      const trees = new THREE.InstancedMesh(geometry, swaying, list.length);
       list.forEach(([x, y, s], k) => {
         const size = 0.62 + s * 0.5;
         q.setFromAxisAngle(up, rand() * Math.PI * 2);
@@ -666,10 +672,6 @@ export class WorldStage {
       }
     }
 
-    if (this.water) {
-      const m = this.water.material as THREE.MeshPhongMaterial;
-      m.opacity = 0.76 + Math.sin(this.clock / 900) * 0.04;
-    }
   }
 
   private textureOf(image: SpriteImage): THREE.Texture {
@@ -688,6 +690,7 @@ export class WorldStage {
 
   dispose(): void {
     for (const t of this.textures.values()) t.dispose();
+    for (const m of this.ownMaterials) m.dispose();
     this.scene.traverse((o) => {
       // The models' geometry and materials are shared with the library, which outlives this map.
       if (o.userData.shared || isShared(o)) return;
@@ -713,78 +716,4 @@ function isWithin(o: THREE.Object3D, ancestor: THREE.Object3D): boolean {
 function isShared(o: THREE.Object3D): boolean {
   for (let p = o.parent; p; p = p.parent) if (p.userData.shared) return true;
   return false;
-}
-
-// ------------------------------------------------------------ ground paint --
-
-const PAINT: Record<Exclude<Terrain, 'road'>, [number, number, number][]> = {
-  plain: [[86, 140, 58], [74, 126, 50], [98, 150, 66], [80, 132, 46]],
-  forest: [[46, 92, 38], [38, 80, 32], [54, 100, 42], [42, 86, 30]],
-  mountain: [[122, 110, 92], [104, 96, 82], [138, 128, 108], [96, 108, 70]],
-  water: [[110, 104, 76], [96, 92, 70], [124, 116, 84], [100, 98, 72]],
-};
-
-/** Pixels of ground texture per tile. */
-const PAINT_PX = 32;
-
-/**
- * The ground's colours: each tile's terrain, its edges frayed so country
- * blends into country, then the roads laid along the links between
- * strongholds as the grid lays them.
- */
-function groundTexture(grid: Terrain[], nodes: MapNode[], seed: number): HTMLCanvasElement {
-  const W = COLS * PAINT_PX;
-  const H = ROWS * PAINT_PX;
-  const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext('2d')!;
-  const img = ctx.createImageData(W, H);
-  const rand = seeded(seed * 31 + 5);
-  const jitter = new Float32Array(1024);
-  for (let k = 0; k < jitter.length; k++) jitter[k] = rand() - 0.5;
-  for (let py = 0; py < H; py++) {
-    for (let px = 0; px < W; px++) {
-      // Sample a little off the pixel, so borders between tiles wander.
-      const j1 = jitter[(px * 7 + py * 13) & 1023];
-      const j2 = jitter[(px * 11 + py * 5 + 333) & 1023];
-      const tx = (px + j1 * PAINT_PX * 0.7) / PAINT_PX;
-      const ty = (py + j2 * PAINT_PX * 0.7) / PAINT_PX;
-      let t = terrainAtTile(grid, Math.floor(tx), Math.floor(ty));
-      if (t === 'road') t = 'plain';
-      const shades = PAINT[t];
-      const pick = shades[Math.floor((jitter[(px * 3 + py * 17 + 71) & 1023] + 0.5) * shades.length) % shades.length];
-      const o = (py * W + px) * 4;
-      const grain = jitter[(px * 29 + py * 23) & 1023] * 10;
-      img.data[o] = pick[0] + grain;
-      img.data[o + 1] = pick[1] + grain;
-      img.data[o + 2] = pick[2] + grain;
-      img.data[o + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-
-  // Roads: packed earth with a darker verge, as wide as the grid's road corridor.
-  const k = PAINT_PX / TILE;
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  const seen = new Set<string>();
-  ctx.lineCap = 'round';
-  for (const pass of [{ colour: '#7a6440', width: ROAD_WIDTH * 2 * k }, { colour: '#b09a6a', width: ROAD_WIDTH * 1.5 * k }]) {
-    seen.clear();
-    ctx.strokeStyle = pass.colour;
-    ctx.lineWidth = pass.width;
-    for (const n of nodes) {
-      for (const l of n.links) {
-        const o = byId.get(l);
-        const key = `${Math.min(n.id, l)}-${Math.max(n.id, l)}`;
-        if (!o || seen.has(key)) continue;
-        seen.add(key);
-        ctx.beginPath();
-        ctx.moveTo(n.x * k, n.y * k);
-        ctx.lineTo(o.x * k, o.y * k);
-        ctx.stroke();
-      }
-    }
-  }
-  return canvas;
 }

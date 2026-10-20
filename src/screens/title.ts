@@ -22,7 +22,7 @@ export class TitleScreen implements Screen {
 
   constructor(app: App, onNewCampaign: () => void) {
     const nodes = newCampaign().nodes;
-    this.world.build(buildTerrainGrid(nodes), nodes);
+    this.world.build(buildTerrainGrid(nodes), nodes, { grass: app.engine.settings.grass });
     this.world.setView({ ...OVERVIEW, distance: OVERVIEW.distance * 0.72, pitch: 0.62 }, true);
 
     const authentic = datasetSource() === 'ob64';

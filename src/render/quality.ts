@@ -17,13 +17,15 @@ export interface QualitySettings {
   antialias: 'fxaa' | 'smaa';
   /** Shadows cast by the sun, and their sharpness (texels per side). */
   shadows: number;
+  /** Tufts of grass to a tile of open meadow on the campaign map (none on low). */
+  grass: number;
 }
 
 export const SETTINGS: Record<Quality, QualitySettings> = {
-  low: { pixelRatioCap: 1, bloom: false, ambientOcclusion: false, antialias: 'fxaa', shadows: 0 },
-  medium: { pixelRatioCap: 1.5, bloom: true, ambientOcclusion: false, antialias: 'fxaa', shadows: 1024 },
-  high: { pixelRatioCap: 2, bloom: true, ambientOcclusion: true, antialias: 'smaa', shadows: 2048 },
-  ultra: { pixelRatioCap: 2.5, bloom: true, ambientOcclusion: true, antialias: 'smaa', shadows: 4096 },
+  low: { pixelRatioCap: 1, bloom: false, ambientOcclusion: false, antialias: 'fxaa', shadows: 0, grass: 0 },
+  medium: { pixelRatioCap: 1.5, bloom: true, ambientOcclusion: false, antialias: 'fxaa', shadows: 1024, grass: 6 },
+  high: { pixelRatioCap: 2, bloom: true, ambientOcclusion: true, antialias: 'smaa', shadows: 2048, grass: 12 },
+  ultra: { pixelRatioCap: 2.5, bloom: true, ambientOcclusion: true, antialias: 'smaa', shadows: 4096, grass: 20 },
 };
 
 /**

@@ -397,7 +397,7 @@ export class BattleStage implements FxHost {
       const p = this.ringOn.root.position;
       this.ring.position.set(p.x, p.y - this.ringOn.offset.y + 0.05, p.z);
       const pulse = 1 + Math.sin(this.ringT / 120) * 0.06;
-      this.ring.scale.setScalar((this.ringOn.place.large ? 2 : 1) * pulse);
+      this.ring.scale.setScalar((this.ringOn.place.large ? 1.55 : 1) * pulse);
     }
     this.push *= Math.pow(0.02, dtMs / 1000);
     this.applyShot();

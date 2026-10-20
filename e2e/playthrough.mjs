@@ -24,10 +24,7 @@ const membersOf = (s, q) => [...new Set(q.grid.filter((i) => i !== null))].map((
 // ------------------------------------------------------------------ title --
 
 async function title(g) {
-  const label = await g.page.evaluate(() => {
-    const t = window.__palatinus.game.scene.getScene('Title');
-    return t.children.list.filter((o) => o.type === 'Text').map((o) => o.text).find((x) => x.startsWith('Class data')) ?? '';
-  });
+  const label = await g.text('dataset');
   g.check('T1', 'the title screen shows which class data is loaded', /Class data: .+ · \d+ classes/.test(label), label);
   await g.shot('title');
   g.check('T2', 'NEW CAMPAIGN opens the map', await newCampaign(g));
@@ -79,8 +76,11 @@ async function map(g) {
   const v2 = (await g.mapInfo()).view;
   g.check('M3', 'dragging pans the map (and a drag is not taken as a click)', Math.abs(v2.x - v1.x) > 1 && (await g.mapInfo()).selected === ours.at(-1).id,
     `x ${v1.x.toFixed(1)} → ${v2.x.toFixed(1)}`);
+  // Held until it turns (a frame's time counts no more than 100ms, and a
+  // software GPU draws few frames a second).
   await g.page.keyboard.down('E');
   await g.wait(500);
+  await g.until(([y]) => Math.abs(window.__palatinus.map.view().yaw - y) > 0.2, [v2.yaw], 5000);
   await g.page.keyboard.up('E');
   const v3 = (await g.mapInfo()).view;
   g.check('M4', 'E turns the view', Math.abs(v3.yaw - v2.yaw) > 0.2, `yaw ${v2.yaw.toFixed(2)} → ${v3.yaw.toFixed(2)}`);
@@ -150,18 +150,51 @@ async function map(g) {
 
 // --------------------------------------------------------------- organize --
 
-const CELL = (c) => [260 + (c % 3) * 88, 140 + Math.floor(c / 3) * 88];
-const SQUAD_BUTTON = (i) => [106, 107 + i * 42];
+// The army screen's controls, by name (its squad buttons share names with
+// the map's squad tags, so they are looked for within the army screen).
+const org = (g, name, wait) => g.ui(name, { within: 'organize', wait });
+const CELL = (g, c) => org(g, `cell-${c}`);
 
 async function organizeScene(g, fn) {
   return g.page.evaluate(fn);
 }
 
+/** The army's stores in the order the Items list shows them. */
+const itemsInOrder = (g) => g.page.evaluate(() => {
+  const st = window.__palatinus.state();
+  const order = { supply: 0, relic: 1, key: 2, gear: 3 };
+  return Object.keys(st.inventory).map(window.__palatinus.itemOf)
+    .sort((a, b) => order[a.kind] - order[b.kind] || a.name.localeCompare(b.name))
+    .map((i) => ({ id: i.id, kind: i.kind, target: i.target, heal: i.effect?.heal, revive: i.effect?.revive }));
+});
+
+/** The cheapest item of a shop list (the one surest to be affordable). */
+const cheapestIn = (g, filter) => g.page.evaluate((f) => {
+  const P = window.__palatinus;
+  const st = P.state();
+  const W = ['sword', 'greatsword', 'rapier', 'axe', 'hammer', 'spear', 'whip', 'claw', 'bow', 'mace', 'staff', 'doll', 'fan'];
+  const A = ['light', 'medium', 'heavy', 'robe', 'clothing', 'shield', 'greatshield', 'helm', 'hat'];
+  const stock = P.rules.shopStock(P.rules.shopRank(st.nodes.filter((n) => n.owner === 'player').length)).filter((i) =>
+    f === 'supplies' ? i.kind === 'supply' : f === 'weapons' ? i.kind === 'gear' && W.includes(i.type)
+      : f === 'armour' ? i.kind === 'gear' && A.includes(i.type) : !['supply'].includes(i.kind) && !W.includes(i.type) && !A.includes(i.type));
+  return stock.sort((a, b) => a.price - b.price)[0]?.id ?? null;
+}, filter);
+
+/** The cheapest recruit there is. */
+const cheapestRecruit = (g) => g.page.evaluate(() => {
+  const el = document.querySelector('[data-ui="recruits"] [data-ui^="enlist-"]');
+  return el ? el.getAttribute('data-ui').slice('enlist-'.length) : null;
+});
+
+async function openOrganize(g) {
+  await g.ui('organize', { within: 'map', wait: 400 });
+  return g.until(() => window.__palatinus.game.scene.isActive('Organize'), null, 10000);
+}
+
 async function organize(g) {
   await freezeEnemies(g);
   const before = await g.state();
-  await g.click(742, 580, 500);
-  await g.until(() => window.__palatinus.game.scene.isActive('Organize'), null, 10000);
+  await openOrganize(g);
   g.check('O1', 'ORGANIZE opens the army screen and holds the map still',
     (await g.active('Organize')) && (await g.paused('Overworld')));
   await g.wait(1000);
@@ -171,34 +204,34 @@ async function organize(g) {
 
   // Squads and their sheets.
   const ours = players(held);
-  await g.click(...SQUAD_BUTTON(2));
+  await org(g, 'squad-2');
   const wolves = ours[2];
   const shown = await organizeScene(g, () => window.__palatinus.game.scene.getScene('Organize').squad?.name);
   g.check('O3', 'the squad buttons switch the formation shown', shown === wolves.name, shown);
   const leaderCell = wolves.grid.indexOf(wolves.leaderId);
-  await g.click(...CELL(leaderCell));
+  await CELL(g, leaderCell);
   const sel = await organizeScene(g, () => window.__palatinus.game.scene.getScene('Organize').selectedChar?.id);
-  g.check('O4', 'clicking a member opens its sheet', sel === wolves.leaderId);
+  g.check('O4', 'clicking a member opens its sheet', sel === wolves.leaderId && (await g.shown('status')));
   await g.shot('organize-sheet');
 
   // Moving a member: to an empty cell, and a large unit only where it fits.
   let s = await g.state();
   let q = s.squads.find((x) => x.id === wolves.id);
   const empty = q.grid.findIndex((x) => x === null);
-  await g.click(...CELL(empty));
+  await CELL(g, empty);
   s = await g.state();
   q = s.squads.find((x) => x.id === wolves.id);
   g.check('O5', 'a selected member moves to the empty cell clicked', q.grid[empty] === wolves.leaderId && !q.grid.some((x, i) => x === wolves.leaderId && i !== empty));
   const large = membersOf(s, q).find((c) => q.grid.filter((x) => x === c.id).length === 2);
   if (large) {
     const cells = q.grid.flatMap((x, i) => (x === large.id ? [i] : []));
-    await g.click(...CELL(cells[0]));
+    await CELL(g, cells[0]);
     // A cell whose row has no room beside it for the beast's second half.
     const target = [0, 1, 2, 3, 4, 5, 6, 7, 8].find((c) => q.grid[c] === null && [c - 1, c + 1].every((n) =>
       n < 0 || n > 8 || Math.floor(n / 3) !== Math.floor(c / 3) || (q.grid[n] !== null && q.grid[n] !== large.id)));
     if (target !== undefined) {
-      await g.click(...CELL(target));
-      const msg = await organizeScene(g, () => window.__palatinus.game.scene.getScene('Organize').message);
+      await CELL(g, target);
+      const msg = await g.text('message');
       const s2 = await g.state();
       g.check('O6', 'a large unit will not go where it has no room, and says so',
         JSON.stringify(s2.squads.find((x) => x.id === wolves.id).grid) === JSON.stringify(q.grid) && /No room/.test(msg), msg);
@@ -212,19 +245,21 @@ async function organize(g) {
   }
 
   // Gear: take the leader's weapon off, then put the best one carried on.
-  await g.click(...CELL(empty));
-  await g.click(632, 133);
+  await CELL(g, empty);
+  await org(g, 'tab-gear');
   s = await g.state();
   const lead = s.chars[wolves.leaderId];
   const wasWeapon = lead.gear.weapon;
-  await g.click(650, 172);
-  await g.click(650, 346);
+  await org(g, 'slot-weapon');
+  await org(g, 'unequip');
   s = await g.state();
   const off = s.chars[wolves.leaderId];
   g.check('O8', 'taking a weapon off puts it in the army\'s stores', wasWeapon && off.gear.weapon === null && s.inventory[wasWeapon] >= 1,
     `${wasWeapon} → ${off.gear.weapon}, carried ${s.inventory[wasWeapon]}`);
   const carried = { ...s.inventory };
-  await g.click(650, 346);
+  // The list puts the best first.
+  const bestOffered = await g.page.evaluate(() => document.querySelector('[data-ui="gear"] [data-ui^="equip-"]')?.getAttribute('data-ui') ?? '');
+  await org(g, bestOffered);
   s = await g.state();
   const on = s.chars[wolves.leaderId];
   g.check('O9', 'equipping takes a weapon from the stores', on.gear.weapon !== null && (s.inventory[on.gear.weapon] ?? 0) === (carried[on.gear.weapon] ?? 0) - 1,
@@ -240,40 +275,42 @@ async function organize(g) {
     c.ali = 50;
   }, [fighter.id]);
   const fCell = s.squads.find((x) => x.id === wolves.id).grid.indexOf(fighter.id);
-  await g.click(...CELL(fCell));
-  await g.click(716, 133);
-  let changed = false;
-  for (let row = 0; row < 11 && !changed; row++) {
-    await g.click(650, 167 + row * 30, 150);
-    changed = (await g.state()).chars[fighter.id].classId !== fighter.classId;
-  }
+  await CELL(g, fCell);
+  await org(g, 'tab-class');
+  const offered = await g.page.evaluate(() => [...document.querySelectorAll('[data-ui="class"] [data-ui^="class-"]')]
+    .map((b) => ({ ui: b.getAttribute('data-ui'), ok: !b.disabled })));
+  const ready = offered.find((o) => o.ok);
+  if (ready) await org(g, ready.ui);
   s = await g.state();
-  g.check('O10', 'a member who qualifies can change class', changed, `${fighter.classId} → ${s.chars[fighter.id].classId}`);
+  const changed = s.chars[fighter.id].classId !== fighter.classId;
+  g.check('O10', 'a member who qualifies can change class', changed && `class-${s.chars[fighter.id].classId}` === ready?.ui,
+    `${fighter.classId} → ${s.chars[fighter.id].classId} (${offered.filter((o) => o.ok).length}/${offered.length} offered)`);
   await g.shot('organize-class');
 
   // The shop: buying, and not buying without the money.
-  await g.click(106, 397);
+  await org(g, 'mode-shop');
   s = await g.state();
   const goth0 = s.goth;
   const inv0 = { ...s.inventory };
-  await g.click(650, 124);
+  const supply = await cheapestIn(g, 'supplies');
+  await org(g, `buy-${supply}`);
   s = await g.state();
   const boughtId = Object.keys(s.inventory).find((k) => (s.inventory[k] ?? 0) > (inv0[k] ?? 0));
   const price = boughtId ? await g.page.evaluate((id) => window.__palatinus.itemOf(id).price, boughtId) : 0;
-  g.check('O11', 'buying a supply takes its price and adds it to the stores', !!boughtId && goth0 - s.goth === price, `${boughtId} for ${price}`);
-  for (const [i, f] of ['weapons', 'armour', 'other'].entries()) {
-    await g.click(524 + (i + 1) * 63 + 22, 94);
+  g.check('O11', 'buying a supply takes its price and adds it to the stores', boughtId === supply && goth0 - s.goth === price, `${boughtId} for ${price}`);
+  for (const f of ['weapons', 'armour', 'other']) {
+    await org(g, `filter-${f}`);
     const filter = await organizeScene(g, () => window.__palatinus.game.scene.getScene('Organize').filter);
-    g.check(`O12.${f}`, `the shop's ${f} list opens`, filter === f);
+    g.check(`O12.${f}`, `the shop's ${f} list opens`, filter === f && (await g.text('org-side')).length > 0);
   }
-  await g.click(524 + 1 * 63 + 22, 94);
   await g.mutate(() => { window.__palatinus.state().goth = 0; });
-  await g.click(524 + 1 * 63 + 22, 94);
+  await org(g, 'filter-supplies');
   const inv1 = { ...(await g.state()).inventory };
-  await g.click(650, 124);
+  await org(g, `buy-${supply}`);
   s = await g.state();
   g.check('O13', 'nothing can be bought without the Goth for it', JSON.stringify(s.inventory) === JSON.stringify(inv1) && s.goth === 0);
   await g.mutate(([v]) => { window.__palatinus.state().goth = v; }, [goth0]);
+  await org(g, 'filter-weapons');
   await g.shot('organize-shop');
 
   // Items: heal the hurt, raise the fallen, sell.
@@ -285,33 +322,20 @@ async function organize(g) {
     st.chars.get(h).hp = 1;
     st.chars.get(d).hp = 0;
   }, [hurt.id, down.id]);
-  await g.click(...CELL(q.grid.indexOf(hurt.id)));
-  await g.click(106, 443);
-  const rows = await g.page.evaluate(() => {
-    const st = window.__palatinus.state();
-    const order = { supply: 0, relic: 1, key: 2, gear: 3 };
-    return Object.keys(st.inventory).map(window.__palatinus.itemOf)
-      .sort((a, b) => order[a.kind] - order[b.kind] || a.name.localeCompare(b.name))
-      .map((i) => ({ id: i.id, kind: i.kind, target: i.target, heal: i.effect?.heal, revive: i.effect?.revive }));
-  });
-  const healRow = rows.findIndex((r) => r.heal !== undefined && r.target === 'unit');
-  const reviveRow = rows.findIndex((r) => r.revive !== undefined);
+  await CELL(g, q.grid.indexOf(hurt.id));
+  await org(g, 'mode-items');
+  const rows = await itemsInOrder(g);
+  const healId = rows.find((r) => r.heal !== undefined && r.target === 'unit')?.id;
+  const reviveId = rows.find((r) => r.revive !== undefined)?.id;
   s = await g.state();
-  const healCount = s.inventory[rows[healRow].id];
-  await g.click(706, 106 + healRow * 37 + 9);
+  const healCount = s.inventory[healId];
+  await org(g, `use-${healId}`);
   s = await g.state();
-  g.check('O14', 'a healing supply heals the member and is spent', s.chars[hurt.id].hp > 1 && s.inventory[rows[healRow].id] === healCount - 1,
-    `${hurt.name} 1 → ${s.chars[hurt.id].hp} HP`);
-  await g.click(...CELL(q.grid.indexOf(down.id)));
-  const rows2 = await g.page.evaluate(() => {
-    const st = window.__palatinus.state();
-    const order = { supply: 0, relic: 1, key: 2, gear: 3 };
-    return Object.keys(st.inventory).map(window.__palatinus.itemOf)
-      .sort((a, b) => order[a.kind] - order[b.kind] || a.name.localeCompare(b.name)).map((i) => i.id);
-  });
-  const reviveId = rows[reviveRow]?.id;
+  g.check('O14', 'a healing supply heals the member and is spent', s.chars[hurt.id].hp > 1 && s.inventory[healId] === healCount - 1,
+    `${hurt.name} 1 → ${s.chars[hurt.id].hp} HP with ${healId}`);
+  await CELL(g, q.grid.indexOf(down.id));
   if (reviveId) {
-    await g.click(706, 106 + rows2.indexOf(reviveId) * 37 + 9);
+    await org(g, `use-${reviveId}`);
     s = await g.state();
     g.check('O15', 'a revival brings a fallen member back', s.chars[down.id].hp > 0, `${down.name} 0 → ${s.chars[down.id].hp} HP`);
   } else {
@@ -319,37 +343,33 @@ async function organize(g) {
   }
   const s5 = await g.state();
   // The list as it stands now (a supply used up drops off it).
-  const sellId = (await g.page.evaluate(() => {
-    const st = window.__palatinus.state();
-    const order = { supply: 0, relic: 1, key: 2, gear: 3 };
-    return Object.keys(st.inventory).map(window.__palatinus.itemOf)
-      .sort((a, b) => order[a.kind] - order[b.kind] || a.name.localeCompare(b.name)).map((i) => i.id);
-  }))[0];
+  const sellId = (await itemsInOrder(g))[0].id;
   const sellPrice = await g.page.evaluate((id) => Math.floor(window.__palatinus.itemOf(id).price / 2), sellId);
   const sellCount = s5.inventory[sellId];
-  await g.click(738, 106 + 9);
+  await org(g, `sell-${sellId}`);
   s = await g.state();
   g.check('O16', 'selling pays half the price and gives the item up', s.goth - s5.goth === sellPrice && (s.inventory[sellId] ?? 0) === sellCount - 1,
     `${sellId}: +${s.goth - s5.goth} Goth`);
   await g.shot('organize-items');
 
   // Recruits: a full squad takes none; one with room takes one for its price.
-  await g.click(106, 489);
+  await org(g, 'mode-recruit');
   s = await g.state();
   const fullBefore = JSON.stringify(s.squads.find((x) => x.id === wolves.id).grid);
-  await g.click(650, 133);
+  const recruit = await cheapestRecruit(g);
+  await org(g, `enlist-${recruit}`);
   s = await g.state();
   g.check('O17', 'a full squad cannot enlist anyone', JSON.stringify(s.squads.find((x) => x.id === wolves.id).grid) === fullBefore);
   // Make room the way a player would: dismiss a member (asked twice).
-  await g.click(106, 489);
+  await org(g, 'mode-recruit');
   s = await g.state();
   q = s.squads.find((x) => x.id === wolves.id);
-  await g.click(...CELL(q.grid.indexOf(hurt.id)));
+  await CELL(g, q.grid.indexOf(hurt.id));
   const goneGear = Object.values(s.chars[hurt.id].gear).filter(Boolean);
-  await g.click(740, 93);
+  await org(g, 'dismiss');
   s = await g.state();
   g.check('O21', 'DISMISS asks before it acts', s.squads.find((x) => x.id === wolves.id).grid.includes(hurt.id));
-  await g.click(740, 93);
+  await org(g, 'dismiss');
   s = await g.state();
   g.check('O22', 'a dismissed member leaves the squad and their gear returns to the stores',
     !s.squads.find((x) => x.id === wolves.id).grid.includes(hurt.id) && !s.chars[hurt.id]
@@ -357,24 +377,23 @@ async function organize(g) {
   // And a new leader.
   q = s.squads.find((x) => x.id === wolves.id);
   const heir = membersOf(s, q).find((c) => c.id !== q.leaderId && c.hp > 0);
-  await g.click(...CELL(q.grid.indexOf(heir.id)));
-  await g.click(732, 77);
+  await CELL(g, q.grid.indexOf(heir.id));
+  await org(g, 'lead');
   s = await g.state();
   g.check('O23', 'LEAD makes a member the squad\'s leader', s.squads.find((x) => x.id === wolves.id).leaderId === heir.id, heir.name);
-  await g.click(106, 489);
+  await org(g, 'mode-recruit');
   s = await g.state();
   const g0 = s.goth;
   const n0 = membersOf(s, s.squads.find((x) => x.id === wolves.id)).length;
-  await g.click(650, 133);
+  await org(g, `enlist-${recruit}`);
   s = await g.state();
   const n1 = membersOf(s, s.squads.find((x) => x.id === wolves.id)).length;
   g.check('O18', 'a squad with room enlists a recruit for its price', n1 === n0 + 1 && s.goth < g0, `${n0} → ${n1} members, ${g0} → ${s.goth} Goth`);
   await g.shot('organize-recruit');
 
-  await g.click(106, 548, 600);
+  await org(g, 'back-to-map', 600);
   g.check('O19', 'BACK TO MAP returns to the map, running again', (await g.active('Overworld')) && !(await g.paused('Overworld')) && !(await g.active('Organize')));
-  const hud = await g.page.evaluate(() => window.__palatinus.map.scene.hudText.visible && window.__palatinus.map.scene.hintText.visible);
-  g.check('O20', 'the map\'s HUD is back', hud);
+  g.check('O20', 'the map\'s HUD is back', (await g.shown('hud')) && (await g.shown('hint')));
 }
 
 // ----------------------------------------------------------------- battle --
@@ -464,6 +483,7 @@ async function battle(g) {
 
   // Every kind of action: watch battles until melee, ranged, magic and healing have all been seen.
   const seen = new Set(result.kinds);
+  let watched = 1;
   const others = [['Silver Talon', 'Risen Host'], ['Azure Wing', 'Ash Raiders'], ['Crimson Lances', 'Highcliff Garrison']];
   for (const [mine, theirs] of others) {
     if (['melee', 'ranged', 'magic', 'heal'].every((k) => seen.has(k))) break;
@@ -477,8 +497,10 @@ async function battle(g) {
     await g.until(([n]) => window.__palatinus.battles.length > n && !window.__palatinus.game.scene.isActive('Battle'), [k], 120000);
     const r = await g.page.evaluate(() => window.__palatinus.lastBattle);
     r.kinds.forEach((x) => seen.add(x));
+    watched++;
   }
-  g.check('B10', 'battles play melee, ranged, magic and healing actions', ['melee', 'ranged', 'magic', 'heal'].every((k) => seen.has(k)), [...seen].join(', '));
+  g.check('B10', 'battles play melee, ranged, magic and healing actions', ['melee', 'ranged', 'magic', 'heal'].every((k) => seen.has(k)),
+    `${[...seen].join(', ')} in ${watched} battle${watched > 1 ? 's' : ''}`);
 }
 
 // --------------------------------------------------------------- campaign --
@@ -630,7 +652,7 @@ async function soak(g) {
     const phase = await campaign(g, { minutes: (until - Date.now()) / 60000, sample, judge: false });
     campaigns++;
     if (phase === 'playing') break;
-    await g.click(400, 317, 600); // the ending panel's TITLE
+    await g.ui('to-title', { wait: 600 }); // the ending panel's TITLE
     await newCampaign(g);
   }
   await sample();
@@ -652,14 +674,13 @@ async function soak(g) {
 
 /** The ending panel's TITLE button, then a fresh campaign that is truly fresh. */
 async function afterEnd(g, phase) {
-  const panel = await g.page.evaluate(() => window.__palatinus.map.scene.children.list
-    .filter((o) => o.type === 'Text').map((o) => o.text).find((t) => /VICTORY|DEFEAT/.test(t)) ?? '');
-  g.check(`E1.${phase}`, `the ${phase} is announced on the map`, phase === 'victory' ? /VICTORY/.test(panel) : /DEFEAT/.test(panel), panel.split('\n')[0]);
+  const panel = (await g.shown('end-panel')) ? await g.text('end-panel') : '';
+  g.check(`E1.${phase}`, `the ${phase} is announced on the map`, phase === 'victory' ? /Victory/.test(panel) : /Defeat/.test(panel), panel);
   const frozen = await g.state();
   await g.wait(Math.ceil(13000 / g.speed));
   const later = await g.state();
   g.check(`E2.${phase}`, 'the campaign stands still once it is over', later.day === frozen.day && later.goth === frozen.goth);
-  await g.click(400, 317, 800);
+  await g.ui('to-title', { wait: 800 });
   g.check(`E3.${phase}`, 'TITLE goes back to the title screen', await g.active('Title'));
   await newCampaign(g);
   const s = await g.state();
@@ -708,15 +729,17 @@ async function edges(g) {
   for (let attempt = 1; attempt <= 3 && !x1.ok; attempt++) {
     s = await g.state();
     const from = s.squads.find((q) => q.id === azure.id);
-    const goal = { x: (from.x + hq.x) / 2 + 20, y: (from.y + hq.y) / 2 + 20 };
+    // Far enough that the march is still under way when the army screen opens.
+    const goal = Math.hypot(from.x - hq.x, from.y - hq.y) > 140
+      ? { x: (from.x + hq.x) / 2 + 20, y: (from.y + hq.y) / 2 + 20 }
+      : { x: hq.x + 120, y: hq.y - 50 };
     const fought0 = await g.battles();
     const ordered = await marchTo(g, azure.id, goal.x, goal.y);
     await g.wait(800);
     const mid = (await g.state()).squads.find((q) => q.id === azure.id);
     const seen = ordered ? '' : JSON.stringify({ map: await g.mapInfo(), onScreen: await g.squadOnScreen(azure.id), shot: await g.shot('x1-not-ordered') });
-    await g.click(742, 580, 300);
-    await g.until(() => window.__palatinus.game.scene.isActive('Organize'), null, 10000);
-    await g.click(106, 548, 300);
+    await openOrganize(g);
+    await org(g, 'back-to-map', 300);
     await g.until(() => !window.__palatinus.game.scene.isActive('Organize') && !window.__palatinus.game.scene.isPaused('Overworld'), null, 10000);
     await g.wait(800);
     const after = (await g.state()).squads.find((q) => q.id === azure.id);
@@ -768,37 +791,31 @@ async function edges(g) {
 
   // An empty treasury: no recruit, no purchase. (Emptied once the army screen
   // holds the map still, so no day's income lands in between.)
-  await g.click(742, 580, 500);
-  await g.until(() => window.__palatinus.game.scene.isActive('Organize'), null, 10000);
+  await openOrganize(g);
   await g.mutate(() => { window.__palatinus.state().goth = 0; });
-  await g.click(106, 107 + 2 * 42);
+  await org(g, 'squad-2');
   s = await g.state();
   const w = s.squads.find((q) => q.id === wolves.id);
   const extra = membersOf(s, w).find((c) => c.id !== w.leaderId);
-  await g.click(...CELL(w.grid.indexOf(extra.id)));
-  await g.click(740, 93);
-  await g.click(740, 93);
-  await g.click(106, 489);
+  await CELL(g, w.grid.indexOf(extra.id));
+  await org(g, 'dismiss');
+  await org(g, 'dismiss');
+  await org(g, 'mode-recruit');
   const before = await g.state();
-  await g.click(650, 133);
+  await org(g, `enlist-${await cheapestRecruit(g)}`);
   s = await g.state();
   g.check('X4', 'nobody can be enlisted with an empty treasury',
     JSON.stringify(s.squads.find((q) => q.id === wolves.id).grid) === JSON.stringify(before.squads.find((q) => q.id === wolves.id).grid) && s.goth === 0);
 
   // Selling the last of something takes it off the list.
-  await g.click(106, 443);
+  await org(g, 'mode-items');
   s = await g.state();
-  const order = await g.page.evaluate(() => {
-    const st = window.__palatinus.state();
-    const rank = { supply: 0, relic: 1, key: 2, gear: 3 };
-    return Object.keys(st.inventory).map(window.__palatinus.itemOf)
-      .sort((a, b) => rank[a.kind] - rank[b.kind] || a.name.localeCompare(b.name)).map((i) => i.id);
-  });
-  const first = order[0];
-  for (let k = s.inventory[first]; k > 0; k--) await g.click(738, 106 + 9, 150);
+  const first = (await itemsInOrder(g))[0].id;
+  for (let k = s.inventory[first]; k > 0; k--) await org(g, `sell-${first}`, 150);
   s = await g.state();
-  g.check('X5', 'selling the last of an item takes it off the list', !(first in s.inventory) && s.goth > 0, first);
-  await g.click(106, 548, 500);
+  g.check('X5', 'selling the last of an item takes it off the list', !(first in s.inventory) && s.goth > 0
+    && !(await g.page.evaluate((id) => !!document.querySelector(`[data-ui="item-${id}"]`), first)), first);
+  await org(g, 'back-to-map', 500);
   await g.shot('edges');
 }
 

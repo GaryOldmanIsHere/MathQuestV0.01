@@ -1,7 +1,11 @@
 // The automated playthrough's tools: a browser on the game (opened with
 // ?debug, which publishes the campaign's state and where things are on the
-// 3D map's screen), clicks in the game's own 800x600 coordinates, a reader
-// for the state, and a log of checks that ends up as a pass/fail report.
+// 3D map's screen), clicks on the interface's named controls and on the map
+// where things stand, a reader for the state, and a log of checks that ends
+// up as a pass/fail report.
+//
+// The game is drawn with WebGL2 at the low preset: a software GPU (as in CI)
+// is too slow for more, and its WebGPU is unreliable.
 
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -17,7 +21,7 @@ export async function openGame({ url = 'http://localhost:5173/', speed = 4, tag 
     executablePath: process.env.CHROMIUM_PATH || undefined,
     args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-precise-memory-info'],
   });
-  const page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
@@ -28,22 +32,52 @@ export async function openGame({ url = 'http://localhost:5173/', speed = 4, tag 
   // by answering the game's requests for it as if the files were not there.
   // Only the extracted folder at the site's root: the game's own code lives under src/ob64/.
   if (process.env.E2E_DATA === 'builtin') await page.route(/^https?:\/\/[^/]+\/ob64\//, (r) => r.fulfill({ status: 404, body: '' }));
-  await page.goto(`${url}?debug&speed=${speed}`, { waitUntil: 'networkidle' });
+  await page.goto(`${url}?debug&webgl&quality=${process.env.E2E_QUALITY ?? 'low'}&speed=${speed}`, { waitUntil: 'networkidle' });
   // Generous: two runs side by side share the CPU with a software GPU.
   await page.waitForFunction(() => window.__palatinus?.game?.scene?.isActive('Title'), null, { timeout: 120000 });
-  const box = await page.locator('canvas').boundingBox();
+  const box = await page.locator('#view').boundingBox();
   const g = { browser, page, errors, box, tag, speed, checks: [], shots: 0 };
 
-  /** A point in the game's 800x600 space, on the page. */
+  /** A point on the canvas as a share of it, given in an 800x600 frame (for camera gestures). */
   g.at = (x, y) => [box.x + (x / 800) * box.width, box.y + (y / 600) * box.height];
+  /** A click on the canvas, in its own CSS pixels (as the map's debug hook reports places). */
   g.click = async (x, y, wait = 250) => {
-    await page.mouse.click(...g.at(x, y));
+    await page.mouse.click(box.x + x, box.y + y);
     await sleep(wait);
   };
+  /**
+   * A click on one of the interface's controls, by its data-ui name (within
+   * the screen named by `within`, where two screens use the same name). A
+   * disabled control is clicked all the same, as a player may try to, and
+   * does nothing. False if the control is not there. (The mouse goes to the
+   * control's centre: Playwright's own clicks wait on animation frames, which
+   * a software GPU gives slowly.)
+   */
+  g.ui = async (name, { wait = 150, within } = {}) => {
+    const sel = `${within ? `[data-ui="${within}"] ` : ''}[data-ui="${name}"]`;
+    const at = await page.evaluate((s) => {
+      const e = document.querySelector(s);
+      if (!e) return null;
+      e.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const r = e.getBoundingClientRect();
+      return r.width && r.height ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+    }, sel);
+    if (!at) return false;
+    await page.mouse.click(at.x, at.y);
+    await sleep(wait);
+    return true;
+  };
+  /** The text of a control or panel, by its data-ui name ('' if absent). */
+  g.text = (name) => page.evaluate((n) => document.querySelector(`[data-ui="${n}"]`)?.textContent ?? '', name);
+  /** Whether a control is on screen (present and drawn). */
+  g.shown = (name) => page.evaluate((n) => {
+    const e = document.querySelector(`[data-ui="${n}"]`);
+    return !!e && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden';
+  }, name);
   g.wait = (ms) => sleep(ms);
   g.shot = async (name) => {
     const file = `${tag}-${String(++g.shots).padStart(2, '0')}-${name}.png`;
-    await page.screenshot({ path: join(OUT, file), clip: box });
+    await page.screenshot({ path: join(OUT, file) });
     return file;
   };
   g.active = (scene) => page.evaluate((s) => window.__palatinus.game.scene.isActive(s), scene);
@@ -104,7 +138,7 @@ export async function openGame({ url = 'http://localhost:5173/', speed = 4, tag 
 
 /** Start a new campaign from the title screen. */
 export async function newCampaign(g) {
-  await g.click(400, 320, 300);
+  await g.ui('new-campaign', { wait: 300 });
   return g.until(() => window.__palatinus.game.scene.isActive('Overworld') && !!window.__palatinus.map, null, 20000);
 }
 
@@ -122,4 +156,3 @@ export async function freezeEnemies(g) {
 export async function thawEnemies(g) {
   await g.mutate(() => { window.__palatinus.map.scene.aiTimer = 0; });
 }
-

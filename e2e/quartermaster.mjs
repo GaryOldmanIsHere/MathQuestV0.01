@@ -5,21 +5,12 @@
 // from the shop while the treasury allows, keeping a reserve.
 //
 // It plans with the game's own rules (published by the ?debug hook) and acts
-// only by clicking, so every purchase, change and promotion is the UI's.
+// only by clicking the screen's controls, so every purchase, change and
+// promotion is the UI's.
 
-// The Organize screen's layout, in the game's 800x600 space.
-const ORGANIZE = [742, 580];
-const BACK_TO_MAP = [106, 548];
-const SHOP = [106, 397];
-const SQUAD_BUTTON = (i) => [106, 107 + i * 42];
-const CELL = (c) => [260 + (c % 3) * 88, 140 + Math.floor(c / 3) * 88];
-const TAB = { gear: [632, 133], class: [716, 133] };
-const SLOT_ROW = (i) => [650, 172 + i * 40];
-const GEAR_OPTION = (i) => [650, 346 + i * 24];
-const CLASS_ROW = (i) => [650, 167 + i * 30];
-const SHOP_FILTER = (i) => [546 + i * 63, 94];
-const SHOP_ROW = (i) => [650, 124 + i * 37];
-const NEXT_PAGE = [702, 490];
+// The Organize screen's controls, by name, looked for within that screen
+// (its squad buttons share names with the map's squad tags).
+const org = (g, name, wait = 120) => g.ui(name, { within: 'organize', wait });
 
 const FILTERS = ['supplies', 'weapons', 'armour', 'other'];
 const WEAPONS = ['sword', 'greatsword', 'rapier', 'axe', 'hammer', 'spear', 'whip', 'claw', 'bow', 'mace', 'staff', 'doll', 'fan'];
@@ -28,13 +19,9 @@ const ARMOUR = ['light', 'medium', 'heavy', 'robe', 'clothing', 'shield', 'great
 /** Treasury kept back for recruits and supplies. */
 const RESERVE = 300;
 
-async function turnTo(g, page) {
-  for (let p = 0; p < page; p++) await g.click(...NEXT_PAGE, 120);
-}
-
 /**
  * The plan for one soldier, worked out in the page: the class change to take
- * (the first offered that climbs a tier, with its row on the Class tab), and
+ * (the first offered that climbs a tier), and
  * for each gear place the best piece better than what is worn, carried or
  * for sale within the budget.
  */
@@ -49,7 +36,7 @@ function planFor(g, charId, budget) {
     const promos = R.allPromotions(c);
     const eligible = new Set(R.availablePromotions(c, st.inventory).map((p) => p.classId));
     const tier = P.classOf(c.classId).tier;
-    const promoRow = promos.findIndex((p) => eligible.has(p.classId) && P.classOf(p.classId).tier > tier);
+    const promo = promos.find((p) => eligible.has(p.classId) && P.classOf(p.classId).tier > tier);
 
     const owned = st.nodes.filter((n) => n.owner === 'player').length;
     const stock = R.shopStock(R.shopRank(owned));
@@ -69,9 +56,7 @@ function planFor(g, charId, budget) {
       let pick = null;
       let buy = null;
       if (forSale && forSale.rank > Math.max(worn, best?.rank ?? -1)) {
-        const filter = filterOf(forSale);
-        const list = stock.filter((i) => filterOf(i) === filter);
-        buy = { id: forSale.id, filter: FILTERS.indexOf(filter), row: list.indexOf(forSale), price: forSale.price };
+        buy = { id: forSale.id, filter: filterOf(forSale), price: forSale.price };
         left -= forSale.price;
         pick = forSale.id;
       } else if (best && best.rank > worn) {
@@ -80,23 +65,8 @@ function planFor(g, charId, budget) {
       }
       return { slot, slotIndex, pick, buy };
     }).filter((p) => p.pick);
-    return { promoRow, promoTo: promoRow >= 0 ? promos[promoRow].classId : null, gear };
+    return { promoTo: promo?.classId ?? null, gear };
   }, [charId, budget, FILTERS, WEAPONS, ARMOUR]);
-}
-
-/** Where `itemId` sits in the Gear tab's list of what may go in `slot` (taking off first, then best first). */
-function optionRow(g, charId, slot, itemId) {
-  return g.page.evaluate(([id, slot, itemId]) => {
-    const P = window.__palatinus;
-    const st = P.state();
-    const c = st.chars.get(id);
-    const options = [
-      ...(c.gear[slot] ? [null] : []),
-      ...Object.keys(st.inventory).map(P.itemOf).filter((i) => P.rules.canEquip(c, i, slot))
-        .sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name)).map((i) => i.id),
-    ];
-    return options.indexOf(itemId);
-  }, [charId, slot, itemId]);
 }
 
 /**
@@ -110,31 +80,30 @@ export async function equipArmy(g) {
   // battle can still break out just as the button is pressed; then wait again).
   for (let tries = 0; tries < 4 && !(await g.active('Organize')); tries++) {
     await g.until(() => !window.__palatinus.game.scene.isActive('Battle') && !window.__palatinus.game.scene.isPaused('Overworld'), null, 60000);
-    await g.click(...ORGANIZE, 500);
+    await g.ui('organize', { within: 'map', wait: 500 });
   }
   if (!(await g.active('Organize'))) {
-    const scenes = await g.page.evaluate(() => window.__palatinus.game.scene.getScenes(true).map((x) => x.scene.key).join('+'));
+    const screens = await g.page.evaluate(() => ['Title', 'Overworld', 'Battle', 'Organize'].filter((n) => window.__palatinus.game.scene.isActive(n)).join('+'));
     const shot = await g.shot('organize-did-not-open');
-    done.misses.push(`Organize did not open (scenes ${scenes}, map ${(await g.paused('Overworld')) ? 'paused' : 'running'}; ${shot})`);
+    done.misses.push(`Organize did not open (screens ${screens}, map ${(await g.paused('Overworld')) ? 'paused' : 'running'}; ${shot})`);
     return done;
   }
   const squads = await g.page.evaluate(() => window.__palatinus.state().squads
     .filter((q) => q.side === 'player').slice(0, 6).map((q) => q.id));
   for (const [si, squadId] of squads.entries()) {
-    await g.click(...SQUAD_BUTTON(si), 150);
+    await org(g, `squad-${si}`, 150);
     const members = await g.page.evaluate((qid) => {
       const q = window.__palatinus.state().squads.find((x) => x.id === qid);
       return [...new Set(q.grid.filter((x) => x !== null))].map((id) => ({ id, cell: q.grid.indexOf(id) }));
     }, squadId);
     for (const m of members) {
-      await g.click(...CELL(m.cell), 120);
+      await org(g, `cell-${m.cell}`);
       const budget = async () => Math.max(0, (await g.state()).goth - RESERVE);
       let plan = await planFor(g, m.id, await budget());
 
       if (plan.promoTo) {
-        await g.click(...TAB.class, 120);
-        await turnTo(g, Math.floor(plan.promoRow / 11));
-        await g.click(...CLASS_ROW(plan.promoRow % 11), 150);
+        await org(g, 'tab-class');
+        await org(g, `class-${plan.promoTo}`, 150);
         const now = (await g.state()).chars[m.id].classId;
         if (now === plan.promoTo) done.promoted.push(`${now}`);
         else done.misses.push(`promotion to ${plan.promoTo}`);
@@ -145,10 +114,9 @@ export async function equipArmy(g) {
       for (const step of plan.gear) {
         if (step.buy) {
           const before = await g.state();
-          await g.click(...SHOP, 150);
-          await g.click(...SHOP_FILTER(step.buy.filter), 120);
-          await turnTo(g, Math.floor(step.buy.row / 10));
-          await g.click(...SHOP_ROW(step.buy.row % 10), 150);
+          await org(g, 'mode-shop', 150);
+          await org(g, `filter-${step.buy.filter}`);
+          await org(g, `buy-${step.buy.id}`, 150);
           const after = await g.state();
           if ((after.inventory[step.buy.id] ?? 0) > (before.inventory[step.buy.id] ?? 0)) {
             done.bought++;
@@ -156,24 +124,23 @@ export async function equipArmy(g) {
           } else {
             done.misses.push(`buying ${step.buy.id}`);
           }
-          await g.click(...SHOP, 150); // back to the soldier's sheet
-          await g.click(...CELL(m.cell), 120);
+          await org(g, 'mode-shop', 150); // back to the soldier's sheet
+          await org(g, `cell-${m.cell}`);
         }
-        await g.click(...TAB.gear, 120);
-        await g.click(...SLOT_ROW(step.slotIndex), 120);
-        const row = await optionRow(g, m.id, step.slot, step.pick);
-        if (row < 0) {
+        await org(g, 'tab-gear');
+        // The place's list of what fits stays open once chosen; choose it only if it is not.
+        const open = await g.page.evaluate((slot) => document.querySelector(`[data-ui="slot-${slot}"]`)?.classList.contains('is-on'), step.slot);
+        if (!open) await org(g, `slot-${step.slot}`);
+        if (!(await org(g, `equip-${step.pick}`, 150))) {
           done.misses.push(`${step.pick} not offered for ${step.slot}`);
           continue;
         }
-        await turnTo(g, Math.floor(row / 6));
-        await g.click(...GEAR_OPTION(row % 6), 150);
         if ((await g.state()).chars[m.id].gear[step.slot] === step.pick) done.equipped++;
         else done.misses.push(`equipping ${step.pick}`);
       }
     }
   }
-  await g.click(...BACK_TO_MAP, 400);
+  await org(g, 'back-to-map', 400);
   // Back on the map: running, or already in a battle that broke out the moment it resumed.
   const resumed = await g.until(() => {
     const sc = window.__palatinus.game.scene;

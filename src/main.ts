@@ -1,8 +1,9 @@
-import '@fontsource/cinzel/500.css';
-import '@fontsource/cinzel/700.css';
-import '@fontsource/alegreya-sans/400.css';
-import '@fontsource/alegreya-sans/500.css';
-import '@fontsource/alegreya-sans/700.css';
+// The fonts' Latin letters only (all the game writes in).
+import '@fontsource/cinzel/latin-500.css';
+import '@fontsource/cinzel/latin-700.css';
+import '@fontsource/alegreya-sans/latin-400.css';
+import '@fontsource/alegreya-sans/latin-500.css';
+import '@fontsource/alegreya-sans/latin-700.css';
 import './ui/styles.css';
 import { App } from './app/app';
 import { Engine } from './render/engine';

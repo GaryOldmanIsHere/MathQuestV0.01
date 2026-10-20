@@ -46,6 +46,9 @@ const DRAG_SLOP = 6;
 /** A campaign day, in ms of the map's clock. */
 const DAY_MS = 12000;
 
+/** The longest stretch of the map's clock the campaign moves in one step. */
+const STEP_MS = 50;
+
 /** For the automated playthrough: every stronghold that changed hands, and who stood near. */
 const captures: unknown[] = [];
 exposeDebug('captures', captures);
@@ -607,29 +610,43 @@ export class MapScreen implements Screen {
     this.toasts.append(t);
   }
 
+  /** One step of the campaign: squads march, strongholds change hands, squads meet, the enemy plans, days pass. */
+  private step(stepMs: number): void {
+    const st = getState();
+    const dt = stepMs / 1000;
+    this.clock += stepMs;
+    for (const sq of st.squads) this.stepSquad(sq, dt);
+    this.pressClaims();
+    if (st.phase === 'playing') this.checkEncounters();
+
+    this.aiTimer += dt;
+    if (this.aiTimer > 6) {
+      this.aiTimer = 0;
+      this.aiTick();
+    }
+    this.dayTimer += dt;
+    if (this.dayTimer > DAY_MS / 1000) {
+      this.dayTimer = 0;
+      st.day++;
+      const income = st.nodes.filter((n) => n.owner === 'player').length * 50;
+      st.goth += income;
+      restSquads(st);
+    }
+  }
+
   update(frameMs: number): void {
     const deltaMs = frameMs * SPEED;
     const st = getState();
     if (st.phase === 'playing') {
-      this.clock += deltaMs;
-      const dt = deltaMs / 1000;
       this.steerCamera(frameMs / 1000);
-      for (const sq of st.squads) this.stepSquad(sq, dt);
-      this.pressClaims();
-      if (st.phase === 'playing') this.checkEncounters();
-
-      this.aiTimer += dt;
-      if (this.aiTimer > 6) {
-        this.aiTimer = 0;
-        this.aiTick();
-      }
-      this.dayTimer += dt;
-      if (this.dayTimer > DAY_MS / 1000) {
-        this.dayTimer = 0;
-        st.day++;
-        const income = st.nodes.filter((n) => n.owner === 'player').length * 50;
-        st.goth += income;
-        restSquads(st);
+      // The campaign moves on in steps of no more than STEP_MS of game time,
+      // however long the frame, so squads meet where and when they would at
+      // any frame rate. A battle that breaks out stops the clock until it ends.
+      let left = deltaMs;
+      while (left > 0 && st.phase === 'playing' && !this.battleActive) {
+        const stepMs = Math.min(STEP_MS, left);
+        left -= stepMs;
+        this.step(stepMs);
       }
     }
     // The world goes on moving (flags, the camera) even once the campaign is over.

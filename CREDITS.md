@@ -1,6 +1,7 @@
 # Credits
 
-Palatinus's code, text and pixel art are original. The third-party work it
+Palatinus's code, text and art are original; its figures are painted in code
+(`src/art/`), from no outside drawings. The third-party work it
 ships is listed here, each piece under a licence that allows it to be
 bundled and redistributed. Nothing extracted from Ogre Battle 64 is ever part
 of this repository or of a build (see the README).

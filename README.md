@@ -173,6 +173,40 @@ gear, 7 supplies, 12 relics) with original
 names, on the same ranks and in the same shape, scaled to the built-in
 classes.
 
+## The painted figures
+
+Every class has its own figure, painted in code when it is first needed
+(`src/art/`), in the HD-2D manner: pixel art, about 53 pixels from crown to
+sole, that the 3D scene lights as it lights the land.
+
+* **Painted as solids.** Each part is a solid shape on the pixel grid: a
+  rounded head or shoulder, a tapered limb or blade, a flat shield or cloak
+  (`raster.ts`). Every pixel records which way its surface faces and how near
+  it is, so one drawing yields both a picture and a normal map. The
+  silhouette is outlined, and darker lines are drawn wherever one part stands
+  in front of another.
+* **Dressed from the rules.** A person is a jointed rig (`humanoid.ts`)
+  dressed from what the game knows of the class (`looks.ts`): the weapon its
+  equipment rules allow (sword, greatsword, spear, bow, staff, axe, whip and
+  more), plate, mail, leather, robe or dress by its armour, a helm, hood or hat,
+  a shield where one hand is free, a cape at the higher tiers, and the class's
+  own colours.
+* **Beasts and spirits.** Hounds, dragons, golems, ghosts and creatures of the
+  sea have rigs of their own (`creatures.ts`). Mounted classes ride a horse
+  whose coat (bay, chestnut, black, grey or white) is chosen by the class.
+* **Animated.** Each figure has six animations, eased between key poses:
+  standing at ease, marching, attacking (a swing, a thrust or a shot by
+  weapon), casting, flinching and falling (`motion.ts`). Each is painted from
+  the front facing left and from behind facing right. Each frame is cropped to
+  what is drawn, and each animation is painted the first time it plays.
+* **In the menus,** each class's portrait is the same figure, standing, lit as
+  on a bright day.
+
+`tools/art-preview.html` shows every frame of any class while the dev server
+runs: for example `/tools/art-preview.html?classes=knight,wyvern&anim=attack&scale=4`,
+with `&normals` to see the normal maps and `?kind=rider,sea` to show a few
+classes of each kind.
+
 ## Ogre Battle 64's sprites and the 3D battle
 
 Battles are staged in a real 3D scene: the two squads face each other on
@@ -202,9 +236,10 @@ enemy's theirs. Dragons and other great beasts, which the game draws little
 bigger than a man, are enlarged. Menus, the map and the title use each
 class's standing pose. The translated classes borrow the art of their nearest
 Ogre Battle 64 kin (`src/expansion/looks.ts`): a Samurai dresses as a Fencer,
-a Fire Giant as a Giant. Without the sprites, everything is drawn in
-Palatinus's own pixel art, with its animations made by moving and tinting the
-one drawing.
+a Fire Giant as a Giant. Without the sprites, every class is painted by
+Palatinus itself (see *The painted figures*, below). Ogre Battle 64's sprites
+are lit too: each one gets a normal map worked out from its outline, so the
+scene's sun and shade fall on it as on the painted figures.
 
 **How the sprites are stored, as decoded.** Every unit's art is a *bundle*
 in the game's asset store, listed in a master table of 208 bundles. A bundle
@@ -300,7 +335,7 @@ walks its units, in its side's colours:
   away, and turned to the side it heads for, as the camera turns too;
 * great beasts larger.
 
-Without the sprites, the leader's pixel-art figure turns and bobs in step.
+Without the sprites, the leader's painted figure does the same, walking in step.
 * **Size:** figures grow as the camera draws back, so a leader stays legible
   from across the whole map.
 * **At strongholds:** squads halted at a stronghold are drawn in an arc in
@@ -407,12 +442,20 @@ src/
     lz.ts          the game's asset store and its LZ compression
     sprites.ts     unit sprite bundles: pose images, palettes, cells, animation scripts, the class table
     spritePack.ts  one bundle as stored, packed into a file the browser fetches
+  art/
+    raster.ts      a pixel canvas that keeps each pixel's facing and depth: pictures and normal maps
+    humanoid.ts    a person: the jointed rig, armour, heads, weapons and shields
+    creatures.ts   hounds, dragons and horses on four legs; ghosts and sea creatures
+    motion.ts      the animations, as key poses eased into frames
+    looks.ts       what a class looks like, from its gear, palette, tier and name
+    sheet.ts       a class's full sprite set and its portrait, painted and kept
+    normals.ts     a normal map for a sprite drawn without one, from its outline
   gfx3d/
     stage.ts       the Three.js battlefield: ground, billboard units, camera shots, effects
     layout.ts      where each squad member stands, and the camera's shots
     sprites.ts     what the stage needs from a unit's art; sets built from one still drawing
     ob64Sprites.ts loads the extracted sprites: portraits at boot, animated sets per battle
-    unitArt.ts     a unit's battle art: Ogre Battle 64's if extracted, else the pixel art
+    unitArt.ts     a unit's battle art: Ogre Battle 64's if extracted, else the painted figure
     world.ts       the 3D campaign map: ground, water, woods, strongholds, squads, camera, picking
     models.ts      the map's buildings, trees, rocks and clouds (src/assets/models/world.glb), loaded once
     landscape.ts   the ground, water, wind and grass materials, painted in the GPU
@@ -444,12 +487,13 @@ tools/
   extract-ob64.ts  `npm run extract:ob64`: verifies the dump, writes public/ob64/
   scrape-expansion.ts `npm run scrape:expansion`: the two class sources, as facts
   png.ts           a minimal PNG writer for the portrait atlas
+  art-preview.*    a page showing every painted frame of chosen classes (dev only)
 ```
 
 The simulation in `src/core/` depends on no renderer — battles resolve as
 pure functions over game state and emit an event log that the battle screen
-merely animates. Sprites are authored as small ASCII templates in
-`gfx/pixels.ts` and palette-swapped per class into canvases at boot. Fonts and
+merely animates. The figures are painted in code (`src/art/`), each class's
+colours taken from its palette in `gfx/pixels.ts`. Fonts and
 any other third-party assets are listed, with their licences, in
 [CREDITS.md](CREDITS.md).
 
@@ -483,8 +527,8 @@ pack by `npm run pack:models -- path/to/pack` (`tools/pack-models.ts`).
 
 ## Tests
 
-`npm test` runs 306 tests (289 without extracted ROM data) over the simulation core — the rules, not the
-rendering. They cover the parts that are easy to break silently: that a
+`npm test` runs 316 tests (299 without extracted ROM data), mostly over the simulation core: the rules
+more than the rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,
 that promotions gate on level, stats, and alignment independently (a
@@ -504,6 +548,13 @@ a class that exists, stays within its gender line, never drops a tier, forms no
 cycles, and every non-monster class is reachable from a tier-1 root. These
 catch data-entry mistakes in `classes.ts` that no amount of playtesting would
 reliably surface.
+
+The painted figures are tested without a browser, on the raster itself: that
+shapes face the way they should and the nearer one wins, that outlines and
+the lines between parts fall where they should, that pictures are shaded from
+the upper left and normal maps point the right way, and that every frame of
+every look, beast and spirit stays whole within its canvas, standing on its
+feet.
 
 The suite is mutation-checked rather than trusted on a green run. Deliberately
 breaking the holy-damage bonus, front-rank targeting, road stamping, flier

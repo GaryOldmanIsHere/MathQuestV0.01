@@ -277,11 +277,12 @@ export function waterMaterial(field: Float32Array, simple = false): THREE.Materi
     const s = noise.sample(p.mul(0.08).add(vec2(t.mul(0.012), t.mul(0.009))));
     surface = normalize(vec3(s.g.sub(0.5).mul(tilt).mul(3), 1, s.b.sub(0.5).mul(tilt).mul(3)));
   } else {
-    const e = 0.08;
+    // The slope across a span of several of the noise's texels, so it runs smoothly from texel to texel.
+    const e = 0.35;
     const h0 = wave(p);
     const hx = wave(p.add(vec2(e, 0)));
     const hz = wave(p.add(vec2(0, e)));
-    surface = normalize(vec3(h0.sub(hx).div(e).mul(tilt), 1, h0.sub(hz).div(e).mul(tilt)));
+    surface = normalize(vec3(h0.sub(hx).div(e).mul(tilt).mul(1.6), 1, h0.sub(hz).div(e).mul(tilt).mul(1.6)));
   }
 
   const shallow = color(0x3e9a9a);
@@ -298,11 +299,11 @@ export function waterMaterial(field: Float32Array, simple = false): THREE.Materi
     material.opacityNode = opacity;
     return material;
   }
-  const material = new MeshStandardNodeMaterial({ roughness: 0.12, metalness: 0, transparent: true });
+  const material = new MeshStandardNodeMaterial({ roughness: 0.2, metalness: 0, transparent: true });
   material.colorNode = mix(body, color(0xf2f6f4), froth);
   material.normalNode = transformNormalToView(surface);
   material.opacityNode = opacity;
-  material.roughnessNode = mix(float(0.1), float(0.6), froth);
+  material.roughnessNode = mix(float(0.2), float(0.6), froth);
   material.depthWrite = false;
   return material;
 }

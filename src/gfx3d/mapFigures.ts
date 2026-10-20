@@ -65,10 +65,13 @@ const cache = new Map<string, MapFigure>();
  * full.
  */
 export function mapFigureFor(def: ClassDef, side: 'player' | 'enemy'): MapFigure {
-  const key = `${def.id}|${side}`;
+  // The painted figure stands in until Ogre Battle 64's arrives (they load
+  // while the map is up), so it is kept apart from it.
+  const ob64 = ob64SpriteSet(def, side);
+  const key = ob64 ? `${def.id}|${side}` : `${def.id}|painted`;
   let f = cache.get(key);
   if (!f) {
-    const set = ob64SpriteSet(def, side) ?? paintedSet(def);
+    const set = ob64 ?? paintedSet(def);
     f = setFigure(set, def.size === 2 ? set.largeScale : 1);
     cache.set(key, f);
   }

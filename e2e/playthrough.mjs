@@ -526,6 +526,7 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
   let lastRoll = 0;
   let guardId = null;
   let lastVisit = 0;
+  let notTaken = 0;
   let seenCaptures = await g.page.evaluate(() => window.__palatinus.captures.length);
   await g.page.keyboard.press('r');
   while (Date.now() - start < minutes * 60000) {
@@ -564,7 +565,18 @@ async function campaign(g, { minutes = Number(process.env.E2E_MINUTES ?? 20), sa
         goal = targets[0] ?? null;
         if (goal && Math.hypot(goal.x - q.x, goal.y - q.y) < 8) goal = null;
       }
-      if (goal) await marchTo(g, q.id, goal.x, goal.y);
+      if (goal) {
+        const ok = await marchTo(g, q.id, goal.x, goal.y);
+        const now = (await g.state()).squads.find((o) => o.id === q.id);
+        let why = '';
+        if (!ok && notTaken++ < 3) {
+          const info = await g.mapInfo();
+          const screens = await g.page.evaluate(() => ['Overworld', 'Battle', 'Organize'].filter((n) => window.__palatinus.game.scene.isActive(n)).join('+'));
+          why = `; selected ${info.selected}, screens ${screens}, ${JSON.stringify(await g.squadOnScreen(q.id))}, ${await g.shot('order-not-taken')}`;
+        }
+        log.push(`  day ${s.day} order ${q.name}${q === guard ? ' (guard)' : hurt ? ' (hurt)' : ''} → ${goal.name}: ${ok ? 'marching' : 'NOT TAKEN'}`
+          + (now ? ` (at ${Math.round(now.x)},${Math.round(now.y)})` : '') + why);
+      }
     }
     // The quartermaster, every five days the treasury has something to spend.
     if (s.day >= lastVisit + 5 && s.goth > 400) {

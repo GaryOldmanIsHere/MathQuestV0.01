@@ -87,7 +87,9 @@ export class Arena {
   heightAt(x: number, z: number): number {
     const s = this.seed % 97;
     // Flat where the squads stand, rolling further out.
-    const edge = Math.max(0, Math.max(Math.abs(x) - 12, (Math.abs(z) - 6.5) * 1.3)) / 10;
+    // (On a shore the land rises only to the sides and behind the camera: the water lies beyond.)
+    const across = this.theme === 'water' && z < 0 ? 0 : (Math.abs(z) - 6.5) * 1.3;
+    const edge = Math.max(0, Math.max(Math.abs(x) - 12 + Math.min(0, z + 8) * 0.6, across)) / 10;
     const roll = Math.sin(x * 0.31 + s) * Math.cos(z * 0.27) + Math.sin(x * 0.11 - z * 0.17) * 1.5;
     let h = edge * edge * (1.4 + roll) * (this.theme === 'mountain' ? 2.6 : 1);
     // A gentle swell underfoot, so the field is not a table.

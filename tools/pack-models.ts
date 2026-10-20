@@ -1,5 +1,5 @@
 // Packs the 3D models the campaign map uses into one file,
-// public/models/world.glb, from a copy of the KayKit Medieval Hexagon Pack
+// src/assets/models/world.glb, from a copy of the KayKit Medieval Hexagon Pack
 // (by Kay Lousberg, CC0: https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0).
 //
 //   git clone --depth 1 https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 kaykit
@@ -79,7 +79,7 @@ await doc.transform(
   meshopt({ encoder: MeshoptEncoder, level: 'medium' }),
 );
 
-mkdirSync('public/models', { recursive: true });
-const out = 'public/models/world.glb';
+mkdirSync('src/assets/models', { recursive: true });
+const out = 'src/assets/models/world.glb';
 await io.write(out, doc);
 console.log(`${sources.length} models → ${out} (${(statSync(out).size / 1024).toFixed(0)} KB)`);

@@ -21,7 +21,7 @@ the packages in `node_modules/@fontsource/*/LICENSE`.
 |---|---|---|---|
 | KayKit Medieval Hexagon Pack 1.0, by Kay Lousberg ([kaylousberg.com](https://www.kaylousberg.com)) | The campaign map's castles, watchtowers and town buildings in each side's colours; its pines, boulders, clouds and flags | CC0 1.0 (public domain) | [KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0](https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0) |
 
-The models used are packed into `public/models/world.glb` by
+The models used are packed into `src/assets/models/world.glb` by
 `npm run pack:models` (`tools/pack-models.ts`, which lists them), with the
 pack's licence beside it. Nothing else in the map is drawn from outside work:
 its ground, water and sky are generated in code.

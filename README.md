@@ -414,7 +414,7 @@ src/
     ob64Sprites.ts loads the extracted sprites: portraits at boot, animated sets per battle
     unitArt.ts     a unit's battle art: Ogre Battle 64's if extracted, else the pixel art
     world.ts       the 3D campaign map: ground, water, woods, strongholds, squads, camera, picking
-    models.ts      the map's buildings, trees, rocks and clouds (public/models/world.glb), loaded once
+    models.ts      the map's buildings, trees, rocks and clouds (src/assets/models/world.glb), loaded once
     landscape.ts   the ground, water, wind and grass materials, painted in the GPU
     atmosphere.ts  the sky, the sun and its shadows, cloud shadows, rain and snow
     sky.ts         the light at each hour, what each weather does, the hour and weather on a campaign day
@@ -478,7 +478,7 @@ What each preset adds on the campaign map:
 | Tilt-shift | no | yes | yes | yes |
 | Lighting | plain diffuse | physically based | physically based | physically based |
 
-The map's models are packed into `public/models/world.glb` from the KayKit
+The map's models are packed into `src/assets/models/world.glb` from the KayKit
 pack by `npm run pack:models -- path/to/pack` (`tools/pack-models.ts`).
 
 ## Tests

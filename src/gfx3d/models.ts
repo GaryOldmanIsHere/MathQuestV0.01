@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+// Bundled by Vite: a hashed file beside the scripts, or inlined into them by
+// a build that asks for it (the self-contained demo).
+import modelsUrl from '../assets/models/world.glb?url';
 
 // The 3D models the campaign map is built from: buildings in each side's
 // colours, trees, rocks, clouds and flags, from the KayKit Medieval Hexagon
@@ -11,8 +14,6 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 /** The colours a building comes in: ours, theirs, and the land's own. */
 export type BuildingColour = 'blue' | 'red' | 'yellow';
 
-const URL = 'models/world.glb';
-
 let library: THREE.Object3D | null = null;
 const bakedCache = new Map<string, { geometry: THREE.BufferGeometry; material: THREE.Material }>();
 
@@ -20,7 +21,7 @@ const bakedCache = new Map<string, { geometry: THREE.BufferGeometry; material: T
 export async function loadWorldModels(): Promise<boolean> {
   if (library) return true;
   try {
-    const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(URL);
+    const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(modelsUrl);
     library = gltf.scene;
     library.traverse((o) => {
       const mesh = o as THREE.Mesh;

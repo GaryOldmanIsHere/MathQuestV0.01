@@ -19,9 +19,13 @@ import {
   CONTEST_RADIUS, haltSquad, orderTo, retreatTarget, settleOffset, snapOrder, squadsMeet, stepToward, strikeTarget, strongholdAt,
 } from '../core/movement';
 import type { Terrain } from '../core/terrain';
-import { buildTerrainGrid, speedMultiplierAt, terrainAtPoint } from '../core/terrain';
+import { buildTerrainGrid, speedMultiplierAt, terrainAtPoint, TILE } from '../core/terrain';
 import { button, el, hpColour } from '../ui/dom';
+import { icon } from '../ui/icons';
+import type { IconName } from '../ui/icons';
 import type { BattleResult } from './battle';
+import { MapHud } from './mapHud';
+import { openSettings } from './settings';
 
 // The campaign map: squads march in real time over the 3D world, battles
 // break out where they meet, strongholds change hands. The rules of the
@@ -70,8 +74,12 @@ export class MapScreen implements Screen {
   private nodeLabels = new Map<number, { el: HTMLElement; width: number; height: number }>();
   private labels: HTMLElement;
   private toasts: HTMLElement;
-  private hud: HTMLElement;
+  private instruments: MapHud;
+  /** When the instruments were last drawn (they need not be every frame), ms. */
+  private instrumentsAt = 0;
   private hint: HTMLElement;
+  /** The two squads in a battle now, if one is being fought. */
+  private fighting = new Set<number>();
   private selected: Squad | null = null;
   private press: { x: number; y: number; lastX: number; lastY: number; button: number; dragging: boolean } | null = null;
   private held = new Set<string>();
@@ -108,17 +116,35 @@ export class MapScreen implements Screen {
       this.labels.append(e);
       this.nodeLabels.set(n.id, { el: e, width: 0, height: 0 });
     }
-    this.toasts = el('div', { class: 'toasts' });
-    this.hud = el('div', { class: 'hud-stats', ui: 'hud' });
+    this.toasts = el('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
     this.hint = el('div', { class: 'hud-hint', ui: 'hint' }, 'Select a squad, then click a stronghold to march.');
+    this.instruments = new MapHud(this.terrain, {
+      choose: (sq) => this.chooseSquad(sq, true),
+      lookAt: (x, y) => this.world.lookAt(x, y),
+    });
+    const settingsButton = button('', () => openSettings(this.app, this.root), { ui: 'settings', class: 'btn-icon btn-quiet', 'aria-label': 'Settings', 'data-tip': 'Settings' });
+    settingsButton.append(icon('gear', 20));
+    const organizeButton = button('Organize', () => this.openOrganize(), { ui: 'organize', class: 'btn-primary', 'data-tip': 'The army screen (O)' });
+    organizeButton.prepend(icon('people', 18));
     this.root = el('div', { class: 'screen map-screen', ui: 'map' },
       this.labels,
-      el('div', { class: 'map-help' }, 'Drag: pan · Wheel: zoom · Q/E or right-drag: turn · Space: find squad · R: whole map'),
+      this.instruments.realm,
+      this.instruments.wealth,
+      this.instruments.roster,
+      this.instruments.minimap,
+      el('div', { class: 'map-help' },
+        el('span', {}, el('span', { class: 'kbd' }, 'Drag'), ' pan'),
+        el('span', {}, el('span', { class: 'kbd' }, 'Wheel'), ' zoom'),
+        el('span', {}, el('span', { class: 'kbd' }, 'Q'), el('span', { class: 'kbd' }, 'E'), ' turn'),
+        el('span', {}, el('span', { class: 'kbd' }, '1'), '–', el('span', { class: 'kbd' }, '9'), ' squads'),
+        el('span', {}, el('span', { class: 'kbd' }, 'R'), ' whole map'),
+      ),
       this.toasts,
       el('div', { class: 'hud panel' },
-        this.hud,
+        el('span', { class: 'hud-stats', 'aria-hidden': 'true' }, icon('route', 18)),
         this.hint,
-        button('Organize', () => this.openOrganize(), { ui: 'organize', class: 'btn-primary' }),
+        settingsButton,
+        organizeButton,
       ),
     );
 
@@ -226,6 +252,13 @@ export class MapScreen implements Screen {
         this.findSquad();
       }
       if (e.code === 'KeyR') this.world.setView(OVERVIEW);
+      if (e.code === 'KeyO') this.openOrganize();
+      // 1 to 9 choose the army's squads, as the roster numbers them.
+      const digit = /^Digit([1-9])$/.exec(e.code);
+      if (digit) {
+        const sq = getState().squads.filter((q) => q.side === 'player')[Number(digit[1]) - 1];
+        if (sq) this.chooseSquad(sq, true);
+      }
     });
     on(window, 'keyup', (e) => this.held.delete(e.code));
     on(window, 'blur', () => this.held.clear());
@@ -262,11 +295,7 @@ export class MapScreen implements Screen {
     });
     if (stack.length && !(stack.length === 1 && stack[0] === this.selected)) {
       const at = this.selected ? stack.indexOf(this.selected) : -1;
-      const sq = stack[(at + 1) % stack.length];
-      this.selected = sq;
-      this.world.select(sq.id, this.routeOf(sq));
-      const type = squadType(squadMemberIds(sq).map((id) => st.chars.get(id)!));
-      this.hint.textContent = `${sq.name} (${SQUAD_TYPE_LABEL[type]}) — click anywhere to march.`;
+      this.chooseSquad(stack[(at + 1) % stack.length], false);
       return;
     }
     const ground = this.world.pick(sx, sy);
@@ -307,6 +336,20 @@ export class MapScreen implements Screen {
   private prepareLeaders(): void {
     const st = getState();
     void prepareSprites(st.squads.map((sq) => ({ def: classOf(st.chars.get(sq.leaderId)!.classId), side: sq.side })));
+  }
+
+  /** Choose a squad to give orders to; `look` brings it into view. */
+  private chooseSquad(sq: Squad, look: boolean): void {
+    const st = getState();
+    if (this.covered || !st.squads.includes(sq)) return;
+    this.selected = sq;
+    this.world.select(sq.id, this.routeOf(sq));
+    const type = squadType(squadMemberIds(sq).map((id) => st.chars.get(id)!));
+    this.hint.textContent = `${sq.name} (${SQUAD_TYPE_LABEL[type]}) — click anywhere to march.`;
+    if (look) {
+      const p = this.shownAt(sq);
+      this.world.lookAt(p.x, p.y);
+    }
   }
 
   /** Bring the selected squad into view, or the next of the army's squads. */
@@ -465,12 +508,14 @@ export class MapScreen implements Screen {
     defender.moving = false;
     // The battlefield takes the ground the squads meet on.
     const field = ground ?? terrainAtPoint(this.terrain, (attacker.x + defender.x) / 2, (attacker.y + defender.y) / 2);
+    this.fighting = new Set([attacker.id, defender.id]);
     this.exits.battle(attacker.id, defender.id, { field, ...this.sky }, (result) => this.onBattleDone(result));
   }
 
   private onBattleDone(payload: BattleResult): void {
     const st = getState();
     this.battleActive = false;
+    this.fighting.clear();
     // Counted on the map's own clock, which stood still through the battle.
     const now = this.clock;
 
@@ -563,6 +608,8 @@ export class MapScreen implements Screen {
     const shownNames: { label: { el: HTMLElement; width: number; height: number }; x: number; y: number }[] = [];
     for (const n of st.nodes) {
       const label = this.nodeLabels.get(n.id)!;
+      const owner = `node-name is-${n.owner}`;
+      if (label.el.className !== owner) label.el.className = owner;
       // Over the building, clear of the squads parked in front of it.
       const at = world.project(n.x, n.y, n.kind === 'town' ? 1.9 : 3.1);
       const visible = at.visible && at.y > 20 && at.y < H - 60;
@@ -603,6 +650,7 @@ export class MapScreen implements Screen {
       const ratio = members.reduce((s, c) => s + c.hp, 0) / Math.max(1, members.reduce((s, c) => s + c.stats.hp, 0));
       tag.fill.style.width = `${Math.round(ratio * 100)}%`;
       tag.fill.style.background = hpColour(ratio);
+      tag.root.classList.toggle('is-selected', this.selected === sq);
     });
   }
 
@@ -619,7 +667,8 @@ export class MapScreen implements Screen {
   }
 
   private toast(msg: string, tone: 'good' | 'bad' | 'warn'): void {
-    const t = el('div', { class: `toast is-${tone}` }, msg);
+    const mark: Record<typeof tone, IconName> = { good: 'flag', bad: 'skull', warn: 'shield' };
+    const t = el('div', { class: `toast is-${tone}` }, icon(mark[tone], 18), msg);
     t.style.animationDuration = `${2600 / SPEED}ms`;
     t.addEventListener('animationend', () => t.remove());
     this.toasts.append(t);
@@ -672,8 +721,17 @@ export class MapScreen implements Screen {
     }
     // The world goes on moving (flags, the camera) even once the campaign is over.
     this.drawWorld(st.phase === 'playing' ? deltaMs : frameMs);
-    const owned = st.nodes.filter((n) => n.owner === 'player').length;
-    this.hud.textContent = `Day ${st.day} · ${st.goth} Goth · Strongholds ${owned}/${st.nodes.length}`;
+    // The instruments, a few times a second.
+    this.instrumentsAt -= frameMs;
+    if (this.instrumentsAt <= 0 && !this.covered) {
+      this.instrumentsAt = 150;
+      const v = this.world.view;
+      this.instruments.update({
+        hour: this.sky.hour, weather: this.sky.weather, selected: this.selected, fighting: this.fighting,
+        regrouping: new Set([...this.recovering].filter(([, until]) => until > this.clock).map(([id]) => id)),
+        view: { x: v.x * TILE, y: v.z * TILE, distance: v.distance },
+      });
+    }
   }
 
   // -------------------------------------------------------------- testing --

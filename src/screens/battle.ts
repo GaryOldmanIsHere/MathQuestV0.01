@@ -5,7 +5,7 @@ import { getState } from '../core/state';
 import type { BattleEvent } from '../core/battle';
 import { simulateBattle } from '../core/battle';
 import type { Character, Element, Squad } from '../core/types';
-import type { Terrain } from '../core/terrain';
+import type { BattleGround } from './map';
 import { classOf } from '../data/registry';
 import { weaponOf } from '../core/items';
 import { squadMemberIds } from '../core/squad';
@@ -51,13 +51,18 @@ export class BattleScreen implements Screen {
 
   constructor(
     private app: App,
-    params: { attackerId: number; defenderId: number; field: Terrain },
+    params: { attackerId: number; defenderId: number; ground: BattleGround },
     private done: (result: BattleResult) => void,
   ) {
     const st = getState();
     this.attacker = st.squads.find((s) => s.id === params.attackerId)!;
     this.defender = st.squads.find((s) => s.id === params.defenderId)!;
-    this.stage.setField(params.field, this.attacker.id * 31 + this.defender.id);
+    const q = app.engine.settings;
+    this.stage.setField(params.ground.field, {
+      seed: this.attacker.id * 31 + this.defender.id,
+      grass: q.grass, shadows: q.shadows, particles: q.particles, simple: q.simpleShading,
+      hour: params.ground.hour, weather: params.ground.weather,
+    });
 
     this.layer = el('div', { class: 'battle-labels' });
     this.banner = el('div', { class: 'battle-banner', ui: 'battle-banner' }, 'The squads close…');

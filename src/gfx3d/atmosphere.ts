@@ -28,6 +28,8 @@ export interface AtmosphereOptions {
   shadows: number;
   /** How many drops or flakes may be falling at once. */
   particles: number;
+  /** The stretch of land the clouds drift over, x and z (the campaign map's, unless given). */
+  area?: { x0: number; z0: number; x1: number; z1: number };
 }
 
 export class Atmosphere {
@@ -57,6 +59,10 @@ export class Atmosphere {
    * dawn and dusk.
    */
   readonly flatLight = new THREE.Color(1, 1, 1);
+
+  private get area(): { x0: number; z0: number; x1: number; z1: number } {
+    return this.options.area ?? { x0: 0, z0: 0, x1: WORLD_W, z1: WORLD_D };
+  }
 
   constructor(private scene: THREE.Scene, private options: AtmosphereOptions) {
     scene.fog = this.fog;
@@ -126,7 +132,8 @@ export class Atmosphere {
     this.clouds.frustumCulled = false;
     this.clouds.userData.shared = true;
     for (let k = 0; k < CLOUDS; k++) {
-      this.cloudSpots.push({ x: Math.random() * WORLD_W, z: Math.random() * WORLD_D, s: 1.8 + Math.random() * 2.2, turn: Math.random() * Math.PI });
+      const { x0, z0, x1, z1 } = this.area;
+      this.cloudSpots.push({ x: x0 + Math.random() * (x1 - x0), z: z0 + Math.random() * (z1 - z0), s: 1.8 + Math.random() * 2.2, turn: Math.random() * Math.PI });
     }
     this.scene.add(this.clouds);
   }
@@ -248,8 +255,9 @@ export class Atmosphere {
       this.cloudSpots.forEach((c, i) => {
         c.x += dt * (0.4 + this.now.wind * 1.2);
         c.z += dt * 0.15;
-        if (c.x > WORLD_W + 12) c.x = -12;
-        if (c.z > WORLD_D + 12) c.z = -12;
+        const { x0, z0, x1, z1 } = this.area;
+        if (c.x > x1 + 12) c.x = x0 - 12;
+        if (c.z > z1 + 12) c.z = z0 - 12;
         const s = i < shown ? c.s : 0.0001;
         q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), c.turn);
         m.compose(new THREE.Vector3(c.x, 16, c.z), q, new THREE.Vector3(s * 1.4, s * 0.5, s));

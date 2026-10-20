@@ -29,9 +29,16 @@ import type { BattleResult } from './battle';
 // battle or the army screen is open); the interface over the world is plain
 // HTML: names and strength bars over the squads, the status bar, notices.
 
+/** Where a battle is fought: the kind of ground, and the hour and weather over it. */
+export interface BattleGround {
+  field: Terrain;
+  hour: number;
+  weather: Weather;
+}
+
 /** Where the map hands off to the screens it opens. */
 export interface MapExits {
-  battle(attackerId: number, defenderId: number, field: Terrain, done: (result: BattleResult) => void): void;
+  battle(attackerId: number, defenderId: number, ground: BattleGround, done: (result: BattleResult) => void): void;
   organize(): void;
   title(): void;
 }
@@ -71,6 +78,8 @@ export class MapScreen implements Screen {
   private battleActive = false;
   /** Set by the automated playthrough to hold the hour and weather where it put them. */
   private skyFixed = false;
+  /** The hour and the weather over the map now (a battle is fought under them). */
+  private sky: { hour: number; weather: Weather } = { hour: 0.3, weather: 'clear' };
   private cooldowns = new Map<number, number>(); // squad id -> map time when it may fight again
   /** Routed squads, by id, and the map time they have rested enough to stand and fight. */
   private recovering = new Map<number, number>();
@@ -450,13 +459,13 @@ export class MapScreen implements Screen {
     }
   }
 
-  private startBattle(attacker: Squad, defender: Squad): void {
+  private startBattle(attacker: Squad, defender: Squad, ground?: Terrain): void {
     this.battleActive = true;
     attacker.moving = false;
     defender.moving = false;
     // The battlefield takes the ground the squads meet on.
-    const field = terrainAtPoint(this.terrain, (attacker.x + defender.x) / 2, (attacker.y + defender.y) / 2);
-    this.exits.battle(attacker.id, defender.id, field, (result) => this.onBattleDone(result));
+    const field = ground ?? terrainAtPoint(this.terrain, (attacker.x + defender.x) / 2, (attacker.y + defender.y) / 2);
+    this.exits.battle(attacker.id, defender.id, { field, ...this.sky }, (result) => this.onBattleDone(result));
   }
 
   private onBattleDone(payload: BattleResult): void {
@@ -657,8 +666,9 @@ export class MapScreen implements Screen {
     }
     // The hour and the weather follow the campaign's days (unless a test has fixed them).
     if (!this.skyFixed) {
-      this.world.setHour(hourOf(st.day - 1 + this.dayTimer / (DAY_MS / 1000)));
-      this.world.setWeather(weatherOn(st.day));
+      this.sky = { hour: hourOf(st.day - 1 + this.dayTimer / (DAY_MS / 1000)), weather: weatherOn(st.day) };
+      this.world.setHour(this.sky.hour);
+      this.world.setWeather(this.sky.weather);
     }
     // The world goes on moving (flags, the camera) even once the campaign is over.
     this.drawWorld(st.phase === 'playing' ? deltaMs : frameMs);
@@ -684,8 +694,18 @@ export class MapScreen implements Screen {
       setView: (v: Parameters<WorldStage['setView']>[0]) => world.setView(v, true),
       setSky: (hour: number, weather: Weather) => {
         this.skyFixed = true;
+        this.sky = { hour, weather };
         world.setHour(hour);
         world.setWeather(weather, true);
+      },
+      /** Open a battle between two squads at once, on the ground given (else where they stand). */
+      fight: (attackerId: number, defenderId: number, field?: Terrain) => {
+        const st = getState();
+        const a = st.squads.find((q) => q.id === attackerId);
+        const d = st.squads.find((q) => q.id === defenderId);
+        if (!a || !d || this.battleActive) return false;
+        this.startBattle(a, d, field);
+        return true;
       },
     });
   }

@@ -6,6 +6,8 @@ import { chooseView, frameAt } from './sprites';
 import type { Placement, Shot } from './layout';
 import { cameraPosition, FOV, lerpShot, WIDE } from './layout';
 import { outlineNormals } from '../art/normals';
+import { Arena } from './arena';
+import type { ArenaOptions } from './arena';
 
 // The 3D battlefield. Ogre Battle 64 stands its 2D sprites on polygon
 // ground under a moving camera; so does this. The stage owns a Three.js
@@ -40,26 +42,14 @@ interface Actor {
   fallen: boolean;
 }
 
+/** How much of the hour's light a figure gives off by itself (the rest is the scene's lighting). */
+const FIGURE_GLOW = 0.32;
+/** How dark the soft patch under a figure's feet is. */
+const BLOB = 0.24;
+
 const ELEMENT_COLOUR: Record<Element | 'physical', number> = {
   physical: 0xf0e8d0, wind: 0x9ae0ff, flame: 0xff8a3a, earth: 0xc8a060, water: 0x5aa0ff,
   virtue: 0xfff2a0, bane: 0xb070ff, drakonite: 0xffd040,
-};
-
-/** A small seeded generator for scenery, kept apart from the game's own. */
-function seeded(seed: number): () => number {
-  let s = seed >>> 0 || 1;
-  return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-}
-
-const THEMES: Record<FieldTheme, { ground: number[]; sky: number; fog: number; decor: 'trees' | 'forest' | 'rocks' | 'shore' | 'road' }> = {
-  plain: { ground: [0x5a8c3c, 0x4e7e34, 0x669a44, 0x5a8434], sky: 0x9cc4e8, fog: 0xb8d0e0, decor: 'trees' },
-  road: { ground: [0x5a8c3c, 0x4e7e34, 0x669a44, 0x5a8434], sky: 0x9cc4e8, fog: 0xb8d0e0, decor: 'road' },
-  forest: { ground: [0x3e6a2e, 0x355e28, 0x4a7836, 0x2e5424], sky: 0x8ab0c8, fog: 0x7a9a88, decor: 'forest' },
-  mountain: { ground: [0x7a7060, 0x6a6254, 0x86806e, 0x5e7046], sky: 0xa8bcd0, fog: 0xc0c8d0, decor: 'rocks' },
-  water: { ground: [0x7a9a50, 0x6a8c44, 0xb8a878, 0x5e8a40], sky: 0xa0c8e8, fog: 0xc0d8e8, decor: 'shore' },
 };
 
 export class BattleStage {
@@ -84,13 +74,10 @@ export class BattleStage {
   private tweens: Tween[] = [];
   private shot: Shot = WIDE;
   private shake = 0;
+  private arena: Arena | null = null;
 
   constructor() {
-    this.camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 200);
-    this.scene.add(new THREE.HemisphereLight(0xe8f0ff, 0x506040, 1.3));
-    const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
-    sun.position.set(-6, 12, 8);
-    this.scene.add(sun);
+    this.camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 260);
     this.applyShot();
   }
 
@@ -109,95 +96,14 @@ export class BattleStage {
 
   // ------------------------------------------------------------ the field --
 
-  setField(theme: FieldTheme, seed = 7): void {
-    const t = THEMES[theme];
-    const rand = seeded(seed);
-    this.scene.background = new THREE.Color(t.sky);
-    this.scene.fog = new THREE.Fog(t.fog, 26, 70);
-
-    // Ground: a wide low-poly sheet, flat where the squads stand and rolling
-    // beyond, flat-shaded and vertex-coloured the way N64 fields are.
-    const geo = new THREE.PlaneGeometry(90, 70, 60, 46);
-    geo.rotateX(-Math.PI / 2);
-    const pos = geo.attributes.position as THREE.BufferAttribute;
-    const colours: number[] = [];
-    const c = new THREE.Color();
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const z = pos.getZ(i);
-      const edge = Math.max(0, Math.max(Math.abs(x) - 11, (Math.abs(z) - 6) * 1.4)) / 10;
-      const roll = Math.sin(x * 0.31 + seed) * Math.cos(z * 0.27) + Math.sin(x * 0.11 - z * 0.17) * 1.5;
-      const ridge = theme === 'mountain' ? Math.max(0, -z - 9) * 0.9 : 0;
-      pos.setY(i, edge * edge * (1.2 + roll) * (theme === 'mountain' ? 2.4 : 1) + ridge * (0.6 + rand() * 0.5));
-      c.setHex(t.ground[Math.floor(rand() * t.ground.length)]);
-      if (theme === 'road' && Math.abs(z - 0.5) < 1.6) c.setHex(rand() < 0.5 ? 0xa08a60 : 0x948058);
-      if (theme === 'water' && z < -9) c.setHex(0xb8a878);
-      colours.push(c.r, c.g, c.b);
-    }
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
-    geo.computeVertexNormals();
-    const ground = new THREE.Mesh(geo.toNonIndexed(), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
-    ground.geometry.computeVertexNormals();
-    this.scene.add(ground);
-
-    if (t.decor === 'shore') {
-      const sea = new THREE.Mesh(
-        new THREE.PlaneGeometry(120, 40),
-        new THREE.MeshLambertMaterial({ color: 0x3a78b8, transparent: true, opacity: 0.88 }),
-      );
-      sea.rotateX(-Math.PI / 2);
-      sea.position.set(0, 0.35, -32);
-      this.scene.add(sea);
-    }
-
-    const away = () => {
-      // somewhere off the battle line
-      for (;;) {
-        const x = (rand() - 0.5) * 80;
-        const z = -6 - rand() * 28 + (rand() < 0.25 ? 26 + rand() * 6 : 0);
-        if (Math.abs(x) > 12 || Math.abs(z) > 7.5) return [x, z] as const;
-      }
-    };
-    const trees = { trees: 22, road: 18, forest: 70, rocks: 6, shore: 10 }[t.decor];
-    for (let i = 0; i < trees; i++) {
-      const [x, z] = away();
-      this.scene.add(this.tree(x, z, rand, t.decor === 'forest'));
-    }
-    const rocks = { trees: 6, road: 6, forest: 4, rocks: 40, shore: 8 }[t.decor];
-    for (let i = 0; i < rocks; i++) {
-      const [x, z] = away();
-      const r = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(0.4 + rand() * (t.decor === 'rocks' ? 1.6 : 0.6), 0),
-        new THREE.MeshLambertMaterial({ color: rand() < 0.5 ? 0x8a8478 : 0x6e695e, flatShading: true }),
-      );
-      r.position.set(x, 0.2, z);
-      r.rotation.set(rand() * 3, rand() * 3, rand() * 3);
-      this.scene.add(r);
-    }
-    // Distant hills ring the field.
-    for (let i = 0; i < 9; i++) {
-      const hill = new THREE.Mesh(
-        new THREE.ConeGeometry(8 + rand() * 8, (theme === 'mountain' ? 14 : 5) + rand() * 6, 6),
-        new THREE.MeshLambertMaterial({ color: theme === 'mountain' ? 0x7a7a84 : 0x4a6e48, flatShading: true }),
-      );
-      hill.position.set(-50 + i * 12.5 + rand() * 4, 0, -46 - rand() * 8);
-      this.scene.add(hill);
-    }
+  /** Lay out the ground the battle is fought on, under the sky the squads met under (see arena.ts). */
+  setField(theme: FieldTheme, o: ArenaOptions): void {
+    this.arena = new Arena(this.scene, theme, o);
   }
 
-  private tree(x: number, z: number, rand: () => number, dense: boolean): THREE.Group {
-    const g = new THREE.Group();
-    const h = 1.6 + rand() * (dense ? 2.4 : 1.4);
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, h * 0.4, 5), new THREE.MeshLambertMaterial({ color: 0x6a4a2a, flatShading: true }));
-    trunk.position.y = h * 0.2;
-    const crown = new THREE.Mesh(
-      new THREE.ConeGeometry(0.5 + rand() * 0.4, h, 6),
-      new THREE.MeshLambertMaterial({ color: rand() < 0.5 ? 0x2e5a2a : 0x386a30, flatShading: true }),
-    );
-    crown.position.y = h * 0.4 + h * 0.5;
-    g.add(trunk, crown);
-    g.position.set(x, 0, z);
-    return g;
+  /** How high the ground stands under a point. */
+  private groundAt(x: number, z: number): number {
+    return this.arena?.heightAt(x, z) ?? 0;
   }
 
   // ------------------------------------------------------------ the units --
@@ -206,15 +112,17 @@ export class BattleStage {
     // Lit by the field's lights and shaded by the sprite's normal map.
     const mat = new THREE.MeshStandardMaterial({ transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85, metalness: 0 });
     const body = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+    // The figure casts its own shadow in the sun; a soft dark patch underfoot grounds it in any light.
+    body.castShadow = true;
     const shadow = new THREE.Mesh(
       new THREE.CircleGeometry(place.large ? 1.1 : 0.42, 14),
-      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: BLOB, depthWrite: false }),
     );
     shadow.rotateX(-Math.PI / 2);
     shadow.position.y = 0.02;
     const root = new THREE.Group();
     root.add(body, shadow);
-    root.position.set(place.x, 0, place.z);
+    root.position.set(place.x, this.groundAt(place.x, place.z), place.z);
     this.scene.add(root);
     const actor: Actor = {
       id, set, place, root, body, mat, shadow, anim: 'idle', animT: Math.random() * 2000, height: place.large ? 2.4 : 1.55,
@@ -298,7 +206,7 @@ export class BattleStage {
       if (tip) a.body.rotation.z = a.place.facing * k * (Math.PI / 2.2);
       a.mat.opacity = 1 - k * (tip ? 0.85 : 0.55);
       a.mat.alphaTest = 0.05;
-      (a.shadow.material as THREE.MeshBasicMaterial).opacity = 0.32 * (1 - k);
+      (a.shadow.material as THREE.MeshBasicMaterial).opacity = BLOB * (1 - k);
     });
   }
 
@@ -379,8 +287,11 @@ export class BattleStage {
   project(id: number): { x: number; y: number; headY: number } | null {
     const a = this.actors.get(id);
     if (!a) return null;
-    const feet = new THREE.Vector3(a.place.x + a.offset.x, 0, a.place.z + a.offset.z).project(this.camera);
-    const head = new THREE.Vector3(a.place.x + a.offset.x, a.height, a.place.z + a.offset.z).project(this.camera);
+    const x = a.place.x + a.offset.x;
+    const z = a.place.z + a.offset.z;
+    const y = this.groundAt(x, z) + a.offset.y;
+    const feet = new THREE.Vector3(x, y, z).project(this.camera);
+    const head = new THREE.Vector3(x, y + a.height, z).project(this.camera);
     const w = this.width;
     const h = this.height;
     return { x: (feet.x * 0.5 + 0.5) * w, y: (-feet.y * 0.5 + 0.5) * h, headY: (-head.y * 0.5 + 0.5) * h };
@@ -415,11 +326,16 @@ export class BattleStage {
           done?.();
         }
       }
-      a.root.position.set(a.place.x + a.offset.x, 0, a.place.z + a.offset.z);
+      const x = a.place.x + a.offset.x;
+      const z = a.place.z + a.offset.z;
+      a.root.position.set(x, this.groundAt(x, z) + a.offset.y, z);
+      // The patch underfoot stays on the ground when the figure leaves it.
+      a.shadow.position.y = 0.03 - a.offset.y;
       this.drawActor(a);
     }
     this.applyShot();
     this.shake *= 0.86;
+    this.arena?.update(dtMs, this.camera, new THREE.Vector3(...this.shot.target), this.shot.distance);
   }
 
   /** The canvas the last update drew into; copy it out before anything else renders. */
@@ -440,6 +356,8 @@ export class BattleStage {
   }
 
   dispose(): void {
+    // The arena takes away its own (some of its shapes are the campaign map's too).
+    this.arena?.dispose();
     for (const t of this.textures.values()) t.dispose();
     // Effects still in flight are in the scene and go below; their shared shapes once, here.
     for (const g of Object.values(this.effectShapes)) g.dispose();
@@ -494,9 +412,12 @@ export class BattleStage {
     if (a.mat.map !== tex || a.mat.normalMap !== normal) {
       const fresh = !a.mat.map || !a.mat.normalMap;
       a.mat.map = tex;
+      a.mat.emissiveMap = tex;
       a.mat.normalMap = normal;
       if (fresh) a.mat.needsUpdate = true;
     }
+    // A glow of the hour's light of its own, so a figure reads even with the sun behind it.
+    if (this.arena) a.mat.emissive.copy(this.arena.atmosphere.flatLight).multiplyScalar(FIGURE_GLOW);
     const img = frame.image as { width: number; height: number };
     const scale = (a.place.large ? a.set.largeScale : 1) / a.set.pixelsPerUnit;
     const w = img.width * scale;

@@ -174,12 +174,94 @@ function groundMix(grid: Terrain[], nodes: MapNode[]): HTMLCanvasElement {
   return soft;
 }
 
+/** The noise a stretch of ground is painted with, at four scales. */
+export interface GroundNoise {
+  /** The lie of the land. */
+  broad: Node<'float'>;
+  /** Patches of a different shade. */
+  patch: Node<'float'>;
+  /** Fine grain. */
+  grain: Node<'float'>;
+  /** A painter's dabs. */
+  dab: Node<'float'>;
+}
+
+/** How much of each kind of ground lies at a point, 0 to 1, over a meadow. */
+export interface GroundAmounts {
+  woodland: Node<'float'>;
+  rock: Node<'float'>;
+  road: Node<'float'>;
+  sand: Node<'float'>;
+  snow: Node<'float'>;
+}
+
 /**
- * The ground's material. Its colour is worked out at every point: a meadow
- * of two greens with yellower patches, under woods a darker floor, worn
- * earth along the roads, rock where the land is steep or mountainous, sand
- * at the water's edge and snow on the peaks, each broken up by dabs of
- * colour as a painter would lay it. The ground's vertex colours dim the land
+ * Ground painted at every point: a meadow of two greens with yellower
+ * patches, a darker woodland floor, worn earth, rock in faint strata (mossy
+ * where low and gentle), sand and snow, mixed as `amounts` says, each broken
+ * up by dabs of colour as a painter would lay it. Snow settles and rain
+ * darkens as the weather has it. `scale` sets how fine the noise runs (the
+ * battlefield, seen closer, is painted finer); `tint` multiplies the colour.
+ */
+export function paintedGround(
+  amounts: (n: GroundNoise, y: Node<'float'>, slope: Node<'float'>) => GroundAmounts,
+  simple: boolean,
+  scale = 1,
+  tint?: Node<'vec3'>,
+): THREE.Material {
+  const p = positionWorld.xz.mul(scale);
+  const y = positionWorld.y;
+  const slope = float(1).sub(normalWorld.y);
+
+  const noise = texture(noiseTexture());
+  const n: GroundNoise = {
+    broad: noise.sample(p.mul(0.0175)).r,
+    patch: noise.sample(p.mul(0.02)).g,
+    grain: noise.sample(p.mul(0.14)).b,
+    dab: noise.sample(p.mul(0.075)).a,
+  };
+  const { broad, patch, grain, dab } = n;
+  const lift = dab.mul(0.16).add(grain.mul(0.08)).add(0.88);
+
+  let meadow: Node<'vec3'> = mix(color(0x3f7a26), color(0x6c9e33), broad);
+  meadow = mix(meadow, color(0x9aa846), smoothstep(0.62, 0.85, patch).mul(0.55));
+  const woodland = mix(color(0x2a4a1c), color(0x3d4d22), patch);
+  const earth = mix(color(0x8a6b40), color(0xa88a58), grain.mul(0.6).add(patch.mul(0.4)));
+  let rock: Node<'vec3'> = mix(color(0x77705f), color(0x9a9282), broad.mul(0.6).add(sin(y.mul(5).add(patch.mul(4))).mul(0.12).add(0.2)));
+  rock = mix(rock, color(0x5d6e3a), smoothstep(0.45, 0.15, slope).mul(smoothstep(2.6, 1.2, y)).mul(0.6));
+  const sand = mix(color(0xb8a576), color(0xd1c193), grain);
+  const snow = mix(color(0xd9e2ea), color(0xf4f7fa), grain);
+
+  const a = amounts(n, y, slope);
+  let ground: Node<'vec3'> = mix(meadow, woodland, a.woodland);
+  ground = mix(ground, rock, a.rock);
+  ground = mix(ground, earth, a.road);
+  ground = mix(ground, sand, a.sand);
+  ground = mix(ground, snow, a.snow);
+  // Fallen snow settles on whatever lies flat enough, thinnest on the roads.
+  const settled = snowCover.mul(smoothstep(0.55, 0.2, slope)).mul(smoothstep(0.25, 0.65, patch.add(snowCover.mul(0.6)))).mul(float(1).sub(a.road.mul(0.5)));
+  ground = mix(ground, snow, clamp(settled, 0, 1));
+  // Rain darkens the earth.
+  ground = ground.mul(float(1).sub(wetness.mul(0.28)));
+  let painted: Node<'vec3'> = ground.mul(lift);
+  if (tint) painted = painted.mul(tint);
+
+  if (simple) {
+    const material = new MeshLambertNodeMaterial();
+    material.colorNode = painted;
+    return material;
+  }
+  const material = new MeshStandardNodeMaterial({ metalness: 0 });
+  material.colorNode = painted;
+  material.roughnessNode = float(0.94).sub(wetness.mul(0.42));
+  return material;
+}
+
+/**
+ * The campaign map's ground: woodland floor under the woods, worn earth
+ * along the roads and about the strongholds, rock where the land is steep or
+ * mountainous, sand at the water's edge and snow on the peaks, as the
+ * terrain grid lays them out. The ground's vertex colours dim the land
  * beyond the campaign.
  */
 export function groundMaterial(grid: Terrain[], nodes: MapNode[], simple = false): THREE.Material {
@@ -188,53 +270,13 @@ export function groundMaterial(grid: Terrain[], nodes: MapNode[], simple = false
   mixMap.wrapT = THREE.MirroredRepeatWrapping;
   mixMap.colorSpace = THREE.NoColorSpace;
   const m = texture(mixMap);
-  const p = positionWorld.xz;
-  const y = positionWorld.y;
-  const slope = float(1).sub(normalWorld.y);
-
-  // Noise at four scales: the lie of the land, patches, grain, and brush dabs.
-  const noise = texture(noiseTexture());
-  const broad = noise.sample(p.mul(0.0175)).r;
-  const patch = noise.sample(p.mul(0.02)).g;
-  const grain = noise.sample(p.mul(0.14)).b;
-  const dab = noise.sample(p.mul(0.075)).a;
-  const lift = dab.mul(0.16).add(grain.mul(0.08)).add(0.88);
-
-  let meadow: Node<'vec3'> = mix(color(0x3f7a26), color(0x6c9e33), broad);
-  meadow = mix(meadow, color(0x9aa846), smoothstep(0.62, 0.85, patch).mul(0.55));
-  const woodland = mix(color(0x2a4a1c), color(0x3d4d22), patch);
-  const earth = mix(color(0x8a6b40), color(0xa88a58), grain.mul(0.6).add(patch.mul(0.4)));
-  // Rock in faint strata, mossy where it is low and gentle.
-  let rock: Node<'vec3'> = mix(color(0x77705f), color(0x9a9282), broad.mul(0.6).add(sin(y.mul(5).add(patch.mul(4))).mul(0.12).add(0.2)));
-  rock = mix(rock, color(0x5d6e3a), smoothstep(0.45, 0.15, slope).mul(smoothstep(2.6, 1.2, y)).mul(0.6));
-  const sand = mix(color(0xb8a576), color(0xd1c193), grain);
-  const snow = mix(color(0xd9e2ea), color(0xf4f7fa), grain);
-
-  const rockAmount = clamp(m.b.mul(smoothstep(0.02, 0.22, slope.add(broad.mul(0.12)))).add(smoothstep(0.3, 0.55, slope)), 0, 1);
-  const roadAmount = smoothstep(0.32, 0.62, m.g.add(grain.sub(0.5).mul(0.25)));
-  const sandAmount = smoothstep(WATER_LEVEL + 0.2, WATER_LEVEL + 0.04, y).mul(0.9);
-  const snowAmount = smoothstep(4.9, 5.5, y.add(broad.sub(0.5).mul(1.2))).mul(smoothstep(0.7, 0.35, slope));
-
-  let ground: Node<'vec3'> = mix(meadow, woodland, smoothstep(0.15, 0.75, m.r));
-  ground = mix(ground, rock, rockAmount);
-  ground = mix(ground, earth, roadAmount);
-  ground = mix(ground, sand, sandAmount);
-  ground = mix(ground, snow, snowAmount);
-  // Fallen snow settles on whatever lies flat enough, thinnest on the roads.
-  const settled = snowCover.mul(smoothstep(0.55, 0.2, slope)).mul(smoothstep(0.25, 0.65, patch.add(snowCover.mul(0.6)))).mul(float(1).sub(roadAmount.mul(0.5)));
-  ground = mix(ground, snow, clamp(settled, 0, 1));
-  // Rain darkens the earth.
-  ground = ground.mul(float(1).sub(wetness.mul(0.28)));
-
-  if (simple) {
-    const material = new MeshLambertNodeMaterial();
-    material.colorNode = ground.mul(lift).mul(vertexColor());
-    return material;
-  }
-  const material = new MeshStandardNodeMaterial({ metalness: 0 });
-  material.colorNode = ground.mul(lift).mul(vertexColor());
-  material.roughnessNode = float(0.94).sub(wetness.mul(0.42));
-  return material;
+  return paintedGround(({ broad, grain }, y, slope) => ({
+    woodland: smoothstep(0.15, 0.75, m.r),
+    rock: clamp(m.b.mul(smoothstep(0.02, 0.22, slope.add(broad.mul(0.12)))).add(smoothstep(0.3, 0.55, slope)), 0, 1),
+    road: smoothstep(0.32, 0.62, m.g.add(grain.sub(0.5).mul(0.25))),
+    sand: smoothstep(WATER_LEVEL + 0.2, WATER_LEVEL + 0.04, y).mul(0.9),
+    snow: smoothstep(4.9, 5.5, y.add(broad.sub(0.5).mul(1.2))).mul(smoothstep(0.7, 0.35, slope)),
+  }), simple, 1, vertexColor().xyz);
 }
 
 // ------------------------------------------------------------------ water --
@@ -385,7 +427,11 @@ export function grassField(
       }
     }
   }
-  if (!spots.length) return null;
+  return spots.length ? grassTufts(spots.map(([x, y, h]) => [x / TILE, h - 0.01, y / TILE]), rand) : null;
+}
+
+/** Tufts of grass standing at `spots` (x, y, z in the world), swaying in the wind; `shade` darkens them. */
+export function grassTufts(spots: [number, number, number][], rand: () => number, shade = 1): THREE.InstancedMesh {
   const material = new MeshStandardNodeMaterial({ roughness: 1, metalness: 0, side: THREE.DoubleSide });
   // The meadow's green at the root, brighter at the tip; lit from above on both faces.
   material.colorNode = mix(color(0x4a7c28), color(0xa6d05c), smoothstep(0, 0.26, positionGeometry.y));
@@ -396,13 +442,13 @@ export function grassField(
   const q = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   const tint = new THREE.Color();
-  spots.forEach(([x, y, h], k) => {
+  spots.forEach(([x, y, z], k) => {
     const s = 0.6 + rand() * 0.5;
     q.setFromAxisAngle(up, rand() * Math.PI * 2);
-    m.compose(new THREE.Vector3(x / TILE, h - 0.01, y / TILE), q, new THREE.Vector3(s, s * (0.8 + rand() * 0.5), s));
+    m.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(s, s * (0.8 + rand() * 0.5), s));
     tufts.setMatrixAt(k, m);
     // Mostly greens; now and then the yellow of a dry tuft.
-    tufts.setColorAt(k, rand() < 0.1 ? tint.setRGB(1.3, 1.15, 0.55) : tint.setRGB(0.85 + rand() * 0.3, 0.9 + rand() * 0.2, 0.8 + rand() * 0.25));
+    tufts.setColorAt(k, (rand() < 0.1 ? tint.setRGB(1.3, 1.15, 0.55) : tint.setRGB(0.85 + rand() * 0.3, 0.9 + rand() * 0.2, 0.8 + rand() * 0.25)).multiplyScalar(shade));
   });
   tufts.receiveShadow = true;
   return tufts;

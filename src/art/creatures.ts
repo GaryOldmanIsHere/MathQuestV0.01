@@ -34,7 +34,7 @@ export interface QuadSpec {
   slots?: Partial<SlotMap>;
 }
 
-export const HOUND: QuadSpec = { w: 64, h: 50, len: 26, back: 20, girth: 6.5, legUp: 7, legLow: 6.5, neck: 8, head: 5.5, snout: 6, tail: 13, ears: true };
+export const HOUND: QuadSpec = { w: 64, h: 50, len: 27, back: 20, girth: 6.8, legUp: 7, legLow: 6.5, neck: 8, head: 4.8, snout: 8.5, tail: 13, ears: true };
 export const DRAGON: QuadSpec = { w: 120, h: 100, len: 44, back: 34, girth: 12, legUp: 12, legLow: 11, neck: 20, head: 8.5, snout: 10, tail: 26, wings: true, horns: true };
 /** A horse's coat, mane, belly and hooves are its own colours (see HORSE_SLOT). */
 export const HORSE_SLOT = { coat: 12, blaze: 13, mane: 14, hoof: 15 } as const;
@@ -144,10 +144,12 @@ export function paintQuad(spec: QuadSpec, pose: QuadPose, seen: 'front' | 'back'
 
   // The body: haunch, barrel, chest; a paler belly.
   r.beginPart();
-  r.ellipse(cx, by, half, spec.girth, Z_BODY, S.armour);
-  r.ellipse(rear[0], rear[1] - 0.5, spec.girth * 1.05, spec.girth * 1.05, Z_BODY + 1, S.armour);
-  r.ellipse(front[0], front[1] - 1, spec.girth * 1.1, spec.girth * 1.15, Z_BODY + 1.5, S.armour);
-  r.ellipse(cx + dir * 2, by + spec.girth * 0.55, half * 0.75, spec.girth * 0.4, Z_BODY + 1.6, S.trim, { round: 0.6 });
+  r.ellipse(cx, by - spec.girth * 0.12, half, spec.girth * 0.85, Z_BODY, S.armour);
+  // A deep chest and a narrower haunch, the waist tucked up between them.
+  r.ellipse(rear[0], rear[1] - 0.8, spec.girth * 0.95, spec.girth * 0.95, Z_BODY + 1, S.armour);
+  r.ellipse(front[0], front[1] - 0.5, spec.girth * 1.12, spec.girth * 1.25, Z_BODY + 1.5, S.armour);
+  // A dragon's paler belly plates.
+  if (spec.wings) r.ellipse(cx + dir * 2, by + spec.girth * 0.55, half * 0.75, spec.girth * 0.4, Z_BODY + 1.6, S.trim, { round: 0.6 });
   if (spec.wings) {
     // Spines down the back.
     for (let k = 0; k < 6; k++) {

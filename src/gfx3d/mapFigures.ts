@@ -9,7 +9,7 @@ import { paintedSet } from '../art/sheet';
 // the march, turned the way it is going.
 
 /** How tall a leader stands on the map, in world units (a tile is one). */
-export const FIGURE_HEIGHT = 1.5;
+export const FIGURE_HEIGHT = 1.3;
 
 /** Which way a screen octant (0 right, 2 toward the camera, 4 left, 6 away) faces, or neither. */
 export function sideOf(screenOctant: number): 'left' | 'right' | null {

@@ -137,7 +137,7 @@ export class OrganizeScreen implements Screen {
       const first = cells[at[0]];
       const large = at.length > 1;
       const figure = el('div', { class: `org-member ${large ? 'is-large' : ''} ${c.hp <= 0 ? 'is-fallen' : ''}` },
-        unitIcon(classOf(c.classId).palette, large ? 74 : 60),
+        unitIcon(classOf(c.classId).palette, large ? 88 : 72),
         el('span', { class: 'org-member-name' }, c.hp <= 0 ? `${c.name} (fallen)` : c.name),
         c.id === sq.leaderId ? el('span', { class: 'org-leader', title: 'Leader' }, '★') : null,
       );
@@ -202,7 +202,7 @@ export class OrganizeScreen implements Screen {
     const body = this.tab === 'status' ? this.drawStatus(c, def) : this.tab === 'gear' ? this.drawGear(c) : this.drawClassChange(c);
     fill(this.side,
       el('div', { class: 'sheet-head' },
-        el('div', { class: 'sheet-portrait' }, unitIcon(def.palette, 58)),
+        el('div', { class: 'sheet-portrait' }, unitIcon(def.palette, 72)),
         el('div', { class: 'sheet-id' },
           el('h2', {}, c.name),
           el('div', { class: 'gold' }, `${def.name} · Lv ${c.level}`),

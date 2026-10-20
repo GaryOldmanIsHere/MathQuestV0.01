@@ -170,7 +170,7 @@ h3 { font-size: 0.85rem; color: var(--gold); text-transform: uppercase; letter-s
 .org-side { padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; max-height: calc(100vh - 110px); }
 .org-empty { margin: auto; color: var(--ink-faint); text-align: center; }
 .sheet-head { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
-.sheet-portrait { width: 64px; height: 64px; display: grid; place-items: center; background: rgba(8, 12, 28, 0.6); border-radius: 8px; border: 1px solid var(--panel-line); }
+.sheet-portrait { width: 80px; height: 80px; display: grid; place-items: center; background: rgba(8, 12, 28, 0.6); border-radius: 8px; border: 1px solid var(--panel-line); }
 .sheet-id { display: grid; gap: 2px; min-width: 0; }
 .sheet-tags { font-size: 0.85rem; }
 .sheet-actions { display: grid; gap: 6px; justify-items: end; }

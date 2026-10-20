@@ -237,10 +237,15 @@ polygon ground under a tilted camera. The land has:
 * a river winding down the west past the keep, crossed by the roads;
 * woods, thickest in the west;
 * a lake in the south-east;
-* roads of packed earth between strongholds. The
-strongholds are small buildings flying their owner's colours: the two
-castles with towers and a keep, forts with a stockade and a watchtower, and
-towns of cottages. A flag changes colour the moment its stronghold falls.
+* roads of packed earth between strongholds.
+
+The strongholds are buildings from the KayKit medieval pack (CC0; see
+CREDITS.md) in their owner's colours: blue for us, red for the enemy, the
+land's yellow for those not yet taken. Each side's seat is a castle, a fort
+a watchtower, and a town a church or windmill among cottages, the windmill's
+sails turning. The moment a stronghold falls its buildings are re-dressed in
+the new owner's colours. The woods are the pack's pines, and boulders lie on
+the high ground.
 
 The world is grown from the very terrain grid that marching is charged on
 (`src/core/terrain.ts`), so the two never disagree:
@@ -252,6 +257,24 @@ The world is grown from the very terrain grid that marching is charged on
 The landscape itself is drawn from smooth noise, so woods, hills and the
 lake come in shapes rather than scattered tiles. Past the campaign's edges
 the land runs on, darkened, as a mirror of the land within.
+
+**A living land** (`src/gfx3d/landscape.ts`, `atmosphere.ts`, `sky.ts`):
+* **The ground is painted in the GPU**: a meadow of two greens with yellower
+  patches, a darker floor under the woods, worn earth along the roads, rock
+  on steep and mountain ground (mossy where low), sand at the water's edge and
+  snow on the peaks, all broken into dabs of colour.
+* **The water** knows how deep it lies: green in the shallows, deep blue
+  further out, with waves that catch the light and froth along the shores.
+* **The wind** sways the woods and the meadow grass.
+* **The sky** turns through a day and night every six campaign days: a warm
+  dawn, white noon, a golden evening, then moonlight and stars. The sun casts
+  shadows, and clouds' shadows drift over the land.
+* **The weather** holds three days at a time: clear, cloudy, rain (the ground
+  darkens and shines), snow (it settles on the meadows) or mist. The
+  campaign always opens clear. None of it touches the campaign itself.
+* **The tilt-shift**: the land above and below the middle of the view is
+  softly out of focus, so it looks like a model of itself; gentlest over the
+  whole map, where every squad must read.
 
 **The camera.**
 * **Drag** to pan; the map moves with the pointer.
@@ -288,8 +311,8 @@ Without the sprites, the leader's pixel-art figure turns and bobs in step.
 While a menu or a battle stands over the map, the land stays in view behind
 it and the map's names and HUD step aside.
 
-The map and the battles share one WebGL renderer. A battle only ever plays
-while the map waits, and each copies out what it drew straight away.
+The map and the battles share one renderer; a battle plays while the map
+waits behind it.
 
 ## What's implemented
 
@@ -389,6 +412,10 @@ src/
     ob64Sprites.ts loads the extracted sprites: portraits at boot, animated sets per battle
     unitArt.ts     a unit's battle art: Ogre Battle 64's if extracted, else the pixel art
     world.ts       the 3D campaign map: ground, water, woods, strongholds, squads, camera, picking
+    models.ts      the map's buildings, trees, rocks and clouds (public/models/world.glb), loaded once
+    landscape.ts   the ground, water, wind and grass materials, painted in the GPU
+    atmosphere.ts  the sky, the sun and its shadows, cloud shadows, rain and snow
+    sky.ts         the light at each hour, what each weather does, the hour and weather on a campaign day
     worldMap.ts    the map's shape in 3D: world coordinates, heights from the terrain grid, the camera's views
     mapFigures.ts  a squad's figure on the map: the leader walking, turned the way it marches
   render/
@@ -439,9 +466,22 @@ screen changes it (the choice is kept in this browser).
   WebGL2 path.
 * Should a WebGPU device be lost, the game reloads itself on WebGL2.
 
+What each preset adds on the campaign map:
+
+| | Low | Medium | High | Ultra |
+|---|---|---|---|---|
+| Sun shadows (texels) | none | 1024 | 2048 | 4096 |
+| Grass tufts per meadow tile | none | 6 | 12 | 20 |
+| Raindrops / snowflakes | 1,500 | 4,000 | 8,000 | 14,000 |
+| Tilt-shift | no | yes | yes | yes |
+| Lighting | plain diffuse | physically based | physically based | physically based |
+
+The map's models are packed into `public/models/world.glb` from the KayKit
+pack by `npm run pack:models -- path/to/pack` (`tools/pack-models.ts`).
+
 ## Tests
 
-`npm test` runs 298 tests (281 without extracted ROM data) over the simulation core — the rules, not the
+`npm test` runs 306 tests (289 without extracted ROM data) over the simulation core — the rules, not the
 rendering. They cover the parts that are easy to break silently: that a
 member's column really does select their attack and strike count, that the
 front rank is struck before the back and combat spills backward once it falls,

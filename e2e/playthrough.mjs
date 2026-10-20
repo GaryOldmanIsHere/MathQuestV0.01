@@ -472,6 +472,13 @@ async function battle(g) {
   if (result.defenderWiped) {
     g.check('B7', 'a wiped-out enemy squad is gone, and pays its spoils', !patrolNow && s.goth > before.goth, `+${s.goth - before.goth} Goth`);
   } else if (result.winner === 'attacker') {
+    // Give the retreat a moment to show (on a slow machine little game time passes between frames).
+    await g.until(([id, x, y]) => {
+      const q = window.__palatinus.state().squads.find((o) => o.id === id);
+      return !q || Math.hypot(q.x - x, q.y - y) > 20;
+    }, [patrol.id, patrol.x, patrol.y], 10000);
+    s = await g.state();
+    const patrolNow = s.squads.find((q) => q.id === patrol.id);
     // Moving away, or (at a fast clock) already back on one of its own strongholds.
     const home = s.nodes.some((n) => n.owner === 'enemy' && near(patrolNow, n, 28));
     g.check('B7', 'a beaten enemy squad falls back', !!patrolNow && (patrolNow.moving || home) && !near(patrolNow, patrol, 20),

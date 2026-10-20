@@ -15,7 +15,9 @@ import {
 import type { ItemDef, Slot } from '../core/items';
 import { dismissMember, makeLeader, rallyHome } from '../core/camp';
 import { unitIcon } from '../gfx/unitIcon';
-import { button, el, fill } from '../ui/dom';
+import { button, el, fill, hpColour } from '../ui/dom';
+import { icon } from '../ui/icons';
+import type { IconName } from '../ui/icons';
 
 // Army organization: reposition members on the 3x3 grid, read and change a
 // unit's gear, promote it through the class tree, use and sell items, buy
@@ -32,6 +34,7 @@ type Tab = 'status' | 'gear' | 'class';
 type ShopFilter = 'supplies' | 'weapons' | 'armour' | 'other';
 
 const SLOT_LABEL: Record<Slot, string> = { weapon: 'Weapon', body: 'Body', offhand: 'Off hand', head: 'Head' };
+const SLOT_ICON: Record<Slot, IconName> = { weapon: 'sword', body: 'armour', offhand: 'shield', head: 'helm' };
 const WEAPONS = new Set(['sword', 'greatsword', 'rapier', 'axe', 'hammer', 'spear', 'whip', 'claw', 'bow', 'mace', 'staff', 'doll', 'fan']);
 const ARMOUR = new Set(['light', 'medium', 'heavy', 'robe', 'clothing', 'shield', 'greatshield', 'helm', 'hat']);
 
@@ -56,28 +59,36 @@ export class OrganizeScreen implements Screen {
   constructor(private app: App) {
     const st = getState();
     const playerSquads = st.squads.filter((s) => s.side === 'player');
-    this.squadButtons = playerSquads.slice(0, 6).map((sq, i) => button(sq.name, () => {
-      this.squad = sq;
-      this.selectedChar = null;
-      this.refresh();
-    }, { ui: `squad-${i}`, class: 'org-squad' }));
-    const modeButton = (label: string, mode: Mode) => {
+    this.squadButtons = playerSquads.slice(0, 6).map((sq, i) => {
+      const b = button(sq.name, () => {
+        this.squad = sq;
+        this.selectedChar = null;
+        this.refresh();
+      }, { ui: `squad-${i}`, class: 'org-squad' });
+      const leader = st.chars.get(sq.leaderId);
+      b.prepend(el('span', { class: 'org-squad-face' }, leader ? unitIcon(classOf(leader.classId).palette, 30) : null));
+      return b;
+    });
+    const modeButton = (label: string, mode: Mode, mark: IconName) => {
       const b = button(label, () => {
         this.mode = this.mode === mode ? 'sheet' : mode;
         this.message = '';
         this.refresh();
       }, { ui: `mode-${mode}`, class: 'org-mode' });
+      b.prepend(icon(mark, 18));
       this.modeButtons.set(mode, b);
       return b;
     };
+    const back = button('Back to map', () => this.app.close(this), { ui: 'back-to-map', class: 'btn-primary org-back', 'data-tip': 'Esc' });
+    back.prepend(icon('map', 18));
     this.root = el('div', { class: 'screen organize-screen', ui: 'organize' },
       el('h1', { class: 'org-title' }, 'Organize army'),
       el('div', { class: 'org-layout' },
         el('nav', { class: 'org-nav panel' },
           el('div', { class: 'label' }, 'Squads'),
           el('div', { class: 'org-squads' }, ...this.squadButtons),
-          el('div', { class: 'org-modes' }, modeButton('Shop', 'shop'), modeButton('Items', 'items'), modeButton('Recruit', 'recruit')),
-          button('Back to map', () => this.app.close(this), { ui: 'back-to-map', class: 'btn-primary org-back' }),
+          el('div', { class: 'org-modes' }, modeButton('Shop', 'shop', 'coin'), modeButton('Items', 'items', 'bag'), modeButton('Recruit', 'recruit', 'people')),
+          back,
         ),
         el('div', { class: 'org-centre' }, this.formation, this.info),
         this.side,
@@ -136,10 +147,14 @@ export class OrganizeScreen implements Screen {
       const at = cellsOf(sq, c.id);
       const first = cells[at[0]];
       const large = at.length > 1;
+      const ratio = Math.max(0, c.hp) / c.stats.hp;
       const figure = el('div', { class: `org-member ${large ? 'is-large' : ''} ${c.hp <= 0 ? 'is-fallen' : ''}` },
         unitIcon(classOf(c.classId).palette, large ? 88 : 72),
         el('span', { class: 'org-member-name' }, c.hp <= 0 ? `${c.name} (fallen)` : c.name),
-        c.id === sq.leaderId ? el('span', { class: 'org-leader', title: 'Leader' }, '★') : null,
+        el('div', { class: 'bar' }, el('div', { class: 'bar-fill', style: { width: `${Math.round(ratio * 100)}%`, background: hpColour(ratio) } })),
+        el('span', { class: 'org-level' }, `Lv ${c.level}`),
+        el('span', { class: 'org-element', style: { color: ELEMENT_COLOR[c.element] }, title: cap(c.element) }, icon(c.element as IconName, 14)),
+        c.id === sq.leaderId ? el('span', { class: 'org-leader', title: 'Leader' }, icon('crown', 16)) : null,
       );
       first.append(figure);
       if (large) for (const k of at.slice(1)) cells[k].classList.add('is-covered');
@@ -160,9 +175,9 @@ export class OrganizeScreen implements Screen {
     const owned = st.nodes.filter((n) => n.owner === 'player').length;
     const held = Object.values(st.inventory).reduce((a, b) => a + b, 0);
     fill(this.info,
-      el('div', {}, `Places ${placesUsed(sq)}/${SQUAD_PLACES} · Large units fill two`),
-      el('div', { class: 'gold' }, `Treasury ${st.goth} Goth · Shop rank ${shopRank(owned)}`),
-      el('div', {}, `Items carried: ${held}`),
+      el('div', { class: 'org-info-line' }, icon('people', 16), `Places ${placesUsed(sq)}/${SQUAD_PLACES} · Large units fill two`),
+      el('div', { class: 'org-info-line gold' }, icon('coin', 16), `Treasury ${st.goth} Goth · Shop rank ${shopRank(owned)}`),
+      el('div', { class: 'org-info-line' }, icon('bag', 16), `Items carried: ${held}`),
       this.message ? el('div', { class: 'org-message', ui: 'message' }, this.message) : null,
     );
   }
@@ -190,7 +205,7 @@ export class OrganizeScreen implements Screen {
   private drawSheet(): void {
     const c = this.selectedChar;
     if (!c) {
-      fill(this.side, el('p', { class: 'org-empty' }, 'Select a member to view their sheet.'));
+      fill(this.side, el('p', { class: 'org-empty' }, icon('people', 34), 'Select a member to view their sheet.'));
       return;
     }
     const def = classOf(c.classId);
@@ -206,7 +221,7 @@ export class OrganizeScreen implements Screen {
         el('div', { class: 'sheet-id' },
           el('h2', {}, c.name),
           el('div', { class: 'gold' }, `${def.name} · Lv ${c.level}`),
-          el('div', { class: 'sheet-tags', style: { color: ELEMENT_COLOR[c.element] } }, tags),
+          el('div', { class: 'sheet-tags', style: { color: ELEMENT_COLOR[c.element] } }, icon(c.element as IconName, 15), tags),
         ),
         this.memberActions(c),
       ),
@@ -250,23 +265,29 @@ export class OrganizeScreen implements Screen {
   private drawStatus(c: Character, def: ClassDef): HTMLElement {
     const eff = effectiveStats(c);
     const b = gearBonus(c);
+    // Each stat's meter is measured against the unit's own best, or a hundred, whichever is more.
+    const top = Math.max(100, ...(['str', 'vit', 'int', 'men', 'agi', 'dex'] as const).map((k) => eff[k])) * 1.1;
     const stat = (k: 'str' | 'vit' | 'int' | 'men' | 'agi' | 'dex') => el('div', { class: 'stat' },
       el('span', { class: 'k' }, k.toUpperCase()),
       el('span', { class: 'v' }, eff[k]),
-      b[k] ? el('span', { class: b[k] > 0 ? 'up' : 'down' }, b[k] > 0 ? `+${b[k]}` : `${b[k]}`) : null,
+      el('span', { class: 'meter' }, el('i', { style: { width: `${Math.round((eff[k] / top) * 100)}%` } })),
+      b[k] ? el('span', { class: b[k] > 0 ? 'up' : 'down' }, b[k] > 0 ? `+${b[k]}` : `${b[k]}`) : el('span', {}),
     );
     const aliWord = c.ali >= 60 ? 'Lawful' : c.ali <= 40 ? 'Chaotic' : 'Neutral';
     const res = effectiveResist(c);
     const short: Record<string, string> = { physical: 'PHY', wind: 'WND', flame: 'FLM', earth: 'ERT', water: 'WTR', virtue: 'VIR', bane: 'BAN' };
     const weapon = weaponOf(c);
     return el('div', { class: 'sheet-body', ui: 'status' },
-      el('div', { class: 'hp-line' }, `HP ${c.hp}/${c.stats.hp}`, c.hp <= 0 ? el('span', { class: 'bad' }, ' Fallen') : null),
+      el('div', { class: 'hp-line' }, icon('heart', 16), `HP ${c.hp}/${c.stats.hp}`,
+        el('div', { class: 'bar' }, el('div', { class: 'bar-fill', style: { width: `${Math.round((Math.max(0, c.hp) / c.stats.hp) * 100)}%`, background: hpColour(c.hp / c.stats.hp) } })),
+        c.hp <= 0 ? el('span', { class: 'bad' }, ' Fallen') : null),
       el('div', { class: 'stats' }, ...(['str', 'vit', 'int', 'men', 'agi', 'dex'] as const).map(stat)),
       el('div', { class: 'muted' }, `ALI ${c.ali} (${aliWord}) · LUK ${effectiveLuck(c)} · Kills ${c.kills}`),
       el('h3', {}, 'Resistance'),
       el('div', { class: 'resists' }, ...RESIST_KEYS.map((k) => {
         const v = res[k];
-        return el('span', { class: v >= 60 ? 'good' : v <= 40 ? 'bad' : '' }, `${short[k]} ${v}`);
+        return el('span', { class: `resist ${v >= 60 ? 'good' : v <= 40 ? 'bad' : ''}`, title: cap(k) },
+          el('span', { style: { color: k === 'physical' ? 'var(--ink-soft)' : ELEMENT_COLOR[k as Element] } }, icon(k as IconName, 14)), `${short[k]} ${v}`);
       })),
       el('h3', {}, 'Attacks'),
       el('div', { class: 'attacks' }, ...(['front', 'mid', 'back'] as const).map((r) => {
@@ -277,7 +298,8 @@ export class OrganizeScreen implements Screen {
           const elem = a.element ?? ((a.type === 'melee' || a.type === 'ranged') ? weapon?.element : undefined);
           line = `${a.name} ×${a.count}${elem ? ` · ${cap(elem)}` : ''}`;
         }
-        return el('div', {}, el('span', { class: 'k' }, cap(r)), line);
+        const mark: IconName = !slot ? 'close' : resolveAttack(slot, c).type === 'heal' ? 'heart' : resolveAttack(slot, c).type === 'magic' ? 'staff' : resolveAttack(slot, c).type === 'ranged' ? 'bow' : 'sword';
+        return el('div', {}, el('span', { class: 'k' }, cap(r)), icon(mark, 15), line);
       })),
       def.desc ? el('p', { class: 'muted small' }, def.desc) : null,
     );
@@ -292,8 +314,8 @@ export class OrganizeScreen implements Screen {
         type: 'button', class: `row ${this.slot === slot ? 'is-on' : ''}`, ui: `slot-${slot}`,
         on: { click: () => { this.slot = this.slot === slot ? null : slot; this.refresh(); } },
       },
-        el('span', { class: 'k' }, SLOT_LABEL[slot]),
-        el('span', { class: item ? 'v' : 'muted' }, item ? item.name : '—'),
+        el('span', { class: 'row-icon', title: SLOT_LABEL[slot] }, icon(SLOT_ICON[slot], 18)),
+        el('span', { class: item ? 'v' : 'muted' }, item ? item.name : `${SLOT_LABEL[slot]}: —`),
         item ? el('span', { class: 'sub' }, `${item.type ? typeLabel(item.type) : ''} ${itemSummary(item)}`.trim()) : null,
       );
     });
@@ -412,7 +434,7 @@ export class OrganizeScreen implements Screen {
             : i.kind === 'key' || i.kind === 'relic' || (i.kind === 'gear' && (i.type === 'book' || i.type === 'accessory')));
     const c = this.selectedChar;
     fill(this.side,
-      el('div', { class: 'shop-head' }, el('h2', {}, `Shop · rank ${rank}`), el('span', { class: 'gold' }, `${st.goth} Goth`)),
+      el('div', { class: 'shop-head' }, el('h2', {}, `Shop · rank ${rank}`), el('span', { class: 'gold' }, icon('coin', 16), `${st.goth} Goth`)),
       el('div', { class: 'tabs', role: 'tablist' }, ...(['supplies', 'weapons', 'armour', 'other'] as ShopFilter[]).map((f) => el('button', {
         type: 'button', class: `tab ${this.filter === f ? 'is-on' : ''}`, ui: `filter-${f}`, role: 'tab', 'aria-selected': String(this.filter === f),
         on: { click: () => { this.filter = f; this.refresh(); } },

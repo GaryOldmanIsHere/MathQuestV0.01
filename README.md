@@ -12,7 +12,8 @@ own art appears only when extracted locally from your own ROM (below).
 | ![The title screen over the campaign map at evening](docs/screenshots/title.jpg) | ![The whole campaign map on a clear morning](docs/screenshots/map.jpg) |
 | ![Fort Melchor and its squads at midday](docs/screenshots/keep.jpg) | ![Elm Vale at evening, the sun low on the river](docs/screenshots/evening.jpg) |
 | ![Midfield in the rain](docs/screenshots/rain.jpg) | ![Elm Vale under snow](docs/screenshots/snow.jpg) |
-| ![A squad's gear on the army screen](docs/screenshots/organize.jpg) | ![A battle between two squads](docs/screenshots/battle.jpg) |
+| ![A squad's gear on the army screen](docs/screenshots/organize.jpg) | ![A berserker runs in with his axe in a forest clearing](docs/screenshots/battle.jpg) |
+| ![A healer's magic circle and a pillar of green light on a wounded soldier](docs/screenshots/heal.jpg) | ![A shuriken in flight on a shore](docs/screenshots/shore.jpg) |
 
 These show the built-in data at the High preset.
 

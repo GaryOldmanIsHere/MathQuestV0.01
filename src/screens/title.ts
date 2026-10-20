@@ -1,7 +1,5 @@
 import type { App, Screen } from '../app/app';
 import type { View } from '../render/engine';
-import { QUALITIES, saveQuality } from '../render/quality';
-import type { Quality } from '../render/quality';
 import { newCampaign } from '../core/state';
 import { buildTerrainGrid } from '../core/terrain';
 import { allClasses, datasetLabel, datasetSource } from '../data/registry';
@@ -9,11 +7,11 @@ import { WorldStage, worldDetail } from '../gfx3d/world';
 import { OVERVIEW } from '../gfx3d/worldMap';
 import { unitIcon } from '../gfx/unitIcon';
 import { button, el } from '../ui/dom';
+import { icon } from '../ui/icons';
+import { openSettings } from './settings';
 
 // The title: the realm itself turning slowly behind the game's name, a parade
 // of the classes at hand, and the way into a new campaign.
-
-const QUALITY_LABEL: Record<Quality, string> = { low: 'Low', medium: 'Medium', high: 'High', ultra: 'Ultra' };
 
 export class TitleScreen implements Screen {
   readonly name = 'Title' as const;
@@ -30,31 +28,28 @@ export class TitleScreen implements Screen {
 
     const authentic = datasetSource() === 'ob64';
     const parade = allClasses().filter((c) => c.playable).slice(0, 24);
-    const quality = el('select', {
-      class: 'select', ui: 'quality', 'aria-label': 'Graphics quality',
-      on: {
-        change: (e) => {
-          const q = (e.target as HTMLSelectElement).value as Quality;
-          app.engine.setQuality(q);
-          saveQuality(q);
-        },
-      },
-    }, ...QUALITIES.map((q) => el('option', { value: q, selected: q === app.engine.currentQuality ? '' : undefined }, QUALITY_LABEL[q])));
+    const start = button('New campaign', onNewCampaign, { ui: 'new-campaign', class: 'btn-primary' });
+    start.prepend(icon('flag', 20));
+    const settings = button('Settings', () => openSettings(app, this.root), { ui: 'title-settings' });
+    settings.prepend(icon('gear', 18));
+    // The parade steps along, each in its own time.
+    const marchers = parade.map((c, k) => {
+      const figure = unitIcon(c.palette, 44);
+      figure.style.animationDelay = `${-(k * 0.37) % 1.6}s`;
+      return figure;
+    });
 
     this.root = el('div', { class: 'screen title-screen', ui: 'title' },
       el('div', { class: 'title-card' },
         el('h1', { class: 'title-name' }, 'Palatinus'),
         el('div', { class: 'title-sub' }, 'Tactics'),
         el('p', { class: 'title-tag' }, 'A real-time strategy RPG in the spirit of the classics'),
-        el('div', { class: 'title-actions' },
-          button('New campaign', onNewCampaign, { ui: 'new-campaign', class: 'btn-primary' }),
-        ),
+        el('div', { class: 'title-menu panel' }, start, settings),
         el('p', { class: 'title-brief' }, 'March your squads. Liberate the towns. Take Castle Verlaine.'),
         el('div', { class: `title-data ${authentic ? 'is-authentic' : ''}`, ui: 'dataset' },
           `Class data: ${datasetLabel()} · ${allClasses().length} classes`),
-        el('label', { class: 'title-quality' }, 'Graphics', quality),
       ),
-      el('div', { class: 'parade', 'aria-hidden': 'true' }, ...parade.map((c) => unitIcon(c.palette, 40))),
+      el('div', { class: 'parade', 'aria-hidden': 'true' }, ...marchers),
     );
   }
 

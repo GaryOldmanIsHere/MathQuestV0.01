@@ -659,6 +659,7 @@ export class MapScreen implements Screen {
     if (st.phase !== 'playing') return;
     st.phase = result;
     const panel = el('div', { class: `end-panel panel is-${result}`, ui: 'end-panel', role: 'dialog' },
+      icon(result === 'victory' ? 'crown' : 'skull', 48),
       el('h2', {}, result === 'victory' ? 'Victory!' : 'Defeat…'),
       el('p', {}, result === 'victory' ? 'Castle Verlaine is yours. The realm is liberated.' : 'Fort Melchor has fallen.'),
       button('Title', () => this.exits.title(), { ui: 'to-title', class: 'btn-primary' }),

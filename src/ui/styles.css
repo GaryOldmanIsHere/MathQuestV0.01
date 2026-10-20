@@ -167,7 +167,8 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .title-brief { color: var(--ink); margin: 6px 0 0; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8); }
 .title-data { font-size: 0.85rem; color: var(--ink-faint); }
 .title-data.is-authentic { color: var(--good); }
-.title-quality { display: flex; gap: 8px; align-items: center; font-size: 0.85rem; color: var(--ink-soft); }
+.parade .unit-icon { animation: parade-step 1.6s ease-in-out infinite; }
+@keyframes parade-step { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .parade { display: flex; justify-content: center; align-items: flex-end; gap: 14px; flex-wrap: wrap; padding: 16px max(16px, env(safe-area-inset-left)) 22px; background: linear-gradient(0deg, rgba(8, 12, 30, 0.85), transparent); pointer-events: none !important; }
 
 /* -------------------------------------------------------------------- map */
@@ -233,6 +234,8 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .map-screen.is-covered .realm, .map-screen.is-covered .wealth, .map-screen.is-covered .roster, .map-screen.is-covered .minimap-wrap { display: none; }
 .end-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 30px 44px; display: grid; gap: 12px; justify-items: center; text-align: center; min-width: min(440px, 90vw); animation: pop-in 600ms var(--ease); }
 .end-panel h2 { font-size: 2.4rem; }
+.end-panel > .icon { color: var(--gold-bright); filter: drop-shadow(0 0 12px rgba(243, 220, 152, 0.6)); }
+.end-panel.is-defeat > .icon { color: var(--bad); filter: none; }
 .end-panel.is-defeat h2 { color: var(--bad); }
 
 /* ----------------------------------------------------------------- battle */
@@ -411,4 +414,5 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
   .screen, .toast, .float-number, .versus, .battle-wipe, .side-card, .battle-outcome, .end-panel, .level-up, .settings { animation-duration: 1ms !important; }
   .bar-fill { transition: none; }
   .roster-card:hover { transform: none; }
+  .parade .unit-icon { animation: none; }
 }

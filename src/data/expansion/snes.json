@@ -1,0 +1,3726 @@
+[
+ {
+  "name": "Fighter",
+  "family": "fighter",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   77,
+   5
+  ],
+  "str": [
+   45,
+   2
+  ],
+  "agi": [
+   47,
+   2
+  ],
+  "int": [
+   40,
+   1
+  ],
+  "cha0": 46,
+  "ali0": 50,
+  "luk0": 45,
+  "aff": {
+   "p": 44,
+   "f": 36,
+   "i": 40,
+   "e": 34,
+   "b": 40,
+   "w": 40
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Slash",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Slash",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Knight",
+  "family": "fighter",
+  "from": "Fighter",
+  "level": 5,
+  "cha": 50,
+  "aliMin": 50,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   76,
+   5
+  ],
+  "str": [
+   49,
+   3
+  ],
+  "agi": [
+   52,
+   2
+  ],
+  "int": [
+   44,
+   1
+  ],
+  "cha0": 55,
+  "ali0": 62,
+  "luk0": 50,
+  "aff": {
+   "p": 47,
+   "f": 39,
+   "i": 43,
+   "e": 37,
+   "b": 34,
+   "w": 46
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Slash",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Slash",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Paladin",
+  "family": "fighter",
+  "from": "Knight",
+  "level": 15,
+  "cha": 60,
+  "aliMin": 70,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   67,
+   6
+  ],
+  "str": [
+   56,
+   3
+  ],
+  "agi": [
+   56,
+   2
+  ],
+  "int": [
+   45,
+   2
+  ],
+  "cha0": 62,
+  "ali0": 78,
+  "luk0": 50,
+  "aff": {
+   "p": 53,
+   "f": 41,
+   "i": 46,
+   "e": 40,
+   "b": 26,
+   "w": 54
+  },
+  "terrain": "Plains",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Slice",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Healing",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Vampyre",
+  "family": "fighter",
+  "from": "Knight",
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": "Blood Kiss",
+  "formOf": null,
+  "hp": [
+   45,
+   4
+  ],
+  "str": [
+   42,
+   3
+  ],
+  "agi": [
+   45,
+   2
+  ],
+  "int": [
+   61,
+   4
+  ],
+  "cha0": 50,
+  "ali0": 19,
+  "luk0": 62,
+  "aff": {
+   "p": 82,
+   "f": 78,
+   "i": 85,
+   "e": 48,
+   "b": 80,
+   "w": 10
+  },
+  "terrain": "Forest",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Lifesuck",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Charm",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Coffin",
+  "family": "fighter",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": "Vampyre",
+  "hp": [
+   45,
+   4
+  ],
+  "str": [
+   42,
+   3
+  ],
+  "agi": [
+   45,
+   2
+  ],
+  "int": [
+   61,
+   4
+  ],
+  "cha0": 50,
+  "ali0": 19,
+  "luk0": 2,
+  "aff": {
+   "p": 100,
+   "f": 100,
+   "i": 100,
+   "e": 100,
+   "b": 100,
+   "w": 100
+  },
+  "terrain": "Dungeon",
+  "bulk": 0,
+  "large": false,
+  "front": {
+   "attack": "Sleeping",
+   "hits": 1
+  },
+  "back": {
+   "attack": "Sleeping",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Wild Man",
+  "family": "fighter",
+  "from": "Fighter",
+  "level": 6,
+  "cha": 50,
+  "aliMin": 0,
+  "aliMax": 49,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   71,
+   6
+  ],
+  "str": [
+   52,
+   3
+  ],
+  "agi": [
+   53,
+   2
+  ],
+  "int": [
+   41,
+   1
+  ],
+  "cha0": 54,
+  "ali0": 41,
+  "luk0": 54,
+  "aff": {
+   "p": 48,
+   "f": 43,
+   "i": 38,
+   "e": 36,
+   "b": 46,
+   "w": 34
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Smash",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Smash",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Evil One",
+  "family": "fighter",
+  "from": "Wild Man",
+  "level": 16,
+  "cha": 60,
+  "aliMin": 0,
+  "aliMax": 30,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   74,
+   6
+  ],
+  "str": [
+   58,
+   3
+  ],
+  "agi": [
+   57,
+   2
+  ],
+  "int": [
+   42,
+   2
+  ],
+  "cha0": 58,
+  "ali0": 23,
+  "luk0": 62,
+  "aff": {
+   "p": 54,
+   "f": 46,
+   "i": 40,
+   "e": 39,
+   "b": 55,
+   "w": 25
+  },
+  "terrain": "Plains",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Chop",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Fireball",
+   "hits": 2
+  }
+ },
+ {
+  "name": "WereWolf",
+  "family": "fighter",
+  "from": "Fighter",
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": "Virus",
+  "formOf": null,
+  "hp": [
+   79,
+   6
+  ],
+  "str": [
+   53,
+   3
+  ],
+  "agi": [
+   54,
+   3
+  ],
+  "int": [
+   44,
+   1
+  ],
+  "cha0": 31,
+  "ali0": 38,
+  "luk0": 49,
+  "aff": {
+   "p": 71,
+   "f": 72,
+   "i": 77,
+   "e": 78,
+   "b": 92,
+   "w": 11
+  },
+  "terrain": "Mountains",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Smash",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Smash",
+   "hits": 3
+  }
+ },
+ {
+  "name": "Tiger Man",
+  "family": "fighter",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": "Full Moon Stone",
+  "formOf": null,
+  "hp": [
+   77,
+   6
+  ],
+  "str": [
+   59,
+   4
+  ],
+  "agi": [
+   58,
+   3
+  ],
+  "int": [
+   45,
+   1
+  ],
+  "cha0": 28,
+  "ali0": 36,
+  "luk0": 52,
+  "aff": {
+   "p": 74,
+   "f": 76,
+   "i": 71,
+   "e": 75,
+   "b": 94,
+   "w": 14
+  },
+  "terrain": "Forest",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Smash",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Smash",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Beast Man",
+  "family": "fighter",
+  "from": "Fighter",
+  "level": 5,
+  "cha": 50,
+  "aliMin": 25,
+  "aliMax": 65,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   85,
+   5
+  ],
+  "str": [
+   51,
+   3
+  ],
+  "agi": [
+   47,
+   2
+  ],
+  "int": [
+   38,
+   1
+  ],
+  "cha0": 50,
+  "ali0": 45,
+  "luk0": 43,
+  "aff": {
+   "p": 44,
+   "f": 28,
+   "i": 31,
+   "e": 35,
+   "b": 46,
+   "w": 34
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Whip",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Whip",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Beast Master",
+  "family": "fighter",
+  "from": "Beast Man",
+  "level": 12,
+  "cha": 60,
+  "aliMin": 10,
+  "aliMax": 50,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   79,
+   5
+  ],
+  "str": [
+   53,
+   4
+  ],
+  "agi": [
+   49,
+   2
+  ],
+  "int": [
+   36,
+   1
+  ],
+  "cha0": 56,
+  "ali0": 33,
+  "luk0": 46,
+  "aff": {
+   "p": 48,
+   "f": 27,
+   "i": 35,
+   "e": 39,
+   "b": 55,
+   "w": 25
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Whip",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Whip",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Dragoner",
+  "family": "fighter",
+  "from": "Beast Master",
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": "Dragos",
+  "formOf": null,
+  "hp": [
+   83,
+   4
+  ],
+  "str": [
+   48,
+   3
+  ],
+  "agi": [
+   51,
+   2
+  ],
+  "int": [
+   49,
+   2
+  ],
+  "cha0": 55,
+  "ali0": 50,
+  "luk0": 58,
+  "aff": {
+   "p": 43,
+   "f": 26,
+   "i": 54,
+   "e": 40,
+   "b": 40,
+   "w": 40
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Slice",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Slice",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Dragon Master",
+  "family": "fighter",
+  "from": "Dragoner",
+  "level": 20,
+  "cha": 65,
+  "aliMin": 40,
+  "aliMax": 60,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   85,
+   3
+  ],
+  "str": [
+   52,
+   3
+  ],
+  "agi": [
+   53,
+   3
+  ],
+  "int": [
+   51,
+   2
+  ],
+  "cha0": 63,
+  "ali0": 50,
+  "luk0": 65,
+  "aff": {
+   "p": 45,
+   "f": 22,
+   "i": 58,
+   "e": 47,
+   "b": 40,
+   "w": 40
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Slice",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Icefield",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Doll Mage",
+  "family": "fighter",
+  "from": "Fighter",
+  "level": 5,
+  "cha": 50,
+  "aliMin": 30,
+  "aliMax": 70,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   78,
+   3
+  ],
+  "str": [
+   40,
+   1
+  ],
+  "agi": [
+   54,
+   2
+  ],
+  "int": [
+   53,
+   3
+  ],
+  "cha0": 52,
+  "ali0": 53,
+  "luk0": 47,
+  "aff": {
+   "p": 28,
+   "f": 44,
+   "i": 39,
+   "e": 27,
+   "b": 37,
+   "w": 43
+  },
+  "terrain": "Plains",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Doll",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Acid",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Doll Master",
+  "family": "fighter",
+  "from": "Doll Mage",
+  "level": 14,
+  "cha": 60,
+  "aliMin": 50,
+  "aliMax": 80,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   78,
+   3
+  ],
+  "str": [
+   38,
+   1
+  ],
+  "agi": [
+   57,
+   2
+  ],
+  "int": [
+   57,
+   3
+  ],
+  "cha0": 58,
+  "ali0": 69,
+  "luk0": 42,
+  "aff": {
+   "p": 26,
+   "f": 47,
+   "i": 41,
+   "e": 29,
+   "b": 21,
+   "w": 59
+  },
+  "terrain": "Plains",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Puppet",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Acid",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Ninja",
+  "family": "fighter",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   76,
+   4
+  ],
+  "str": [
+   46,
+   3
+  ],
+  "agi": [
+   50,
+   3
+  ],
+  "int": [
+   50,
+   2
+  ],
+  "cha0": 47,
+  "ali0": 38,
+  "luk0": 48,
+  "aff": {
+   "p": 45,
+   "f": 50,
+   "i": 44,
+   "e": 43,
+   "b": 43,
+   "w": 37
+  },
+  "terrain": "Forest",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Shuriken",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Ninjitsu",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Ninja Master",
+  "family": "fighter",
+  "from": "Ninja",
+  "level": 15,
+  "cha": 60,
+  "aliMin": 0,
+  "aliMax": 30,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   77,
+   5
+  ],
+  "str": [
+   51,
+   3
+  ],
+  "agi": [
+   52,
+   4
+  ],
+  "int": [
+   55,
+   3
+  ],
+  "cha0": 56,
+  "ali0": 22,
+  "luk0": 56,
+  "aff": {
+   "p": 47,
+   "f": 52,
+   "i": 46,
+   "e": 45,
+   "b": 68,
+   "w": 2
+  },
+  "terrain": "Forest",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Shuriken",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Ninjitsu",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Wizard",
+  "family": "fighter",
+  "from": "Fighter",
+  "level": 4,
+  "cha": 50,
+  "aliMin": 10,
+  "aliMax": 60,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   86,
+   2
+  ],
+  "str": [
+   37,
+   1
+  ],
+  "agi": [
+   51,
+   1
+  ],
+  "int": [
+   45,
+   4
+  ],
+  "cha0": 50,
+  "ali0": 45,
+  "luk0": 50,
+  "aff": {
+   "p": 20,
+   "f": 32,
+   "i": 32,
+   "e": 37,
+   "b": 45,
+   "w": 35
+  },
+  "terrain": "Plains",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Punch",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Magic",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Mage",
+  "family": "fighter",
+  "from": "Wizard",
+  "level": 10,
+  "cha": 60,
+  "aliMin": 10,
+  "aliMax": 35,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   81,
+   2
+  ],
+  "str": [
+   38,
+   1
+  ],
+  "agi": [
+   49,
+   1
+  ],
+  "int": [
+   45,
+   4
+  ],
+  "cha0": 55,
+  "ali0": 35,
+  "luk0": 48,
+  "aff": {
+   "p": 24,
+   "f": 34,
+   "i": 35,
+   "e": 38,
+   "b": 51,
+   "w": 29
+  },
+  "terrain": "Plains",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Punch",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Magic",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Sorcerer",
+  "family": "fighter",
+  "from": "Mage",
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": "Undead Staff",
+  "formOf": null,
+  "hp": [
+   73,
+   3
+  ],
+  "str": [
+   39,
+   1
+  ],
+  "agi": [
+   47,
+   1
+  ],
+  "int": [
+   55,
+   4
+  ],
+  "cha0": 60,
+  "ali0": 21,
+  "luk0": 45,
+  "aff": {
+   "p": 28,
+   "f": 36,
+   "i": 38,
+   "e": 39,
+   "b": 59,
+   "w": 21
+  },
+  "terrain": "Plains",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Magic",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Magic",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Lich",
+  "family": "fighter",
+  "from": "Sorcerer",
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": "Undead Ring",
+  "formOf": null,
+  "hp": [
+   88,
+   2
+  ],
+  "str": [
+   35,
+   1
+  ],
+  "agi": [
+   46,
+   2
+  ],
+  "int": [
+   59,
+   4
+  ],
+  "cha0": 62,
+  "ali0": 9,
+  "luk0": 42,
+  "aff": {
+   "p": 100,
+   "f": 100,
+   "i": 100,
+   "e": 100,
+   "b": 100,
+   "w": 10
+  },
+  "terrain": "Plains",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Cold Eye",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Magic",
+   "hits": 3
+  }
+ },
+ {
+  "name": "Samurai",
+  "family": "fighter",
+  "from": "Fighter",
+  "level": 7,
+  "cha": 50,
+  "aliMin": 50,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   86,
+   5
+  ],
+  "str": [
+   50,
+   3
+  ],
+  "agi": [
+   54,
+   2
+  ],
+  "int": [
+   51,
+   2
+  ],
+  "cha0": 56,
+  "ali0": 61,
+  "luk0": 47,
+  "aff": {
+   "p": 46,
+   "f": 32,
+   "i": 37,
+   "e": 34,
+   "b": 39,
+   "w": 51
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Slice",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Iainuki",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Samurai Master",
+  "family": "fighter",
+  "from": "Samurai",
+  "level": 15,
+  "cha": 60,
+  "aliMin": 70,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   96,
+   5
+  ],
+  "str": [
+   55,
+   3
+  ],
+  "agi": [
+   59,
+   2
+  ],
+  "int": [
+   54,
+   2
+  ],
+  "cha0": 64,
+  "ali0": 79,
+  "luk0": 54,
+  "aff": {
+   "p": 52,
+   "f": 34,
+   "i": 35,
+   "e": 37,
+   "b": 21,
+   "w": 69
+  },
+  "terrain": "Plains",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Slice",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Iainuki",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Amazon",
+  "family": "amazon",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   83,
+   4
+  ],
+  "str": [
+   42,
+   2
+  ],
+  "agi": [
+   50,
+   3
+  ],
+  "int": [
+   52,
+   2
+  ],
+  "cha0": 46,
+  "ali0": 50,
+  "luk0": 48,
+  "aff": {
+   "p": 38,
+   "f": 32,
+   "i": 36,
+   "e": 43,
+   "b": 38,
+   "w": 42
+  },
+  "terrain": "Forest",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Arrow",
+   "hits": 1
+  },
+  "back": {
+   "attack": "Arrow",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Valkyrie",
+  "family": "amazon",
+  "from": "Amazon",
+  "level": 5,
+  "cha": 50,
+  "aliMin": 35,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   81,
+   4
+  ],
+  "str": [
+   45,
+   2
+  ],
+  "agi": [
+   52,
+   3
+  ],
+  "int": [
+   54,
+   3
+  ],
+  "cha0": 53,
+  "ali0": 54,
+  "luk0": 52,
+  "aff": {
+   "p": 42,
+   "f": 34,
+   "i": 44,
+   "e": 52,
+   "b": 32,
+   "w": 48
+  },
+  "terrain": "Forest",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Chop",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Bolt",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Muse",
+  "family": "amazon",
+  "from": "Valkyrie",
+  "level": 15,
+  "cha": 60,
+  "aliMin": 70,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   76,
+   4
+  ],
+  "str": [
+   48,
+   3
+  ],
+  "agi": [
+   55,
+   3
+  ],
+  "int": [
+   56,
+   3
+  ],
+  "cha0": 62,
+  "ali0": 75,
+  "luk0": 64,
+  "aff": {
+   "p": 46,
+   "f": 38,
+   "i": 52,
+   "e": 60,
+   "b": 15,
+   "w": 65
+  },
+  "terrain": "Snow",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Chop",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Thunder",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Witch",
+  "family": "amazon",
+  "from": "Amazon",
+  "level": 5,
+  "cha": 50,
+  "aliMin": 0,
+  "aliMax": 65,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   80,
+   3
+  ],
+  "str": [
+   38,
+   1
+  ],
+  "agi": [
+   49,
+   2
+  ],
+  "int": [
+   58,
+   4
+  ],
+  "cha0": 53,
+  "ali0": 47,
+  "luk0": 67,
+  "aff": {
+   "p": 25,
+   "f": 30,
+   "i": 28,
+   "e": 31,
+   "b": 48,
+   "w": 50
+  },
+  "terrain": "Plains",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Slap",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Stun",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Cleric",
+  "family": "amazon",
+  "from": "Amazon",
+  "level": 4,
+  "cha": 50,
+  "aliMin": 50,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   87,
+   4
+  ],
+  "str": [
+   41,
+   2
+  ],
+  "agi": [
+   54,
+   1
+  ],
+  "int": [
+   52,
+   3
+  ],
+  "cha0": 57,
+  "ali0": 65,
+  "luk0": 49,
+  "aff": {
+   "p": 24,
+   "f": 23,
+   "i": 21,
+   "e": 25,
+   "b": 25,
+   "w": 55
+  },
+  "terrain": "Plains",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Ankh",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Healing",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Shaman",
+  "family": "amazon",
+  "from": "Cleric",
+  "level": 10,
+  "cha": 65,
+  "aliMin": 65,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   83,
+   4
+  ],
+  "str": [
+   43,
+   2
+  ],
+  "agi": [
+   57,
+   2
+  ],
+  "int": [
+   58,
+   4
+  ],
+  "cha0": 64,
+  "ali0": 76,
+  "luk0": 53,
+  "aff": {
+   "p": 28,
+   "f": 27,
+   "i": 25,
+   "e": 27,
+   "b": 18,
+   "w": 62
+  },
+  "terrain": "Plains",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Ankh",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Healing",
+   "hits": 3
+  }
+ },
+ {
+  "name": "Monk",
+  "family": "amazon",
+  "from": "Shaman",
+  "level": 18,
+  "cha": 73,
+  "aliMin": 73,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   74,
+   4
+  ],
+  "str": [
+   45,
+   2
+  ],
+  "agi": [
+   61,
+   2
+  ],
+  "int": [
+   61,
+   4
+  ],
+  "cha0": 68,
+  "ali0": 87,
+  "luk0": 56,
+  "aff": {
+   "p": 32,
+   "f": 31,
+   "i": 29,
+   "e": 29,
+   "b": 10,
+   "w": 70
+  },
+  "terrain": "Plains",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Ankh",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Healing+",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Princess",
+  "family": "amazon",
+  "from": "Amazon",
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": "Royal Crown",
+  "formOf": null,
+  "hp": [
+   70,
+   2
+  ],
+  "str": [
+   37,
+   1
+  ],
+  "agi": [
+   48,
+   2
+  ],
+  "int": [
+   57,
+   4
+  ],
+  "cha0": 72,
+  "ali0": 81,
+  "luk0": 63,
+  "aff": {
+   "p": 27,
+   "f": 21,
+   "i": 22,
+   "e": 25,
+   "b": 20,
+   "w": 65
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "StarDust",
+   "hits": 2
+  },
+  "back": {
+   "attack": "StarLite",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Dragon",
+  "family": "dragon",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   93,
+   8
+  ],
+  "str": [
+   60,
+   4
+  ],
+  "agi": [
+   37,
+   2
+  ],
+  "int": [
+   42,
+   1
+  ],
+  "cha0": 40,
+  "ali0": 50,
+  "luk0": 50,
+  "aff": {
+   "p": 52,
+   "f": 50,
+   "i": 46,
+   "e": 47,
+   "b": 44,
+   "w": 44
+  },
+  "terrain": "Plains",
+  "bulk": 6,
+  "large": true,
+  "front": {
+   "attack": "Bite",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Fire",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Red Dragon",
+  "family": "dragon",
+  "from": "Dragon",
+  "level": 7,
+  "cha": null,
+  "aliMin": 35,
+  "aliMax": 65,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   91,
+   9
+  ],
+  "str": [
+   62,
+   4
+  ],
+  "agi": [
+   40,
+   2
+  ],
+  "int": [
+   44,
+   2
+  ],
+  "cha0": 50,
+  "ali0": 50,
+  "luk0": 50,
+  "aff": {
+   "p": 54,
+   "f": 58,
+   "i": 44,
+   "e": 60,
+   "b": 44,
+   "w": 44
+  },
+  "terrain": "Mountains",
+  "bulk": 7,
+  "large": true,
+  "front": {
+   "attack": "Bite",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Fire",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Red Dragon II",
+  "family": "dragon",
+  "from": "Red Dragon",
+  "level": 16,
+  "cha": null,
+  "aliMin": 36,
+  "aliMax": 65,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   87,
+   10
+  ],
+  "str": [
+   67,
+   4
+  ],
+  "agi": [
+   43,
+   2
+  ],
+  "int": [
+   48,
+   3
+  ],
+  "cha0": 53,
+  "ali0": 50,
+  "luk0": 53,
+  "aff": {
+   "p": 59,
+   "f": 67,
+   "i": 25,
+   "e": 63,
+   "b": 48,
+   "w": 48
+  },
+  "terrain": "Mountains",
+  "bulk": 8,
+  "large": true,
+  "front": {
+   "attack": "Bite",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Fire",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Salamand",
+  "family": "dragon",
+  "from": "Red Dragon II",
+  "level": 23,
+  "cha": null,
+  "aliMin": 35,
+  "aliMax": 65,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   80,
+   11
+  ],
+  "str": [
+   61,
+   5
+  ],
+  "agi": [
+   47,
+   3
+  ],
+  "int": [
+   44,
+   4
+  ],
+  "cha0": 57,
+  "ali0": 50,
+  "luk0": 56,
+  "aff": {
+   "p": 62,
+   "f": 86,
+   "i": 11,
+   "e": 67,
+   "b": 51,
+   "w": 51
+  },
+  "terrain": "Mountains",
+  "bulk": 8,
+  "large": true,
+  "front": {
+   "attack": "Fire",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Nova",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Silver Dragon",
+  "family": "dragon",
+  "from": "Dragon",
+  "level": 7,
+  "cha": null,
+  "aliMin": 65,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   95,
+   9
+  ],
+  "str": [
+   64,
+   4
+  ],
+  "agi": [
+   38,
+   2
+  ],
+  "int": [
+   46,
+   2
+  ],
+  "cha0": 52,
+  "ali0": 71,
+  "luk0": 50,
+  "aff": {
+   "p": 53,
+   "f": 28,
+   "i": 58,
+   "e": 64,
+   "b": 37,
+   "w": 66
+  },
+  "terrain": "Snow",
+  "bulk": 7,
+  "large": true,
+  "front": {
+   "attack": "Bite",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Cold",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Gold Dragon",
+  "family": "dragon",
+  "from": "Silver Dragon",
+  "level": 17,
+  "cha": null,
+  "aliMin": 65,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   90,
+   10
+  ],
+  "str": [
+   69,
+   4
+  ],
+  "agi": [
+   41,
+   3
+  ],
+  "int": [
+   50,
+   3
+  ],
+  "cha0": 62,
+  "ali0": 77,
+  "luk0": 51,
+  "aff": {
+   "p": 57,
+   "f": 23,
+   "i": 69,
+   "e": 66,
+   "b": 27,
+   "w": 71
+  },
+  "terrain": "Snow",
+  "bulk": 8,
+  "large": true,
+  "front": {
+   "attack": "Bite",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Cold",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Platinum Dragon",
+  "family": "dragon",
+  "from": "Gold Dragon",
+  "level": 24,
+  "cha": null,
+  "aliMin": 65,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   83,
+   11
+  ],
+  "str": [
+   63,
+   5
+  ],
+  "agi": [
+   45,
+   3
+  ],
+  "int": [
+   46,
+   4
+  ],
+  "cha0": 67,
+  "ali0": 82,
+  "luk0": 53,
+  "aff": {
+   "p": 61,
+   "f": 11,
+   "i": 88,
+   "e": 69,
+   "b": 17,
+   "w": 76
+  },
+  "terrain": "Snow",
+  "bulk": 8,
+  "large": true,
+  "front": {
+   "attack": "Cold",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Ice Cloud",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Black Dragon",
+  "family": "dragon",
+  "from": "Dragon",
+  "level": 7,
+  "cha": null,
+  "aliMin": 0,
+  "aliMax": 35,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   97,
+   9
+  ],
+  "str": [
+   65,
+   4
+  ],
+  "agi": [
+   36,
+   2
+  ],
+  "int": [
+   43,
+   2
+  ],
+  "cha0": 48,
+  "ali0": 29,
+  "luk0": 50,
+  "aff": {
+   "p": 55,
+   "f": 49,
+   "i": 51,
+   "e": 69,
+   "b": 64,
+   "w": 35
+  },
+  "terrain": "Plains",
+  "bulk": 7,
+  "large": true,
+  "front": {
+   "attack": "Bite",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Acid",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Tiamat",
+  "family": "dragon",
+  "from": "Black Dragon",
+  "level": 15,
+  "cha": null,
+  "aliMin": 0,
+  "aliMax": 35,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   86,
+   10
+  ],
+  "str": [
+   70,
+   4
+  ],
+  "agi": [
+   39,
+   3
+  ],
+  "int": [
+   47,
+   3
+  ],
+  "cha0": 51,
+  "ali0": 23,
+  "luk0": 48,
+  "aff": {
+   "p": 59,
+   "f": 53,
+   "i": 54,
+   "e": 76,
+   "b": 69,
+   "w": 30
+  },
+  "terrain": "Plains",
+  "bulk": 8,
+  "large": true,
+  "front": {
+   "attack": "Acid",
+   "hits": 2
+  },
+  "back": {
+   "attack": "EvilDead",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Zombie Dragon",
+  "family": "dragon",
+  "from": "Tiamat",
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": "Undead Ring",
+  "formOf": null,
+  "hp": [
+   78,
+   11
+  ],
+  "str": [
+   64,
+   5
+  ],
+  "agi": [
+   43,
+   4
+  ],
+  "int": [
+   53,
+   3
+  ],
+  "cha0": 47,
+  "ali0": 0,
+  "luk0": 63,
+  "aff": {
+   "p": 73,
+   "f": 79,
+   "i": 78,
+   "e": 86,
+   "b": 83,
+   "w": 15
+  },
+  "terrain": "Swamps",
+  "bulk": 8,
+  "large": true,
+  "front": {
+   "attack": "Acid",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Rot",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Giant",
+  "family": "giant",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   89,
+   7
+  ],
+  "str": [
+   54,
+   3
+  ],
+  "agi": [
+   40,
+   2
+  ],
+  "int": [
+   30,
+   2
+  ],
+  "cha0": 33,
+  "ali0": 50,
+  "luk0": 44,
+  "aff": {
+   "p": 48,
+   "f": 42,
+   "i": 37,
+   "e": 41,
+   "b": 40,
+   "w": 40
+  },
+  "terrain": "Plains",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Club",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Club",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Fire Giant",
+  "family": "giant",
+  "from": "Giant",
+  "level": 10,
+  "cha": null,
+  "aliMin": 50,
+  "aliMax": 80,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   94,
+   8
+  ],
+  "str": [
+   57,
+   4
+  ],
+  "agi": [
+   38,
+   3
+  ],
+  "int": [
+   37,
+   2
+  ],
+  "cha0": 38,
+  "ali0": 70,
+  "luk0": 48,
+  "aff": {
+   "p": 52,
+   "f": 80,
+   "i": 15,
+   "e": 54,
+   "b": 35,
+   "w": 60
+  },
+  "terrain": "Snowfield",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Club",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Fire Bolt",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Ice Giant",
+  "family": "giant",
+  "from": "Giant",
+  "level": 8,
+  "cha": null,
+  "aliMin": 0,
+  "aliMax": 40,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   75,
+   8
+  ],
+  "str": [
+   59,
+   4
+  ],
+  "agi": [
+   49,
+   3
+  ],
+  "int": [
+   36,
+   2
+  ],
+  "cha0": 36,
+  "ali0": 27,
+  "luk0": 47,
+  "aff": {
+   "p": 57,
+   "f": 5,
+   "i": 80,
+   "e": 37,
+   "b": 54,
+   "w": 32
+  },
+  "terrain": "Mountains",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Club",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Ice Bolt",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Titan",
+  "family": "giant",
+  "from": "Giant",
+  "level": 15,
+  "cha": null,
+  "aliMin": 70,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   85,
+   8
+  ],
+  "str": [
+   62,
+   4
+  ],
+  "agi": [
+   45,
+   3
+  ],
+  "int": [
+   40,
+   3
+  ],
+  "cha0": 47,
+  "ali0": 75,
+  "luk0": 41,
+  "aff": {
+   "p": 54,
+   "f": 47,
+   "i": 39,
+   "e": 52,
+   "b": 15,
+   "w": 80
+  },
+  "terrain": "Plains",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Club",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Gale",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Faerie",
+  "family": "faerie",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   48,
+   3
+  ],
+  "str": [
+   38,
+   2
+  ],
+  "agi": [
+   52,
+   4
+  ],
+  "int": [
+   49,
+   4
+  ],
+  "cha0": 25,
+  "ali0": 50,
+  "luk0": 62,
+  "aff": {
+   "p": 30,
+   "f": 20,
+   "i": 23,
+   "e": 28,
+   "b": 40,
+   "w": 50
+  },
+  "terrain": "Low Sky",
+  "bulk": 1,
+  "large": false,
+  "front": {
+   "attack": "Slap",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Kiss",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Pixie",
+  "family": "faerie",
+  "from": "Faerie",
+  "level": 10,
+  "cha": null,
+  "aliMin": 30,
+  "aliMax": 70,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   56,
+   3
+  ],
+  "str": [
+   43,
+   2
+  ],
+  "agi": [
+   57,
+   5
+  ],
+  "int": [
+   53,
+   4
+  ],
+  "cha0": 37,
+  "ali0": 55,
+  "luk0": 65,
+  "aff": {
+   "p": 32,
+   "f": 28,
+   "i": 25,
+   "e": 26,
+   "b": 40,
+   "w": 55
+  },
+  "terrain": "Low Sky",
+  "bulk": 1,
+  "large": false,
+  "front": {
+   "attack": "Slap",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Kiss",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Sylph",
+  "family": "faerie",
+  "from": "Pixie",
+  "level": 20,
+  "cha": null,
+  "aliMin": 40,
+  "aliMax": 60,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   64,
+   4
+  ],
+  "str": [
+   40,
+   3
+  ],
+  "agi": [
+   63,
+   5
+  ],
+  "int": [
+   47,
+   4
+  ],
+  "cha0": 49,
+  "ali0": 60,
+  "luk0": 68,
+  "aff": {
+   "p": 35,
+   "f": 36,
+   "i": 27,
+   "e": 22,
+   "b": 30,
+   "w": 60
+  },
+  "terrain": "Low Sky",
+  "bulk": 1,
+  "large": false,
+  "front": {
+   "attack": "Slap",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Missile",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Angel",
+  "family": "angel",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   70,
+   4
+  ],
+  "str": [
+   40,
+   2
+  ],
+  "agi": [
+   43,
+   2
+  ],
+  "int": [
+   50,
+   3
+  ],
+  "cha0": 50,
+  "ali0": 65,
+  "luk0": 50,
+  "aff": {
+   "p": 27,
+   "f": 39,
+   "i": 40,
+   "e": 37,
+   "b": 35,
+   "w": 55
+  },
+  "terrain": "Low Sky",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Halo",
+   "hits": 1
+  },
+  "back": {
+   "attack": "Banish",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Cherubim",
+  "family": "angel",
+  "from": "Angel",
+  "level": 11,
+  "cha": 55,
+  "aliMin": 60,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   71,
+   4
+  ],
+  "str": [
+   45,
+   2
+  ],
+  "agi": [
+   46,
+   2
+  ],
+  "int": [
+   55,
+   4
+  ],
+  "cha0": 60,
+  "ali0": 76,
+  "luk0": 54,
+  "aff": {
+   "p": 31,
+   "f": 42,
+   "i": 44,
+   "e": 41,
+   "b": 24,
+   "w": 66
+  },
+  "terrain": "Low Sky",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Halo",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Banish",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Seraphim",
+  "family": "angel",
+  "from": "Cherubim",
+  "level": 22,
+  "cha": 60,
+  "aliMin": 80,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   76,
+   4
+  ],
+  "str": [
+   49,
+   2
+  ],
+  "agi": [
+   49,
+   3
+  ],
+  "int": [
+   60,
+   4
+  ],
+  "cha0": 70,
+  "ali0": 87,
+  "luk0": 57,
+  "aff": {
+   "p": 35,
+   "f": 45,
+   "i": 48,
+   "e": 45,
+   "b": 17,
+   "w": 77
+  },
+  "terrain": "Low Sky",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Halo",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Jihad",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Imp",
+  "family": "demon",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   68,
+   5
+  ],
+  "str": [
+   45,
+   2
+  ],
+  "agi": [
+   45,
+   2
+  ],
+  "int": [
+   48,
+   3
+  ],
+  "cha0": 50,
+  "ali0": 25,
+  "luk0": 48,
+  "aff": {
+   "p": 44,
+   "f": 37,
+   "i": 44,
+   "e": 38,
+   "b": 55,
+   "w": 35
+  },
+  "terrain": "Low Sky",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Chop",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Nightmare",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Demon",
+  "family": "demon",
+  "from": "Imp",
+  "level": 10,
+  "cha": 50,
+  "aliMin": 0,
+  "aliMax": 40,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   69,
+   6
+  ],
+  "str": [
+   49,
+   3
+  ],
+  "agi": [
+   48,
+   3
+  ],
+  "int": [
+   53,
+   3
+  ],
+  "cha0": 60,
+  "ali0": 15,
+  "luk0": 52,
+  "aff": {
+   "p": 47,
+   "f": 40,
+   "i": 49,
+   "e": 44,
+   "b": 65,
+   "w": 25
+  },
+  "terrain": "Low Sky",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Chop",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Nightmare",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Devil",
+  "family": "demon",
+  "from": "Demon",
+  "level": 20,
+  "cha": 50,
+  "aliMin": 0,
+  "aliMax": 25,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   70,
+   6
+  ],
+  "str": [
+   56,
+   3
+  ],
+  "agi": [
+   51,
+   3
+  ],
+  "int": [
+   58,
+   4
+  ],
+  "cha0": 70,
+  "ali0": 5,
+  "luk0": 55,
+  "aff": {
+   "p": 53,
+   "f": 42,
+   "i": 52,
+   "e": 48,
+   "b": 86,
+   "w": 4
+  },
+  "terrain": "Low Sky",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Chop",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Meteor",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Hawk Man",
+  "family": "birdman",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   87,
+   5
+  ],
+  "str": [
+   45,
+   2
+  ],
+  "agi": [
+   55,
+   3
+  ],
+  "int": [
+   52,
+   1
+  ],
+  "cha0": 40,
+  "ali0": 50,
+  "luk0": 42,
+  "aff": {
+   "p": 39,
+   "f": 36,
+   "i": 40,
+   "e": 44,
+   "b": 40,
+   "w": 40
+  },
+  "terrain": "Low Sky",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Club",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Club",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Eagle Man",
+  "family": "birdman",
+  "from": "Hawk Man",
+  "level": 10,
+  "cha": 50,
+  "aliMin": 45,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   86,
+   6
+  ],
+  "str": [
+   49,
+   2
+  ],
+  "agi": [
+   60,
+   4
+  ],
+  "int": [
+   58,
+   2
+  ],
+  "cha0": 60,
+  "ali0": 66,
+  "luk0": 56,
+  "aff": {
+   "p": 42,
+   "f": 39,
+   "i": 43,
+   "e": 80,
+   "b": 34,
+   "w": 56
+  },
+  "terrain": "Low Sky",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Club",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Thunder",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Raven Man",
+  "family": "birdman",
+  "from": "Eagle Man",
+  "level": 12,
+  "cha": 50,
+  "aliMin": 0,
+  "aliMax": 55,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   95,
+   6
+  ],
+  "str": [
+   52,
+   2
+  ],
+  "agi": [
+   62,
+   4
+  ],
+  "int": [
+   55,
+   2
+  ],
+  "cha0": 55,
+  "ali0": 31,
+  "luk0": 48,
+  "aff": {
+   "p": 40,
+   "f": 70,
+   "i": 46,
+   "e": 47,
+   "b": 69,
+   "w": 21
+  },
+  "terrain": "Low Sky",
+  "bulk": 4,
+  "large": false,
+  "front": {
+   "attack": "Club",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Inferno",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Golem",
+  "family": "golem",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   45,
+   2
+  ],
+  "str": [
+   56,
+   4
+  ],
+  "agi": [
+   31,
+   1
+  ],
+  "int": [
+   30,
+   2
+  ],
+  "cha0": 20,
+  "ali0": 50,
+  "luk0": 39,
+  "aff": {
+   "p": 69,
+   "f": 38,
+   "i": 63,
+   "e": 61,
+   "b": 55,
+   "w": 43
+  },
+  "terrain": "Plains",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Punch",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Punch",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Rock Golem",
+  "family": "golem",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   53,
+   2
+  ],
+  "str": [
+   60,
+   4
+  ],
+  "agi": [
+   32,
+   1
+  ],
+  "int": [
+   30,
+   2
+  ],
+  "cha0": 30,
+  "ali0": 55,
+  "luk0": 40,
+  "aff": {
+   "p": 43,
+   "f": 33,
+   "i": 48,
+   "e": 53,
+   "b": 55,
+   "w": 5
+  },
+  "terrain": "Mountains",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Punch",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Punch",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Iron Golem",
+  "family": "golem",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   67,
+   2
+  ],
+  "str": [
+   63,
+   4
+  ],
+  "agi": [
+   33,
+   2
+  ],
+  "int": [
+   30,
+   2
+  ],
+  "cha0": 48,
+  "ali0": 73,
+  "luk0": 45,
+  "aff": {
+   "p": 82,
+   "f": 41,
+   "i": 81,
+   "e": 72,
+   "b": 63,
+   "w": 90
+  },
+  "terrain": "Plains",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Punch",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Punch",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Hellhound",
+  "family": "canine",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   87,
+   6
+  ],
+  "str": [
+   51,
+   3
+  ],
+  "agi": [
+   59,
+   3
+  ],
+  "int": [
+   32,
+   3
+  ],
+  "cha0": 17,
+  "ali0": 44,
+  "luk0": 51,
+  "aff": {
+   "p": 46,
+   "f": 49,
+   "i": 40,
+   "e": 37,
+   "b": 58,
+   "w": 22
+  },
+  "terrain": "Mountains",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Smash",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Fire",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Cerberus",
+  "family": "canine",
+  "from": "Hellhound",
+  "level": 13,
+  "cha": null,
+  "aliMin": 0,
+  "aliMax": 60,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   83,
+   7
+  ],
+  "str": [
+   56,
+   4
+  ],
+  "agi": [
+   62,
+   4
+  ],
+  "int": [
+   48,
+   4
+  ],
+  "cha0": 23,
+  "ali0": 30,
+  "luk0": 53,
+  "aff": {
+   "p": 51,
+   "f": 52,
+   "i": 40,
+   "e": 36,
+   "b": 65,
+   "w": 15
+  },
+  "terrain": "Mountains",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Smash",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Charm",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Wyrm",
+  "family": "wyrm",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   92,
+   8
+  ],
+  "str": [
+   58,
+   4
+  ],
+  "agi": [
+   47,
+   3
+  ],
+  "int": [
+   31,
+   1
+  ],
+  "cha0": 30,
+  "ali0": 42,
+  "luk0": 47,
+  "aff": {
+   "p": 45,
+   "f": 47,
+   "i": 39,
+   "e": 38,
+   "b": 48,
+   "w": 32
+  },
+  "terrain": "High Sky",
+  "bulk": 6,
+  "large": true,
+  "front": {
+   "attack": "Tail",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Tail",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Wyvern",
+  "family": "wyrm",
+  "from": "Wyrm",
+  "level": 13,
+  "cha": null,
+  "aliMin": 0,
+  "aliMax": 55,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   89,
+   9
+  ],
+  "str": [
+   63,
+   4
+  ],
+  "agi": [
+   51,
+   3
+  ],
+  "int": [
+   36,
+   1
+  ],
+  "cha0": 37,
+  "ali0": 30,
+  "luk0": 49,
+  "aff": {
+   "p": 43,
+   "f": 35,
+   "i": 3,
+   "e": 42,
+   "b": 50,
+   "w": 20
+  },
+  "terrain": "High Sky",
+  "bulk": 7,
+  "large": true,
+  "front": {
+   "attack": "Tail",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Fire",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Octopus",
+  "family": "octopus",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   78,
+   9
+  ],
+  "str": [
+   51,
+   3
+  ],
+  "agi": [
+   38,
+   2
+  ],
+  "int": [
+   47,
+   1
+  ],
+  "cha0": 20,
+  "ali0": 50,
+  "luk0": 50,
+  "aff": {
+   "p": 64,
+   "f": 54,
+   "i": 53,
+   "e": 20,
+   "b": 50,
+   "w": 50
+  },
+  "terrain": "Ocean",
+  "bulk": 8,
+  "large": true,
+  "front": {
+   "attack": "Tentacle",
+   "hits": 4
+  },
+  "back": {
+   "attack": "Tentacle",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Kraken",
+  "family": "octopus",
+  "from": "Octopus",
+  "level": 12,
+  "cha": null,
+  "aliMin": 55,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   86,
+   10
+  ],
+  "str": [
+   57,
+   4
+  ],
+  "agi": [
+   47,
+   2
+  ],
+  "int": [
+   50,
+   1
+  ],
+  "cha0": 20,
+  "ali0": 57,
+  "luk0": 50,
+  "aff": {
+   "p": 67,
+   "f": 59,
+   "i": 58,
+   "e": 17,
+   "b": 43,
+   "w": 57
+  },
+  "terrain": "Ocean",
+  "bulk": 8,
+  "large": true,
+  "front": {
+   "attack": "Tentacle",
+   "hits": 4
+  },
+  "back": {
+   "attack": "Maelstrom",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Gryphon",
+  "family": "gryphon",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   80,
+   7
+  ],
+  "str": [
+   50,
+   2
+  ],
+  "agi": [
+   58,
+   4
+  ],
+  "int": [
+   37,
+   1
+  ],
+  "cha0": 30,
+  "ali0": 45,
+  "luk0": 53,
+  "aff": {
+   "p": 43,
+   "f": 33,
+   "i": 48,
+   "e": 53,
+   "b": 55,
+   "w": 5
+  },
+  "terrain": "High Sky",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Charge",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Gale",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Cockatris",
+  "family": "gryphon",
+  "from": "Gryphon",
+  "level": 9,
+  "cha": null,
+  "aliMin": 0,
+  "aliMax": 60,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   74,
+   6
+  ],
+  "str": [
+   54,
+   3
+  ],
+  "agi": [
+   63,
+   4
+  ],
+  "int": [
+   42,
+   1
+  ],
+  "cha0": 40,
+  "ali0": 36,
+  "luk0": 55,
+  "aff": {
+   "p": 46,
+   "f": 37,
+   "i": 3,
+   "e": 57,
+   "b": 64,
+   "w": 26
+  },
+  "terrain": "High Sky",
+  "bulk": 5,
+  "large": true,
+  "front": {
+   "attack": "Charge",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Petrify",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Mermaid",
+  "family": "mermaid",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   93,
+   5
+  ],
+  "str": [
+   49,
+   2
+  ],
+  "agi": [
+   52,
+   2
+  ],
+  "int": [
+   51,
+   3
+  ],
+  "cha0": 53,
+  "ali0": 57,
+  "luk0": 44,
+  "aff": {
+   "p": 29,
+   "f": 26,
+   "i": 52,
+   "e": 21,
+   "b": 43,
+   "w": 48
+  },
+  "terrain": "Water",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Stab",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Blizzard",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Nixie",
+  "family": "mermaid",
+  "from": "Mermaid",
+  "level": 11,
+  "cha": 50,
+  "aliMin": 50,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   85,
+   5
+  ],
+  "str": [
+   51,
+   3
+  ],
+  "agi": [
+   55,
+   3
+  ],
+  "int": [
+   57,
+   4
+  ],
+  "cha0": 57,
+  "ali0": 74,
+  "luk0": 41,
+  "aff": {
+   "p": 34,
+   "f": 31,
+   "i": 60,
+   "e": 23,
+   "b": 47,
+   "w": 62
+  },
+  "terrain": "Water",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Trident",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Blizzard",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Pumpkin",
+  "family": "pumpkin",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   98,
+   3
+  ],
+  "str": [
+   45,
+   2
+  ],
+  "agi": [
+   45,
+   2
+  ],
+  "int": [
+   31,
+   1
+  ],
+  "cha0": 0,
+  "ali0": 45,
+  "luk0": 72,
+  "aff": {
+   "p": 33,
+   "f": 11,
+   "i": 37,
+   "e": 34,
+   "b": 5,
+   "w": 38
+  },
+  "terrain": "Forest",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Pumpkin",
+   "hits": 1
+  },
+  "back": {
+   "attack": "Pumpkin",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Halloween",
+  "family": "pumpkin",
+  "from": "Pumpkin",
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": "Pumpkin+",
+  "formOf": null,
+  "hp": [
+   88,
+   4
+  ],
+  "str": [
+   50,
+   3
+  ],
+  "agi": [
+   48,
+   3
+  ],
+  "int": [
+   37,
+   2
+  ],
+  "cha0": 0,
+  "ali0": 18,
+  "luk0": 82,
+  "aff": {
+   "p": 60,
+   "f": 37,
+   "i": 56,
+   "e": 64,
+   "b": 69,
+   "w": 22
+  },
+  "terrain": "Forest",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Pumpkin",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Pumpkin",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Skeleton",
+  "family": "undead",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   0,
+   0
+  ],
+  "str": [
+   43,
+   3
+  ],
+  "agi": [
+   42,
+   2
+  ],
+  "int": [
+   32,
+   1
+  ],
+  "cha0": 0,
+  "ali0": 0,
+  "luk0": 55,
+  "aff": {
+   "p": null,
+   "f": null,
+   "i": null,
+   "e": null,
+   "b": null,
+   "w": null
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Slash",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Slash",
+   "hits": 1
+  }
+ },
+ {
+  "name": "Wraith",
+  "family": "undead",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   0,
+   0
+  ],
+  "str": [
+   51,
+   4
+  ],
+  "agi": [
+   57,
+   3
+  ],
+  "int": [
+   50,
+   4
+  ],
+  "cha0": 0,
+  "ali0": 0,
+  "luk0": 55,
+  "aff": {
+   "p": null,
+   "f": null,
+   "i": null,
+   "e": null,
+   "b": null,
+   "w": null
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Slash",
+   "hits": 3
+  },
+  "back": {
+   "attack": "Slash",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Ghost",
+  "family": "undead",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   0,
+   0
+  ],
+  "str": [
+   35,
+   2
+  ],
+  "agi": [
+   57,
+   3
+  ],
+  "int": [
+   50,
+   4
+  ],
+  "cha0": 0,
+  "ali0": 0,
+  "luk0": 48,
+  "aff": {
+   "p": null,
+   "f": null,
+   "i": null,
+   "e": null,
+   "b": null,
+   "w": null
+  },
+  "terrain": "Low Sky",
+  "bulk": 2,
+  "large": false,
+  "front": {
+   "attack": "Curse",
+   "hits": 1
+  },
+  "back": {
+   "attack": "Nightmare",
+   "hits": 2
+  }
+ },
+ {
+  "name": "Phantom",
+  "family": "undead",
+  "from": null,
+  "level": null,
+  "cha": null,
+  "aliMin": null,
+  "aliMax": null,
+  "item": null,
+  "formOf": null,
+  "hp": [
+   0,
+   0
+  ],
+  "str": [
+   45,
+   2
+  ],
+  "agi": [
+   62,
+   3
+  ],
+  "int": [
+   53,
+   4
+  ],
+  "cha0": 0,
+  "ali0": 0,
+  "luk0": 50,
+  "aff": {
+   "p": null,
+   "f": null,
+   "i": null,
+   "e": null,
+   "b": null,
+   "w": null
+  },
+  "terrain": "Plains",
+  "bulk": 3,
+  "large": false,
+  "front": {
+   "attack": "Curse",
+   "hits": 2
+  },
+  "back": {
+   "attack": "Nightmare",
+   "hits": 3
+  }
+ }
+]

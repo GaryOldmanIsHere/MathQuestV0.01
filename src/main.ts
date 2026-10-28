@@ -5,6 +5,7 @@ import '@fontsource/alegreya-sans/latin-400.css';
 import '@fontsource/alegreya-sans/latin-500.css';
 import '@fontsource/alegreya-sans/latin-700.css';
 import './ui/styles.css';
+import { applyComfort, watchSystemMotion } from './ui/comfort';
 import { App } from './app/app';
 import { Engine } from './render/engine';
 import { getState, resetState } from './core/state';
@@ -46,6 +47,8 @@ async function loadExtractedData(): Promise<void> {
 }
 
 async function boot(): Promise<void> {
+  applyComfort();
+  watchSystemMotion();
   const canvas = document.getElementById('view') as HTMLCanvasElement;
   const ui = document.getElementById('ui') as HTMLElement;
   const loading = document.getElementById('loading');

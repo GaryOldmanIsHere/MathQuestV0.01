@@ -16,6 +16,7 @@ import { declutter } from '../gfx/declutter';
 import { spriteSetFor } from '../gfx3d/unitArt';
 import { prepareSprites } from '../gfx3d/ob64Sprites';
 import { exposeDebug, SPEED } from '../debug';
+import { comfort, reducedMotion } from '../ui/comfort';
 import { el, fill, hpColour } from '../ui/dom';
 import { icon } from '../ui/icons';
 import type { IconName } from '../ui/icons';
@@ -68,6 +69,8 @@ export class BattleScreen implements Screen {
   private attacker: Squad;
   private defender: Squad;
   private disposed = false;
+  /** How fast the battle plays out: the player's pace (Settings), times the test hook's. */
+  private readonly pace = SPEED * comfort().battlePace;
   /** Whether the field is ready to be seen (its shaders prepared); the map shows until then. */
   private ready = false;
 
@@ -80,6 +83,7 @@ export class BattleScreen implements Screen {
     this.attacker = st.squads.find((s) => s.id === params.attackerId)!;
     this.defender = st.squads.find((s) => s.id === params.defenderId)!;
     const q = app.engine.settings;
+    this.stage.calm = reducedMotion();
     this.stage.setField(params.ground.field, {
       seed: this.attacker.id * 31 + this.defender.id,
       grass: q.grass, shadows: q.shadows, particles: q.particles, simple: q.simpleShading,
@@ -87,7 +91,7 @@ export class BattleScreen implements Screen {
     });
 
     this.layer = el('div', { class: 'battle-labels' });
-    this.banner = el('div', { class: 'battle-banner', ui: 'battle-banner' }, 'The squads close…');
+    this.banner = el('div', { class: 'battle-banner', ui: 'battle-banner', 'aria-live': 'polite' }, 'The squads close…');
     this.root = el('div', { class: 'screen battle-screen is-preparing', ui: 'battle' }, this.layer, this.banner);
 
     // Units appear once their sprites are ready: Ogre Battle 64's are fetched
@@ -157,7 +161,7 @@ export class BattleScreen implements Screen {
       el('span', { class: 'versus-mark' }, 'vs'),
       el('span', { class: 'versus-name is-defender' }, this.defender.name),
     );
-    versus.style.animationDuration = `${(MARCH_MS + 500) / SPEED}ms`;
+    versus.style.animationDuration = `${(MARCH_MS + 500) / this.pace}ms`;
     versus.addEventListener('animationend', () => versus.remove());
     this.root.append(versus);
     // The squads march on from either side as the camera sweeps down onto the field.
@@ -195,7 +199,7 @@ export class BattleScreen implements Screen {
   }
 
   update(frameMs: number): void {
-    const ms = Math.min(frameMs, 50) * SPEED;
+    const ms = Math.min(frameMs, 50) * this.pace;
     this.timers.update(ms);
     if (this.disposed) return;
     const stage = this.stage;
@@ -378,7 +382,7 @@ export class BattleScreen implements Screen {
     if (o.hue && o.hue !== 'physical') t.style.setProperty('--tint', `#${ELEMENT_COLOUR[o.hue].toString(16).padStart(6, '0')}`);
     t.style.left = `${Math.round(x)}px`;
     t.style.top = `${Math.round(y)}px`;
-    t.style.animationDuration = `${1000 / SPEED}ms`;
+    t.style.animationDuration = `${1000 / this.pace}ms`;
     t.addEventListener('animationend', () => t.remove());
     this.layer.append(t);
   }
@@ -442,7 +446,7 @@ export class BattleScreen implements Screen {
       ),
       ups.length ? el('div', { class: 'level-ups' }, ...ups.slice(0, 6).map((c, k) => {
         const chipEl = el('span', { class: 'level-up' }, unitIcon(classOf(c.classId).palette, 26), `${c.name} · Lv ${c.level}`);
-        chipEl.style.animationDelay = `${(200 + k * 120) / SPEED}ms`;
+        chipEl.style.animationDelay = `${(200 + k * 120) / this.pace}ms`;
         return chipEl;
       })) : null,
     ));

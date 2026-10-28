@@ -9,7 +9,7 @@
   /* Ink and gold */
   --ink: #ece8dc;
   --ink-soft: #bcc0cf;
-  --ink-faint: #8a90a8;
+  --ink-faint: #9ca2ba;
   --gold: #d9b968;
   --gold-bright: #f3dc98;
   --gold-deep: #8c6a2a;
@@ -57,6 +57,12 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1020; col
 
 #view { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; }
 #ui { position: fixed; inset: 0; pointer-events: none; }
+/* The interface's size (Settings): the panels grow or shrink with it; the
+   names and bars that follow figures over the view stay placed in the
+   canvas's own pixels, and so at their own size. */
+.screen:not(.organize-screen) > :not(.map-labels):not(.battle-labels):not(.battle-wipe) { zoom: var(--ui-scale, 1); }
+/* The army screen fills the window whole, so it is sized as one (its own layout then fits the window at any size). */
+.organize-screen { zoom: var(--ui-scale, 1); }
 .screen { position: absolute; inset: 0; pointer-events: none; animation: screen-in var(--slow) var(--ease); }
 .screen > * { pointer-events: auto; }
 [hidden] { display: none !important; }
@@ -142,10 +148,13 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .fps { position: fixed; top: 8px; right: 8px; z-index: 1000; font: 12px/1.3 ui-monospace, Menlo, monospace; color: #cfe8cf; background: rgba(0, 0, 0, 0.6); padding: 4px 8px; border-radius: 6px; pointer-events: none; font-variant-numeric: tabular-nums; }
 
 /* A settings sheet, from the title or the map. */
-.settings { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, 92vw); padding: 20px 22px; display: grid; gap: 14px; z-index: 30; animation: pop-in var(--slow) var(--ease); }
+.settings { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(440px, calc(92vw / var(--ui-scale, 1))); padding: 20px 22px; display: grid; gap: 14px; z-index: 30; animation: pop-in var(--slow) var(--ease); }
 .settings-head { display: flex; align-items: center; justify-content: space-between; }
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .settings-row .k { color: var(--ink-soft); }
+.settings-row .k small { display: block; color: var(--ink-faint); font-size: 0.8rem; }
+.settings-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--gold); }
+.settings { max-height: calc(92vh / var(--ui-scale, 1)); overflow-y: auto; }
 .settings-keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 0.9rem; color: var(--ink-soft); align-items: center; }
 @keyframes pop-in { from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); } to { opacity: 1; transform: translate(-50%, -50%); } }
 
@@ -177,7 +186,9 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .map-labels > * { position: absolute; left: 0; top: 0; will-change: transform; }
 .node-name { display: flex; align-items: center; gap: 6px; font: 600 0.95rem/1.1 var(--display); color: #fff6dc; letter-spacing: 0.05em; text-shadow: 0 1px 2px #000, 0 0 8px rgba(0, 0, 0, 0.8); white-space: nowrap; }
 .node-name::before { content: ''; width: 7px; height: 7px; border-radius: 2px; transform: rotate(45deg); background: var(--neutral); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 6px var(--neutral); }
-.node-name.is-player::before { background: var(--player); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 6px var(--player); }
+.node-name.is-player::before { background: var(--player); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 6px var(--player); border-radius: 50%; transform: none; }
+/* Who holds a stronghold shows in shape as well as colour: yours round, the enemy's a diamond, unclaimed hollow. */
+.node-name.is-neutral::before { background: transparent; box-shadow: inset 0 0 0 2px var(--neutral), 0 0 0 1px rgba(0, 0, 0, 0.6); }
 .node-name.is-enemy::before { background: var(--enemy); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 6px var(--enemy); }
 .squad-tag { display: grid; gap: 3px; justify-items: center; }
 .squad-name { font: 700 0.78rem/1 var(--body); color: #fff; white-space: nowrap; padding: 2px 7px 3px; border-radius: 999px; background: rgba(8, 12, 28, 0.62); border: 1px solid rgba(255, 255, 255, 0.12); }
@@ -201,10 +212,11 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .wealth-item .icon { color: var(--gold); }
 .pips { display: flex; gap: 3px; }
 .pip { width: 8px; height: 8px; transform: rotate(45deg); border-radius: 2px; background: rgba(255, 255, 255, 0.12); }
-.pip.is-player { background: var(--player); box-shadow: 0 0 6px var(--player); }
+.pip.is-player { background: var(--player); box-shadow: 0 0 6px var(--player); border-radius: 50%; transform: none; }
 .pip.is-enemy { background: rgba(255, 116, 97, 0.55); }
+.pip.is-neutral { background: transparent; box-shadow: inset 0 0 0 1.5px rgba(230, 195, 90, 0.7); }
 /* The roster: the army's squads, down the left side. */
-.roster { position: absolute; left: max(12px, env(safe-area-inset-left)); top: 76px; width: 236px; display: grid; gap: 8px; max-height: calc(100vh - 170px); overflow-y: auto; padding: 2px; }
+.roster { position: absolute; left: max(12px, env(safe-area-inset-left)); top: 76px; width: 236px; display: grid; gap: 8px; max-height: calc(100vh / var(--ui-scale, 1) - 170px); overflow-y: auto; padding: 2px; }
 .roster-card { position: relative; display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto auto; column-gap: 10px; row-gap: 3px; align-items: center; text-align: left; padding: 8px 10px; color: var(--ink); font: inherit; cursor: pointer; border-radius: var(--radius-s); background: linear-gradient(180deg, rgba(30, 44, 92, 0.82), rgba(12, 18, 40, 0.82)); border: 1px solid rgba(124, 156, 255, 0.35); box-shadow: 0 6px 16px rgba(2, 4, 12, 0.4); backdrop-filter: blur(10px); transition: border-color var(--fast), transform var(--fast), background var(--fast); }
 .roster-card:hover { border-color: var(--gold); transform: translateX(2px); }
 .roster-card.is-selected { border-color: var(--gold-bright); background: linear-gradient(180deg, rgba(58, 78, 146, 0.92), rgba(24, 34, 74, 0.92)); box-shadow: 0 0 0 1px rgba(243, 220, 152, 0.4), 0 6px 18px rgba(2, 4, 12, 0.5); }
@@ -237,6 +249,19 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .end-panel > .icon { color: var(--gold-bright); filter: drop-shadow(0 0 12px rgba(243, 220, 152, 0.6)); }
 .end-panel.is-defeat > .icon { color: var(--bad); filter: none; }
 .end-panel.is-defeat h2 { color: var(--bad); }
+
+/* The march list: the chosen squad's orders by keyboard (M). */
+.march-list { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); width: min(460px, calc(92vw / var(--ui-scale, 1))); max-height: calc(56vh / var(--ui-scale, 1)); display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: 14px 16px; pointer-events: auto; z-index: 20; animation: pop-up var(--slow) var(--ease); }
+.march-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.march-head h3 { margin: 0; font: 600 1rem var(--display); color: var(--gold-bright); letter-spacing: 0.04em; }
+.march-items { display: grid; gap: 4px; overflow-y: auto; padding-right: 4px; }
+.march-item { display: grid; grid-template-columns: 22px 1fr auto auto; align-items: center; gap: 10px; text-align: left; padding: 7px 10px; }
+.march-item .march-owner { font-size: 0.85rem; color: var(--ink-soft); }
+.march-item.is-player .march-owner { color: var(--player); }
+.march-item.is-enemy .march-owner { color: var(--enemy); }
+.march-item.is-neutral .march-owner { color: var(--neutral); }
+.march-item .march-far { font-size: 0.85rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
+@keyframes pop-up { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* ----------------------------------------------------------------- battle */
 
@@ -310,12 +335,12 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 
 /* --------------------------------------------------------------- organize */
 
-.organize-screen { background: radial-gradient(ellipse at 50% 30%, rgba(8, 12, 30, 0.45), rgba(4, 6, 16, 0.78)); display: grid; grid-template-rows: auto 1fr; gap: 12px; padding: 18px max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); overflow: auto; }
+.organize-screen { background: radial-gradient(ellipse at 50% 30%, rgba(8, 12, 30, 0.45), rgba(4, 6, 16, 0.78)); display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; padding: 18px max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); overflow: auto; }
 .org-title { text-align: center; font-size: 1.6rem; color: var(--gold-bright); text-shadow: 0 2px 6px #000; display: flex; align-items: center; justify-content: center; gap: 18px; }
 .org-title::before, .org-title::after { content: ''; width: 80px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
 .org-title::after { transform: scaleX(-1); }
-.org-layout { display: grid; grid-template-columns: minmax(190px, 230px) minmax(320px, 440px) minmax(300px, 1fr); gap: 14px; min-height: 0; max-width: 1320px; width: 100%; margin: 0 auto; }
-.org-nav { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
+.org-layout { display: grid; grid-template-columns: minmax(190px, 230px) minmax(320px, 440px) minmax(300px, 1fr); grid-template-rows: minmax(0, 1fr); gap: 14px; min-height: 0; max-width: 1320px; width: 100%; margin: 0 auto; }
+.org-nav { display: flex; flex-direction: column; gap: 10px; padding: 14px; min-height: 0; overflow-y: auto; }
 .org-squads, .org-modes { display: grid; gap: 8px; }
 .org-modes { margin-top: auto; }
 .org-squad { justify-content: flex-start; gap: 10px; padding: 6px 10px 6px 6px; text-transform: none; letter-spacing: 0.02em; font-size: 0.95rem; }
@@ -323,7 +348,7 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .org-squad-face { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 6px; background: rgba(6, 10, 24, 0.55); overflow: hidden; }
 .org-mode { justify-content: flex-start; }
 .org-squad.is-on, .org-mode.is-on { background: linear-gradient(180deg, rgba(72, 94, 170, 0.98), rgba(40, 54, 110, 0.98)); color: var(--gold-bright); border-color: var(--gold-bright); }
-.org-centre { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.org-centre { display: grid; gap: 14px; align-content: start; min-width: 0; min-height: 0; overflow-y: auto; }
 .org-formation { padding: 14px; }
 .org-formation-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .org-rows { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 4px; }
@@ -348,7 +373,7 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .org-info-line { display: flex; align-items: center; gap: 8px; }
 .org-info-line .icon { color: var(--gold); }
 .org-message { color: var(--good); margin-top: 4px; }
-.org-side { padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; max-height: calc(100vh - 110px); }
+.org-side { padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; max-height: calc(100vh / var(--ui-scale, 1) - 110px); }
 .org-empty { margin: auto; color: var(--ink-faint); text-align: center; display: grid; justify-items: center; gap: 10px; }
 .sheet-head { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
 .sheet-portrait { width: 84px; height: 84px; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 80%, rgba(90, 110, 190, 0.45), rgba(8, 12, 28, 0.7) 70%); border-radius: 10px; border: 1px solid var(--panel-edge); }
@@ -403,7 +428,9 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
   .minimap { width: 170px; }
 }
 @media (max-width: 900px) {
-  .org-layout { grid-template-columns: 1fr; }
+  .organize-screen { grid-template-rows: auto auto; }
+  .org-layout { grid-template-columns: 1fr; grid-template-rows: none; }
+  .org-nav, .org-centre { overflow: visible; }
   .org-side { max-height: none; }
   .hud { flex-wrap: wrap; }
   .hud-hint { text-align: left; }
@@ -413,9 +440,8 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
   .wealth { gap: 10px; padding: 8px 12px; }
   .pips { display: none; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .screen, .toast, .float-number, .versus, .battle-wipe, .side-card, .battle-outcome, .end-panel, .level-up, .settings { animation-duration: 1ms !important; }
-  .bar-fill { transition: none; }
-  .roster-card:hover { transform: none; }
-  .parade .unit-icon { animation: none; }
-}
+/* Reduced motion: the player's choice in Settings, or the system's (see comfort.ts). */
+:root[data-motion="reduce"] :is(.screen, .toast, .float-number, .versus, .battle-wipe, .side-card, .battle-outcome, .end-panel, .level-up, .settings, .march-list) { animation-duration: 1ms !important; }
+:root[data-motion="reduce"] .bar-fill { transition: none; }
+:root[data-motion="reduce"] .roster-card:hover { transform: none; }
+:root[data-motion="reduce"] .parade .unit-icon { animation: none; }

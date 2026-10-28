@@ -71,6 +71,11 @@ export class BattleStage implements FxHost {
   private tweens: Tween[] = [];
   private shot: Shot = WIDE;
   private shake = 0;
+  /**
+   * Reduced motion (Settings, or the system's): the camera neither shakes
+   * nor pushes in on a heavy blow, and flashes of light are softer.
+   */
+  calm = false;
   /** The camera's push in on a blow, 0 to 1, easing out. */
   private push = 0;
   /** A blow's moment held still (hit-stop), ms left. */
@@ -299,7 +304,7 @@ export class BattleStage implements FxHost {
     const light = f.light;
     const until = f.until;
     this.tween(ms, (k) => {
-      if (f.until === until) light.intensity = peak * (k < 0.15 ? k / 0.15 : (1 - k) / 0.85);
+      if (f.until === until) light.intensity = peak * (this.calm ? 0.5 : 1) * (k < 0.15 ? k / 0.15 : (1 - k) / 0.85);
     }, () => {
       if (f.until === until) light.intensity = 0;
     });
@@ -312,6 +317,7 @@ export class BattleStage implements FxHost {
 
   /** Push the camera in a little, easing back out (a heavy blow). */
   punch(amount = 1): void {
+    if (this.calm) return;
     this.push = Math.max(this.push, amount);
   }
 
@@ -331,6 +337,7 @@ export class BattleStage implements FxHost {
   }
 
   quake(strength = 0.18): void {
+    if (this.calm) return;
     this.shake = Math.max(this.shake, strength);
   }
 

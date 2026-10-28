@@ -24,8 +24,8 @@ import { button, el, hpColour } from '../ui/dom';
 import { icon } from '../ui/icons';
 import type { IconName } from '../ui/icons';
 import type { BattleResult } from './battle';
-import { MapHud } from './mapHud';
-import { openSettings } from './settings';
+import { MapHud, marchChoices, OWNER_LABEL } from './mapHud';
+import { keepFocusWithin, openSettings } from './settings';
 
 // The campaign map: squads march in real time over the 3D world, battles
 // break out where they meet, strongholds change hands. The rules of the
@@ -117,13 +117,15 @@ export class MapScreen implements Screen {
       this.nodeLabels.set(n.id, { el: e, width: 0, height: 0 });
     }
     this.toasts = el('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
-    this.hint = el('div', { class: 'hud-hint', ui: 'hint' }, 'Select a squad, then click a stronghold to march.');
+    this.hint = el('div', { class: 'hud-hint', ui: 'hint', 'aria-live': 'polite' }, 'Select a squad, then click a stronghold to march.');
     this.instruments = new MapHud(this.terrain, {
       choose: (sq) => this.chooseSquad(sq, true),
       lookAt: (x, y) => this.world.lookAt(x, y),
     });
     const settingsButton = button('', () => openSettings(this.app, this.root), { ui: 'settings', class: 'btn-icon btn-quiet', 'aria-label': 'Settings', 'data-tip': 'Settings' });
     settingsButton.append(icon('gear', 20));
+    const marchButton = button('March', () => this.openMarchList(), { ui: 'march', 'data-tip': 'March the chosen squad on a stronghold (M)' });
+    marchButton.prepend(icon('flag', 18));
     const organizeButton = button('Organize', () => this.openOrganize(), { ui: 'organize', class: 'btn-primary', 'data-tip': 'The army screen (O)' });
     organizeButton.prepend(icon('people', 18));
     this.root = el('div', { class: 'screen map-screen', ui: 'map' },
@@ -144,6 +146,7 @@ export class MapScreen implements Screen {
         el('span', { class: 'hud-stats', 'aria-hidden': 'true' }, icon('route', 18)),
         this.hint,
         settingsButton,
+        marchButton,
         organizeButton,
       ),
     );
@@ -180,6 +183,7 @@ export class MapScreen implements Screen {
     // shows through; the names, bars and status bar step aside.
     this.covered = covered;
     this.root.classList.toggle('is-covered', covered);
+    if (covered) this.closeMarchList?.();
     this.press = null;
     this.held.clear();
     if (!covered) {
@@ -253,6 +257,7 @@ export class MapScreen implements Screen {
       }
       if (e.code === 'KeyR') this.world.setView(OVERVIEW);
       if (e.code === 'KeyO') this.openOrganize();
+      if (e.code === 'KeyM') this.openMarchList();
       // 1 to 9 choose the army's squads, as the roster numbers them.
       const digit = /^Digit([1-9])$/.exec(e.code);
       if (digit) {
@@ -367,6 +372,64 @@ export class MapScreen implements Screen {
   // -------------------------------------------------------------- movement --
 
   /** March to any point on the map. Clicks near a stronghold snap onto it. */
+  /** Shut the march list, if it is open. */
+  private closeMarchList: (() => void) | null = null;
+
+  /**
+   * March orders by keyboard (M, or the March button): the chosen squad's
+   * choice of strongholds, nearest first, each with who holds it and how far
+   * it lies. Arrows move along the list, Enter sends the squad, Escape shuts it.
+   */
+  private openMarchList(): void {
+    const st = getState();
+    if (this.covered || this.battleActive || st.phase !== 'playing' || this.closeMarchList) return;
+    const sq = this.selected;
+    if (!sq) {
+      this.hint.textContent = 'Choose a squad first: 1 to 9, or click it on the map.';
+      return;
+    }
+    const opener = document.activeElement as HTMLElement | null;
+    const close = () => {
+      list.remove();
+      this.closeMarchList = null;
+      if (opener && document.contains(opener)) opener.focus();
+    };
+    const items = marchChoices(sq, st.nodes).map(({ node, tiles }) => {
+      const b = button('', () => {
+        close();
+        if (st.squads.includes(sq)) this.orderMarch(sq, node.x, node.y);
+      }, { class: `march-item is-${node.owner}`, ui: `march-to-${node.id}` });
+      b.append(
+        icon(node.kind.startsWith('hq') ? 'castle' : node.kind === 'fort' ? 'shield' : 'flag', 18),
+        el('span', { class: 'march-name' }, node.name),
+        el('span', { class: 'march-owner' }, OWNER_LABEL[node.owner]),
+        el('span', { class: 'march-far' }, `${tiles} tiles`),
+      );
+      return b;
+    });
+    const shut = button('', close, { class: 'btn-icon btn-quiet', ui: 'march-close', 'aria-label': 'Close' });
+    shut.append(icon('close', 16));
+    const list = el('div', { class: 'march-list panel', ui: 'march-list', role: 'dialog', 'aria-modal': 'true', 'aria-label': `March ${sq.name} on…` },
+      el('div', { class: 'march-head' }, el('h3', {}, `March ${sq.name} on…`), shut),
+      el('div', { class: 'march-items' }, ...items),
+    );
+    list.addEventListener('keydown', (e) => {
+      // The list's keys are its own: the map beneath pans on arrows and letters.
+      e.stopPropagation();
+      const at = items.indexOf(document.activeElement as HTMLButtonElement);
+      if (e.code === 'Escape') close();
+      else if (e.code === 'Tab') keepFocusWithin(list, e);
+      else if (e.code === 'ArrowDown' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        const step = e.code === 'ArrowDown' ? 1 : -1;
+        items[(at + step + items.length) % items.length]?.focus();
+      }
+    });
+    this.closeMarchList = close;
+    this.root.append(list);
+    items[0]?.focus();
+  }
+
   private orderMarch(sq: Squad, x: number, y: number): void {
     const st = getState();
     const dest = snapOrder(st.nodes, x, y);
@@ -658,13 +721,14 @@ export class MapScreen implements Screen {
     const st = getState();
     if (st.phase !== 'playing') return;
     st.phase = result;
-    const panel = el('div', { class: `end-panel panel is-${result}`, ui: 'end-panel', role: 'dialog' },
+    const panel = el('div', { class: `end-panel panel is-${result}`, ui: 'end-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': result === 'victory' ? 'Victory' : 'Defeat' },
       icon(result === 'victory' ? 'crown' : 'skull', 48),
       el('h2', {}, result === 'victory' ? 'Victory!' : 'Defeat…'),
       el('p', {}, result === 'victory' ? 'Castle Verlaine is yours. The realm is liberated.' : 'Fort Melchor has fallen.'),
       button('Title', () => this.exits.title(), { ui: 'to-title', class: 'btn-primary' }),
     );
     this.root.append(panel);
+    panel.querySelector<HTMLElement>('[data-ui="to-title"]')?.focus();
   }
 
   private toast(msg: string, tone: 'good' | 'bad' | 'warn'): void {

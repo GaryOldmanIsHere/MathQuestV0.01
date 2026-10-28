@@ -56,6 +56,22 @@ export function strengthOf(sq: Squad): number {
   return members.reduce((s, c) => s + Math.max(0, c.hp), 0) / Math.max(1, members.reduce((s, c) => s + c.stats.hp, 0));
 }
 
+/**
+ * The strongholds a squad may be sent to by keyboard (see the map's march
+ * list): all but the one it stands at, nearest first, each with how far it
+ * lies as the crow flies, in tiles.
+ */
+export function marchChoices(sq: Squad, nodes: readonly MapNode[]): { node: MapNode; tiles: number }[] {
+  return nodes
+    .map((node) => ({ node, d: Math.hypot(node.x - sq.x, node.y - sq.y) }))
+    .filter((c) => c.d >= 50)
+    .sort((a, b) => a.d - b.d)
+    .map(({ node, d }) => ({ node, tiles: Math.max(1, Math.round(d / TILE)) }));
+}
+
+/** Who holds a stronghold, in words. */
+export const OWNER_LABEL: Record<MapNode['owner'], string> = { player: 'Yours', enemy: 'Enemy', neutral: 'Unclaimed' };
+
 /** What a squad is about, in a few words, and the icon for it. */
 export function orders(sq: Squad, nodes: MapNode[], s: Pick<HudState, 'fighting' | 'regrouping'>): { text: string; icon: IconName; tone: '' | 'is-fighting' | 'is-resting' } {
   if (s.fighting.has(sq.id)) return { text: 'In battle', icon: 'sword', tone: 'is-fighting' };

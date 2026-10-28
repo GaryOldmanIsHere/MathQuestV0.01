@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Palatinus Tactics</title>
+    <meta name="description" content="A real-time squad-march tactics RPG in the browser, drawn in 3D with WebGPU." />
+    <meta name="theme-color" content="#0b1020" />
     <style>
       /* Just enough to show something while the game loads. */
       html, body { margin: 0; height: 100%; background: #0b1020; }
@@ -11,9 +13,11 @@
     </style>
   </head>
   <body>
-    <canvas id="view"></canvas>
-    <div id="ui"></div>
-    <div id="loading">Raising the realm…</div>
+    <!-- The 3D view is a picture; everything to read and press is in the interface over it. -->
+    <canvas id="view" aria-hidden="true"></canvas>
+    <main id="ui" aria-label="Palatinus Tactics"></main>
+    <div id="loading" role="status">Raising the realm…</div>
+    <noscript><p style="color:#ece8dc;font:18px Georgia,serif;text-align:center;margin-top:40vh">Palatinus Tactics needs JavaScript, and WebGPU or WebGL2.</p></noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

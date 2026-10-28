@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getState, resetState } from '../core/state';
-import { hourName, orders, strengthOf } from './mapHud';
+import { hourName, marchChoices, orders, strengthOf } from './mapHud';
+import { TILE } from '../core/terrain';
 import { ICONS, iconPath } from '../ui/icons';
 import { squadMemberIds } from '../core/squad';
 
@@ -48,6 +49,21 @@ describe('the map instruments', () => {
     expect(strengthOf(sq)).toBeCloseTo(1 - members[0].stats.hp / total);
     for (const c of members) c.hp = -5;
     expect(strengthOf(sq)).toBe(0);
+  });
+});
+
+describe('the march list', () => {
+  it("offers every stronghold but the squad's own, nearest first, with how far each lies", () => {
+    resetState();
+    const st = getState();
+    const sq = st.squads.find((q) => q.side === 'player')!;
+    const home = st.nodes.find((n) => Math.hypot(n.x - sq.x, n.y - sq.y) < 50)!;
+    const list = marchChoices(sq, st.nodes);
+    expect(list.map((c) => c.node)).not.toContain(home);
+    expect(list).toHaveLength(st.nodes.length - 1);
+    for (let k = 1; k < list.length; k++) expect(list[k].tiles).toBeGreaterThanOrEqual(list[k - 1].tiles);
+    const far = list[list.length - 1];
+    expect(far.tiles).toBe(Math.round(Math.hypot(far.node.x - sq.x, far.node.y - sq.y) / TILE));
   });
 });
 

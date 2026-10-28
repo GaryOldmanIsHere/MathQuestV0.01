@@ -97,6 +97,8 @@ export class OrganizeScreen implements Screen {
     window.addEventListener('keydown', this.onKey);
     this.squad = playerSquads[0] ?? null;
     this.refresh();
+    // The keyboard starts on the first of the squad's members.
+    queueMicrotask(() => this.root.querySelector<HTMLElement>('.org-cell')?.focus({ preventScroll: true }));
   }
 
   private onKey = (e: KeyboardEvent) => {
@@ -117,6 +119,9 @@ export class OrganizeScreen implements Screen {
 
   private refresh(): void {
     if (!this.squad) return;
+    // The panels are drawn afresh after every change; the keyboard's place
+    // goes back to the control of the same name, so it is not lost each time.
+    const focused = (document.activeElement as HTMLElement | null)?.dataset?.ui;
     this.squadButtons.forEach((b) => b.classList.toggle('is-on', b.textContent === this.squad?.name));
     for (const [m, b] of this.modeButtons) b.classList.toggle('is-on', this.mode === m);
     this.drawGrid(this.squad);
@@ -125,6 +130,9 @@ export class OrganizeScreen implements Screen {
     else if (this.mode === 'shop') this.drawShop();
     else if (this.mode === 'items') this.drawItems();
     else this.drawSheet();
+    if (focused && !this.root.contains(document.activeElement)) {
+      this.root.querySelector<HTMLElement>(`[data-ui="${CSS.escape(focused)}"]`)?.focus();
+    }
   }
 
   // ------------------------------------------------------------------ grid --

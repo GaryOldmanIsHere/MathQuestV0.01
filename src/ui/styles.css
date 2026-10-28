@@ -232,6 +232,8 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .minimap { display: block; width: 220px; height: auto; border-radius: 8px; cursor: crosshair; image-rendering: auto; }
 /* The status bar, bottom. */
 .map-help { position: absolute; bottom: 86px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; font-size: 0.8rem; color: #f0ead8; opacity: 0.85; text-shadow: 0 1px 2px #000; pointer-events: none !important; }
+/* The keys' reminder steps aside while a sheet or the march list is open over it. */
+.map-screen:has(.march-list, .settings) .map-help { visibility: hidden; }
 .hud { position: absolute; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 16px; }
 .hud-stats { display: flex; align-items: center; gap: 8px; font: 600 1rem var(--body); white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
 .hud-stats .icon { color: var(--gold); }

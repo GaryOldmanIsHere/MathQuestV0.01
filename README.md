@@ -148,8 +148,8 @@ frame rate; the game picks one to suit the machine, and Settings changes it.
 * **Battles prepare their shaders before the field is shown**, in parallel
   where the browser can, rather than stalling on the first frame.
 * **Nothing is left behind:** every battle's render targets, textures and
-  shapes are freed when it closes. `npm run perf` checks the GPU's memory
-  holds level over a run of battles.
+  shapes are freed when it closes. `npm run perf` checks that the GPU's
+  memory holds nearly level over a run of battles.
 * **F3** (or `?fps`) shows the frame rate, backend, preset, resolution scale
   and draw calls.
 * `?quality=low` … `ultra` picks a preset for one visit, exactly (adaptive

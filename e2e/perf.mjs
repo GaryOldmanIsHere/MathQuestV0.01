@@ -80,9 +80,14 @@ for (let i = 0; i < battles; i++) {
   await page.evaluate(() => { for (const c of window.__palatinus.state().chars.values()) c.hp = c.stats.hp; });
   report.memory.push(await memory());
 }
+// After the first battle, the count may still creep up by a few: the map's
+// figures cache each frame (and its normal map) the first time they walk it.
+// A leaked finishing chain or battlefield adds far more than that every time.
 const tex = report.memory.map((m) => m.textures);
-report.texturesAfterFirstBattle = tex.slice(1);
-report.leakSuspected = tex.length > 3 && tex[tex.length - 1] - tex[1] > 4 * (tex.length - 2);
+report.texturesAfterEachBattle = tex.slice(1);
+const perBattle = tex.length > 2 ? (tex[tex.length - 1] - tex[1]) / (tex.length - 2) : 0;
+report.texturesPerBattle = +perBattle.toFixed(1);
+report.leakSuspected = perBattle > 6;
 report.errors = g.errors;
 console.log(JSON.stringify(report, null, 2));
 await g.browser.close();

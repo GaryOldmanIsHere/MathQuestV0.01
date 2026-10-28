@@ -139,6 +139,7 @@ export class MapScreen implements Screen {
         el('span', {}, el('span', { class: 'kbd' }, 'Wheel'), ' zoom'),
         el('span', {}, el('span', { class: 'kbd' }, 'Q'), el('span', { class: 'kbd' }, 'E'), ' turn'),
         el('span', {}, el('span', { class: 'kbd' }, '1'), '–', el('span', { class: 'kbd' }, '9'), ' squads'),
+        el('span', {}, el('span', { class: 'kbd' }, 'M'), ' march'),
         el('span', {}, el('span', { class: 'kbd' }, 'R'), ' whole map'),
       ),
       this.toasts,

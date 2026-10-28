@@ -202,14 +202,18 @@ npm run perf -- high 3 # a preset, and how many battles
 * how long a battle takes to open;
 * GPU geometries and textures, and the JS heap, after each battle.
 
-The last of these is the leak check: once the first battle has painted its
-figures, the counts should hold level from battle to battle.
+The last of these is the leak check. After the first battle, the texture
+count should hold nearly level: it may creep up by a few a battle as the
+map's figures cache frames they have not walked before (a frame and its
+normal map at a time), but a leaked finishing chain or battlefield would add
+dozens. The probe flags more than six a battle.
 
 On this project's test machine (software GPU), it found two problems:
 * every battle left about ten screen-sized textures behind;
 * the army screen redrew the still map at the map's cost, about 380 ms a
   frame.
 
-Both are fixed: the texture count now levels off, and the army screen runs
-at the display's rate. A software GPU says little about real frame rates,
+Both are fixed: over seven battles the count now rises by two or three a
+battle (the figures' frames) instead of a dozen or more, and the army screen
+runs at the display's rate. A software GPU says little about real frame rates,
 though: compare runs on the same machine, not across machines.

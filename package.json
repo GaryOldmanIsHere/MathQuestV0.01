@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "An Ogre Battle 64-style real-time strategy RPG built with Phaser 3 and TypeScript",
+  "description": "A real-time squad-march tactics RPG in the manner of Ogre Battle 64, drawn in 3D with Three.js (WebGPU or WebGL2) and TypeScript",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -13,6 +13,7 @@
     "extract:ob64": "tsx tools/extract-ob64.ts",
     "scrape:expansion": "tsx tools/scrape-expansion.ts",
     "e2e": "node e2e/playthrough.mjs",
+    "perf": "node e2e/perf.mjs",
     "pack:models": "tsx tools/pack-models.ts"
   },
   "dependencies": {

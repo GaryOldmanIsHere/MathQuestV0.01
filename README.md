@@ -1,19 +1,25 @@
 # Palatinus Tactics
 
-A playable real-time strategy RPG in the tradition of the late-90s "march your
-squads across a liberation map" tactics games. Built with TypeScript and
-Three.js: the campaign map and its battles are drawn in 3D by WebGPU (or
-WebGL2 where the browser lacks it) at the display's own resolution, with the
-interface in HTML over them, running entirely in the browser. All art and text in this repository are original; Ogre Battle 64's
-own art appears only when extracted locally from your own ROM (below).
+A real-time strategy RPG in the tradition of the late-90s "march your squads
+across a liberation map" tactics games, playable in the browser. Squads of up
+to five march freely over a 3D campaign map; when two meet, the clash plays
+out on its own on a 3D battlefield, decided by who stands in which row.
+
+It is built with TypeScript and Three.js. The map and the battles are drawn
+by WebGPU (WebGL2 where the browser lacks it) at the display's own
+resolution, with the interface in HTML over them. All art and text in this
+repository are original; the figures are painted in code. Ogre Battle 64's
+own data and art appear only when extracted locally from your own ROM
+([docs/OB64.md](docs/OB64.md)).
 
 | | |
 |---|---|
 | ![The title screen over the campaign map at evening](docs/screenshots/title.jpg) | ![The whole campaign map on a clear morning, with the squads' cards, the day and the small map](docs/screenshots/map.jpg) |
 | ![Fort Melchor and its squads at midday](docs/screenshots/keep.jpg) | ![Elm Vale at evening, the sun low on the river](docs/screenshots/evening.jpg) |
 | ![Midfield in the rain](docs/screenshots/rain.jpg) | ![Elm Vale under snow](docs/screenshots/snow.jpg) |
-| ![A squad's gear on the army screen](docs/screenshots/organize.jpg) | ![A berserker's axe lands in a forest clearing, under each side's card](docs/screenshots/battle.jpg) |
-| ![A healer casts from her magic circle](docs/screenshots/heal.jpg) | ![A shuriken in flight on a shore](docs/screenshots/shore.jpg) |
+| ![A berserker's axe lands in a forest clearing, under each side's card](docs/screenshots/battle.jpg) | ![A healer casts from her magic circle](docs/screenshots/heal.jpg) |
+| ![A shuriken in flight on a shore](docs/screenshots/shore.jpg) | ![A squad's gear on the army screen](docs/screenshots/organize.jpg) |
+| ![A squad's march orders, chosen from a list by keyboard](docs/screenshots/march.jpg) | ![The settings: graphics, interface size, motion and battle pace](docs/screenshots/settings.jpg) |
 
 These show the built-in data at the High preset.
 
@@ -22,53 +28,155 @@ These show the built-in data at the High preset.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # run the simulation test suite
+npm test         # 335 unit tests (318 without extracted ROM data)
 npm run build    # type-check + production bundle into dist/
+npm run e2e      # an automated playthrough in a real browser (needs npm run dev)
+npm run perf     # boot, frame times and GPU memory over a run of battles (needs npm run dev)
 ```
 
-## Playing on Ogre Battle 64's own data
+It needs a browser with WebGPU or WebGL2: any current desktop Chrome, Edge,
+Firefox or Safari.
 
-If you own Ogre Battle 64: Person of Lordly Caliber (USA, Rev A), Palatinus
-can run on the real game's class tables instead of its built-in originals:
+## How to play
 
-```bash
-npm run extract:ob64 -- path/to/your/ogre-battle-64.z64   # .n64 and .v64 work too
-npm run dev
-```
+You hold Fort Melchor, the keep in the west. The enemy holds Castle Verlaine
+in the east and the strongholds between. **Take Castle Verlaine to win; lose
+Fort Melchor and the campaign is over.** Strongholds you hold pay Goth (gold)
+every day; spend it on gear and recruits.
 
-The title screen confirms it with *Class data: Ogre Battle 64 (d26b14be) +
-expansion · 190 classes*: the game's 106, plus the expansion below.
+**Giving orders.** Choose a squad, then send it anywhere: squads march in a
+straight line to any point, over any ground, and the ground decides how fast
+they go. A squad that halts at a stronghold takes it. When two hostile squads
+meet, they fight.
 
-**What stays on your machine.** The extractor reads your ROM and writes
-`public/ob64/data.json` and the unit sprites in `public/ob64/sprites/`. That folder is git-ignored and must stay that way: it
-is copyrighted game data, and this repository only ever contains the code that
-reads it. The ROM dump itself is ignored too. `npm run build` leaves
-`public/ob64/` out of `dist/` even when it is present, so a build is always
-safe to publish; for a private build that plays on the data, run
-`PALATINUS_INCLUDE_OB64=1 npm run build`. Without the extracted file, the game simply runs on its originals,
-which is also what CI and anyone else who clones the repo gets.
-
-The extractor checks the dump's SHA-1 (`d26b14be…`) and refuses anything else,
-because every table is read from a fixed address in that exact revision.
-
-**What comes over, and how faithfully.** Everything below was located in the
-ROM and its layout confirmed against the game's own code, using the
-disassembly from the [OB64 recompilation project](https://github.com/lfarroco/ogre-battle-64-recomp):
-
-| From the ROM, directly | Derived from ROM structure | Inferred, and labelled as such |
+| | Mouse | Keyboard |
 |---|---|---|
-| 166 class records: stats and per-level growth, starting alignment and Luck, resistances to physical and the six elements, size, movement type, element, default equipment | The player's class tree, from each class's promotion lineage | Which stats a class change demands and its alignment window: a rule fitted to the documented Knight, Berserker, Wizard and Paladin gates, which it reproduces exactly |
-| Each row's attack and hit count | Each element's spell family (a Wizard of Earth casts Acid Vapor; of Flame, Fireball) from the shape of the attack table | How resistances scale damage, until the battle formula is decoded |
-| 159 attacks: category, element, target, effect | Story and boss classes, kept out of the player's tree by where they sit in the table | |
-| Level gates, lineage, and the level-up roll (growth + 0–2 per stat, capped at 999) | | |
-| 277 pieces of equipment: type, element, rank, price, STR/INT/AGI/DEX/VIT/MEN/LUK bonuses, physical and six elemental resistances | Each class's default gear, from its record's four item ids | What each class may wear: the code that decides it sits in an overlay not yet decompressed, so the rule is read off each class's default gear (keep to its weapon type; heavier armour admits the lighter; anyone wears accessories) |
-| Every class's unit sprites: each pose image, palette, cell and animation script, seen from the front and from behind, in player and enemy colours | Which bundle and variant draw each class, from the table the battle code reads; which poses are weapons and which palette each takes, from the bundle's own pose table | Which of a weapon pose's looks goes with which weapon: not found yet, so a unit carries its class's own |
-| 44 supplies, relics and key items: category, price, one unit or a squad | Which flag bits mean "no shop sells this", "slays dragons", "slays the undead", from the items that carry them | What each supply and relic does, and how much: read from the names (a Heal Leaf heals, a Sword Emblem raises STR) at Palatinus's own magnitudes |
+| Choose a squad | Click it, or its card on the left | **1** – **9** |
+| March | Click anywhere on the map (clicks near a stronghold snap onto it) | **M**: a list of strongholds, nearest first; arrows and **Enter** |
+| Look around | Drag to pan, wheel to zoom, right-drag to turn; click the small map to look there | **W A S D** or arrows to pan, **Q E** to turn, **Space** to find the chosen squad, **R** for the whole map |
+| The army screen | *Organize* | **O**, and **Esc** to close |
+| Settings | The gear button | Tab to it, **Enter** |
+| Frame rate | | **F3** |
 
-With the data loaded, Ogre Battle 64's own rules apply: units grow as whichever
-class their lineage says they were at each level, a class change keeps a unit's
-stats, an enemy "Paladin" below level 15 takes the field as the Knight it still
-is, and every human recruit rolls an element that decides their spells.
+**Battles** play themselves. What you decide is who fights, and where each
+member stands: on the army screen, a member's *column* on the 3x3 grid sets
+their battle row (front, middle or back), and their row sets which attack
+they make and how often. A knight in front swings twice; an archer gains a
+third shot from the back; clerics heal only from the rear. The side that
+loses the smaller share of its strength wins and drives the other back.
+
+## What's in the game
+
+**The campaign map.** A 3D land of hills, a river, woods and a lake, with
+roads between nine strongholds: castles, forts and towns from the KayKit
+medieval pack, in their owners' colours. Day turns to night every six
+campaign days, and the weather (clear, cloud, rain, snow, mist) changes
+every three, without touching the campaign. The map is grown from the very
+terrain grid that marching is charged on, so what you see is exactly what a
+march costs. Roads are quickest; forest, hills and water slow a march by how
+much depends on the squad's make-up: light troops shrug off forest and hills,
+cavalry hates them, fliers ignore the ground. Enemy squads strike at the
+nearest of your holdings within reach; a routed squad regroups at the keep.
+
+**The map's instruments.**
+* Top left: the day, the hour and the weather.
+* Top right: the treasury, and the strongholds held.
+* Down the left: a card for each of your squads, with its leader's face, its
+  orders ("Marching on Elm Vale", "Holding Fort Melchor", "Regrouping", "In
+  battle") and its strength.
+* A small map of the whole realm.
+
+**Battles** are staged on a battlefield made like the map, shaped by where
+the squads met (a meadow, a road, a forest clearing, a mountain pass, a
+shore) and lit by the hour and weather they met in. The squads march on and
+the camera frames each action:
+* fighters run in and strike;
+* archers loose arrows;
+* casters gather light in a magic circle and cast their element's spell.
+
+Blows land with weight: a held moment, a shake, the light of the blow on the
+figures. Each side's card heads the field, and strength bars drain as blows
+land.
+
+**The army.** The army screen arranges each squad's formation and shows each
+member's sheet in three tabs:
+* **Status:** stats with gear bonuses, alignment, Luck, resistances and each
+  row's attack.
+* **Gear:** the four places, and what to put in them.
+* **Class:** every class change and what it asks.
+
+*Shop*, *Items* and *Recruit* open beside it.
+
+**Classes.** 36 original classes along a male line (Fighter → Knight,
+Berserker, Ninja, Wizard…), a female line (Amazon → Valkyrie, Archer,
+Cleric, Witch…) and monsters. A class change is gated on level, stats and
+alignment, and alignment drifts with how a unit fights: felling stronger foes
+raises it, preying on the weak lowers it. So how you fight decides which
+classes open up. A class expansion adds 100 more from two other games (see
+below).
+
+**Equipment and items.** Every unit has four places: a weapon, body armour,
+an off hand and a head. Gear adds to stats and resistances, and two-handed
+weapons leave no hand for a shield. Elemental weapons strike half with their
+element, and slaying weapons strike dragons or the undead half again as hard.
+Supplies heal, revive or carry a squad home; relics raise a stat for good;
+key items open the class changes that call for them. The shop's stock grows
+with the strongholds you hold. Great beasts (dragons, golems, hellhounds)
+stand in two cells and fill two of a squad's five places.
+
+## Graphics and performance
+
+Every frame passes through ambient occlusion, bloom, tone mapping, a
+vignette and edge smoothing. Four presets trade sharpness and effects against
+frame rate; the game picks one to suit the machine, and Settings changes it.
+
+| | Low | Medium | High | Ultra |
+|---|---|---|---|---|
+| Most pixels per CSS pixel | 1 | 1.5 | 2 | 2.5 |
+| Ambient occlusion, SMAA | no | no | yes | yes |
+| Bloom, tilt-shift | no | yes | yes | yes |
+| Sun shadows (texels) | none | 1024 | 2048 | 4096 |
+| Grass tufts per meadow tile | none | 6 | 12 | 20 |
+| Raindrops / snowflakes | 1,500 | 4,000 | 8,000 | 14,000 |
+| Lighting | plain diffuse | physically based | physically based | physically based |
+
+* **Adaptive resolution** (on unless turned off in Settings): while frames
+  come slowly, the view draws fewer pixels, down to half, and more again as
+  they come easily. The interface is HTML and stays sharp throughout.
+* **A still map costs nothing:** under the army screen, the map is drawn once
+  and left showing.
+* **Battles prepare their shaders before the field is shown**, in parallel
+  where the browser can, rather than stalling on the first frame.
+* **Nothing is left behind:** every battle's render targets, textures and
+  shapes are freed when it closes. `npm run perf` checks the GPU's memory
+  holds level over a run of battles.
+* **F3** (or `?fps`) shows the frame rate, backend, preset, resolution scale
+  and draw calls.
+* `?quality=low` … `ultra` picks a preset for one visit, exactly (adaptive
+  resolution is then off); `?webgl` forces the WebGL2 path. Should a WebGPU
+  device be lost, the game reloads itself on WebGL2.
+
+## Accessibility and comfort
+
+* **Everything by keyboard,** including march orders (**M**). Focus is always
+  visible. Sheets and dialogs keep the keyboard while open and hand it back to
+  what opened them. The army screen keeps your place as it redraws after each
+  change.
+* **Settings** (the gear button on the title or the map):
+  * *Interface size:* 85% to 130%; the army screen still fits the window.
+  * *Motion:* as the system asks (`prefers-reduced-motion`), reduced, or
+    full. Reduced stills the camera's shake and push, softens flashes of
+    light, and cuts the interface's animations short.
+  * *Battle pace:* steady, brisk (1.5×) or swift (2×). This changes only how
+    fast a battle is shown, never its outcome.
+  * *Adaptive resolution,* and the graphics preset.
+* **Readable:** every text colour is tested at 4.5 to 1 or better against its
+  panel over anything the view may show behind it (WCAG AA). Who holds a
+  stronghold shows in shape as well as colour: yours round, the enemy's a
+  diamond, unclaimed hollow.
+* **Screen readers:** the interface is plain HTML with named controls. Battle
+  commentary, the map's orders line and notices are announced, and the 3D
+  view is marked as a picture.
 
 ## The class expansion
 
@@ -80,676 +188,179 @@ other games, translated into Ogre Battle 64's model:
 | *Ogre Battle: The March of the Black Queen* (SNES), from [the RPGClassics shrine](https://shrines.rpgclassics.com/snes/ogrebattle/classes.shtml) | HP, STR, AGI and INT as base + growth; six affinities; starting alignment and luck; two row attacks with hit counts; each class's route (from which class, at what level, in what alignment window, or by which item) | 53 / 39 |
 | *Symphony of War: The Nephilim Saga*, from [the Symphony of War wiki](https://symphonyofwar.wiki.gg) | Low / Med / High ratings for each stat's base and growth; unit type (heavy or light infantry, cavalry, flier, caster, healer); the stat a promotion asks for; which classes each upgrades into | 47 / 45 |
 
-That is 136 classes on the originals, 190 on Ogre Battle 64's data, with
+That is 136 classes on the originals and 190 on Ogre Battle 64's data, with
 classes now reaching a fourth tier (Dragon Master, Lich, the Dragon Riders,
 the Dark Mage). Gunpowder classes are left out by design. Named characters
 are not classes and are not taken.
 
 **How a class is translated.** Neither game uses Ogre Battle 64's seven stats
-or its scale, so stats carry over *relatively*: a SNES class's standing
+or its scale, so stats carry over *relatively*. A SNES class's standing
 against the other SNES classes of its tier becomes the same standing against
 the active dataset's classes of that tier. A Symphony of War rating does the
-same with Med as the tier average. VIT, MEN and DEX, which neither game has,
-come from the nearest things each does have: HP and physical affinity, INT
-and elemental affinity, AGI and STR for the SNES; armour, magic and skill for
-Symphony of War. SNES affinities become resistances (its undead, immune to
-all but holy power, stay that way). Attacks are named for what they are:
-*Jihad* is Virtue magic that hits everyone, *Magic* is an element slot cast in
-the caster's own element, a Symphony of War Fire Mage throws Fire at a whole
+same, with Med as the tier average.
+
+VIT, MEN and DEX, which neither game has, come from the nearest things each
+does have:
+* for the SNES game: HP and physical affinity, INT and elemental affinity,
+  AGI and STR;
+* for Symphony of War: armour, magic and skill.
+
+SNES affinities become resistances; its undead, immune to all but holy power,
+stay that way. Attacks are named for what they are: *Jihad* is Virtue magic
+that hits everyone, and a Symphony of War Fire Mage throws Fire at a whole
 row. Large monsters and Colossal dragons fill two places.
 
 **Merging.** When a class already exists (Ogre Battle 64's Knight, the
-originals' Wizard) the existing one wins untouched and the other game only
+originals' Wizard), the existing one wins untouched and the other game only
 adds its routes into it. So a SNES Beast Man can become Ogre Battle 64's own
 Beast Master, and Symphony of War's Soldier and Cavalier both become Knights.
 Its generic recruit, the Fighter, is Ogre Battle 64's Fighter *and* Amazon,
-so its whole tree opens to women too. Most Symphony of War classes are open to
-either gender; a unit only sees the class changes its gender can hold. On
-Ogre Battle 64's data the new routes are stat-gated by the same rule as the
-game's own, led by the stat Symphony of War names (a Scout asks for DEX).
-Routes that consume an item (the SNES Werewolf's *Virus*, the Lich's
-*Undead Ring*) show it and stay shut until Phase 2 brings items.
+so its whole tree opens to women too. On Ogre Battle 64's data, the new
+routes are stat-gated by the same rule as the game's own. Routes that
+consume an item (the SNES Werewolf's *Virus*, the Lich's *Undead Ring*) open
+once the item is in hand.
 
-**Squad types.** How a squad marches now follows from its make-up, by
-Symphony of War's rules. Each class is slow (casters, healers), heavy, light,
-heavy or light cavalry, or a flier. A squad is *flying* when fliers are at
-least as many as the rest with no horses or grounded giants among them;
-*cavalry* when horses outnumber the infantry; *slow* when half are casters;
-*light* when light troops outnumber the rest by one; *heavy* otherwise. Light
-troops are not slowed by forest or hills, heavy cavalry is quick on open
-ground and bogged down in rough, fliers ignore the ground and the road alike.
-
-**Recruiting.** The Organize screen's *Recruit* button enlists any playable
-tier-1 class into the selected squad for Goth: Bowmen, Militia, Medics and
-Drakelings from Symphony of War, Angels, Imps, Giants, Mermaids and more from
-the SNES game, alongside each dataset's own.
+**Squad types.** How a squad marches follows from its make-up, by Symphony of
+War's rules. Each class is slow (casters, healers), heavy, light, heavy or
+light cavalry, or a flier. A squad is:
+* *flying* when fliers are at least as many as the rest, with no horses or
+  grounded giants among them;
+* *cavalry* when horses outnumber the infantry;
+* *slow* when half are casters;
+* *light* when light troops outnumber the rest by one;
+* *heavy* otherwise.
 
 The scraped facts live in `src/data/expansion/*.json`. They hold numbers,
 names and routes only; none of either site's writing is copied, and the
 descriptions in game are Palatinus's own. `npm run scrape:expansion`
 regenerates them, pausing between requests.
 
-## Equipment, items, elements and large units
+## Ogre Battle 64's own data
 
-**Gear.** Every unit has the four places Ogre Battle 64's class records give
-it: a weapon, body armour, an off hand (a shield or a book, or an accessory)
-and a head (a helm or a hat, or an accessory). A new unit comes dressed: in
-Ogre Battle 64 mode exactly as the game dresses its class (a Fighter in a
-Short Sword, Chain Mail, Round Shield and Iron Helm), otherwise in the best
-plain gear a recruit of its tier would own. Gear adds to the stats a unit
-fights with and to its resistances; the sheet shows both, with the bonus
-beside each stat. Two-handed weapons (greatswords, hammers, bows) leave no
-hand for a shield. A class change sheds whatever the new class cannot use
-back into the inventory. Monsters wear accessories only.
+If you own Ogre Battle 64 (USA, Rev A), `npm run extract:ob64 -- your.z64`
+reads its class, attack and item tables and its unit sprites into
+`public/ob64/`, and the game then plays on them: 106 of the game's classes
+plus the expansion, 277 pieces of equipment, and every unit in the game's own
+animated art. **That folder is git-ignored, and every build leaves it out.**
+What comes over, how faithfully, and how the sprites are stored:
+[docs/OB64.md](docs/OB64.md).
 
-**Elements in combat.** A unit's resistance to an attack's element is its
-class's plus its gear's, so a Flame Shield blunts a Fireball and armour blunts
-a sword. A blow struck with an elemental weapon lands half as steel, half as
-its element. Weapons made to slay dragons or the undead strike them half again
-as hard.
+Without a ROM, Palatinus runs on its own catalogue: 36 classes and 164 items
+(145 pieces of gear, 7 supplies, 12 relics) with original names, in the same
+shape.
 
-**Large units.** Dragons, golems, hellhounds and other great beasts stand in
-two cells side by side and fill two of a squad's five places. They fight from
-their foremost cell, act once a round, and are drawn once, across both cells,
-in the formation and in battle.
+## The art
 
-**Supplies, relics and key items.** Supplies heal one unit or a whole squad,
-revive the fallen, or carry a squad home. Relics raise a stat, Luck, a level
-or alignment for good. Key items open the class changes that call for them
-(the SNES game's *Virus*, *Blood Kiss*, *Undead Ring*...) and are spent on
-them. The Organize screen's *Items* panel uses them on the selected unit.
+**The painted figures** (`src/art/`). Every class has its own figure,
+painted in code when it is first needed, in the HD-2D manner: pixel art about
+53 pixels tall that the 3D scene lights as it lights the land.
+* Each part is a solid shape on the pixel grid that records which way it
+  faces, so one drawing yields both a picture and a normal map.
+* People are dressed from their class's rules: the weapon it may carry,
+  plate, mail, leather or robes by its armour, a helm, hood or hat, a shield
+  where a hand is free, a cape at the higher tiers.
+* Hounds, dragons, golems, ghosts and sea creatures have rigs of their own,
+  and mounted classes ride a horse whose coat the class chooses.
+* Six animations are eased between key poses: at ease, marching, attacking
+  (a swing, a thrust or a shot), casting, flinching and falling.
 
-**The shop.** *Shop* sells supplies, weapons, armour and key items. Its stock
-grows with the strongholds the army holds; shops buy back at half price.
+`tools/art-preview.html?classes=knight,wyvern&anim=attack&scale=4` shows
+every frame while the dev server runs (`&normals` for the normal maps).
 
-**The fallen and rest.** A unit knocked out in battle stays down until it is
-revived or its squad rests at the keep. A squad halted on one of its own
-strongholds recovers some HP each day.
+**The land** (`src/gfx3d/landscape.ts`, `atmosphere.ts`, `sky.ts`).
+* The ground is painted in the GPU: meadow greens, a darker floor under the
+  woods, worn earth on the roads, rock and snow on the heights, sand at the
+  water's edge.
+* The water knows its depth: green in the shallows, deep blue further out,
+  with waves that catch the light and froth along the shores.
+* The wind sways the woods and the grass.
+* The sun casts shadows, and clouds' shadows drift over the land.
+* A tilt-shift makes the land look like a model of itself.
 
-**Spoils.** Destroying an enemy squad pays Goth by the fallen's levels, and
-now and then a supply, a piece of gear, a relic or a key item.
+**The effects** (`src/gfx3d/vfx.ts`, `spells.ts`) come from one pool of
+glowing particles and a few textures drawn in code, and light the figures
+about them. `tools/fx-preview.html` stages each one, a step at a time.
 
-Without a ROM, Palatinus has its own catalogue of 164 items (145 pieces of
-gear, 7 supplies, 12 relics) with original
-names, on the same ranks and in the same shape, scaled to the built-in
-classes.
-
-## The painted figures
-
-Every class has its own figure, painted in code when it is first needed
-(`src/art/`), in the HD-2D manner: pixel art, about 53 pixels from crown to
-sole, that the 3D scene lights as it lights the land.
-
-* **Painted as solids.** Each part is a solid shape on the pixel grid: a
-  rounded head or shoulder, a tapered limb or blade, a flat shield or cloak
-  (`raster.ts`). Every pixel records which way its surface faces and how near
-  it is, so one drawing yields both a picture and a normal map. The
-  silhouette is outlined, and darker lines are drawn wherever one part stands
-  in front of another.
-* **Dressed from the rules.** A person is a jointed rig (`humanoid.ts`)
-  dressed from what the game knows of the class (`looks.ts`): the weapon its
-  equipment rules allow (sword, greatsword, spear, bow, staff, axe, whip and
-  more), plate, mail, leather, robe or dress by its armour, a helm, hood or hat,
-  a shield where one hand is free, a cape at the higher tiers, and the class's
-  own colours.
-* **Beasts and spirits.** Hounds, dragons, golems, ghosts and creatures of the
-  sea have rigs of their own (`creatures.ts`). Mounted classes ride a horse
-  whose coat (bay, chestnut, black, grey or white) is chosen by the class.
-* **Animated.** Each figure has six animations, eased between key poses:
-  standing at ease, marching, attacking (a swing, a thrust or a shot by
-  weapon), casting, flinching and falling (`motion.ts`). Each is painted from
-  the front facing left and from behind facing right. Each frame is cropped to
-  what is drawn, and each animation is painted the first time it plays.
-* **In the menus,** each class's portrait is the same figure, standing, lit as
-  on a bright day.
-
-`tools/art-preview.html` shows every frame of any class while the dev server
-runs: for example `/tools/art-preview.html?classes=knight,wyvern&anim=attack&scale=4`,
-with `&normals` to see the normal maps and `?kind=rider,sea` to show a few
-classes of each kind.
-
-## Ogre Battle 64's sprites and the 3D battle
-
-Battles are staged in a real 3D scene, made as the campaign map is
-(`src/gfx3d/arena.ts`): the same painted ground, pines and boulders, grass in
-the wind, under the hour and weather the squads met in, with the sun's
-shadows, rain, snow or mist. The field takes its look from where they met: a
-meadow, a road running across it, a forest clearing, a mountain pass or a
-shore. The units are billboards, flat drawings that always face the camera,
-standing on that 3D field as Ogre Battle 64 itself draws them, each casting
-its own shadow.
-
-As in Ogre Battle 64, each formation stands on the diagonal: each row nearer
-the camera stands a step to the right of the one behind it. The camera always
-looks across the field from a little to the attackers' side, which spreads
-the rows further apart rather than lining them up, so no unit hides another.
-* **The opening.** The squads march on from either side as the camera sweeps
-  down onto the field.
-* **Each action.** The camera frames the actor together with everyone it acts
-  on, and a ring of light marks the one acting.
-  * Fighters run in, strike on their animation's own frame, and step back.
-  * Archers loose arrows that arc to their marks.
-  * Casters stand in a magic circle as light gathers in their hands, then cast
-    their element's spell: fire bursting, a column of water, a whirlwind,
-    stone spikes, a pillar of holy light, darkness drawing in, a dragon's
-    golden breath, or a healing light.
-* **Blows land.** Each lands with weight: the moment is held, the camera shakes
-  (and pushes in for a heavy blow), and the light of each blow and spell falls
-  on the figures and the ground about them.
-* **The end.** The camera pulls back when the clash is done, and the winners
-  hop for joy.
-* **Strength bars follow the blows as they land.** A blow cuts the bar and
-  leaves a pale chip that drains after a beat, and a heal shows its gain ahead
-  of the bar. The numbers pop up, larger for a heavy blow and tinted by
-  element. Names and bars move clear of one another where units stand close.
-
-The effects come from one pool of glowing particles and a few textures drawn
-in code (`src/gfx3d/vfx.ts`, `spells.ts`). `tools/fx-preview.html` stages
-each one on a field for a look, a step at a time.
-
-With the sprites extracted, each unit is drawn in Ogre Battle 64's own art:
-every animation the game gives it (breathing at rest, walking, its melee
-attacks with the blow landing on the game's own frame, casting, flinching,
-falling) and both of the game's views of it, from the front for the army
-facing left and from behind for the army facing right, as the game's diagonal
-battle camera shows them. The player's squads wear the player's colours, the
-enemy's theirs. Dragons and other great beasts, which the game draws little
-bigger than a man, are enlarged. Menus, the map and the title use each
-class's standing pose. The translated classes borrow the art of their nearest
-Ogre Battle 64 kin (`src/expansion/looks.ts`): a Samurai dresses as a Fencer,
-a Fire Giant as a Giant. Without the sprites, every class is painted by
-Palatinus itself (see *The painted figures*, below). Ogre Battle 64's sprites
-are lit too: each one gets a normal map worked out from its outline, so the
-scene's sun and shade fall on it as on the painted figures.
-
-**How the sprites are stored, as decoded.** Every unit's art is a *bundle*
-in the game's asset store, listed in a master table of 208 bundles. A bundle
-holds:
-
-* a table of *cells*, each one drawing of the unit made of several pose
-  images placed relative to its feet;
-* a table of *animation scripts*: show a cell for so many ticks, move, the
-  blow lands here, go on to another script;
-* a pose table saying which poses are bodies, which weapons, and which
-  palette each takes;
-* the palettes;
-* the poses themselves, as "UT" containers of 8-bit colour-indexed frames
-  with 4-bit alpha masks, later frames stored as differences from earlier
-  ones.
-
-One bundle dresses several classes: a body pose's frames come in pairs, the
-first class in player and enemy colours, then the next. The Fighter and the
-Lycanthrope share one, and so do the Hawkman, the Vultan and the Raven. A
-weapon pose holds a frame per weapon look.
-
-A class table beside the battle code gives, per class and side, the bundle
-seen from behind, the one from the front, and the variant. The extractor
-copies each bundle out as stored, still compressed (13 MB for the 137 in
-use), and the browser unpacks a bundle when a battle first needs it.
-
-## The campaign map in 3D
-
-The campaign map is a 3D world in the manner of Ogre Battle 64's: rolling
-polygon ground under a tilted camera. The land has:
-* a mountain range along the north;
-* a river winding down the west past the keep, crossed by the roads;
-* woods, thickest in the west;
-* a lake in the south-east;
-* roads of packed earth between strongholds.
-
-The strongholds are buildings from the KayKit medieval pack (CC0; see
-CREDITS.md) in their owner's colours: blue for us, red for the enemy, the
-land's yellow for those not yet taken. Each side's seat is a castle, a fort
-a watchtower, and a town a church or windmill among cottages, the windmill's
-sails turning. The moment a stronghold falls its buildings are re-dressed in
-the new owner's colours. The woods are the pack's pines, and boulders lie on
-the high ground.
-
-The world is grown from the very terrain grid that marching is charged on
-(`src/core/terrain.ts`), so the two never disagree:
-* hills rise where marching is slow;
-* the ground dips under the water exactly on the water tiles;
-* the roads are painted as wide as the corridor that speeds a march;
-* the woods stand on the forest tiles.
-
-The landscape itself is drawn from smooth noise, so woods, hills and the
-lake come in shapes rather than scattered tiles. Past the campaign's edges
-the land runs on, darkened, as a mirror of the land within.
-
-**A living land** (`src/gfx3d/landscape.ts`, `atmosphere.ts`, `sky.ts`):
-* **The ground is painted in the GPU**: a meadow of two greens with yellower
-  patches, a darker floor under the woods, worn earth along the roads, rock
-  on steep and mountain ground (mossy where low), sand at the water's edge and
-  snow on the peaks, all broken into dabs of colour.
-* **The water** knows how deep it lies: green in the shallows, deep blue
-  further out, with waves that catch the light and froth along the shores.
-* **The wind** sways the woods and the meadow grass.
-* **The sky** turns through a day and night every six campaign days: a warm
-  dawn, white noon, a golden evening, then moonlight and stars. The sun casts
-  shadows, and clouds' shadows drift over the land.
-* **The weather** holds three days at a time: clear, cloudy, rain (the ground
-  darkens and shines), snow (it settles on the meadows) or mist. The
-  campaign always opens clear. None of it touches the campaign itself.
-* **The tilt-shift**: the land above and below the middle of the view is
-  softly out of focus, so it looks like a model of itself; gentlest over the
-  whole map, where every squad must read.
-
-**The camera.**
-* **Drag** to pan; the map moves with the pointer.
-* **The wheel** zooms toward the pointer, looking down more steeply from afar.
-* **Q and E**, or a right-drag, turn the view.
-* **WASD or the arrow keys** pan.
-* **Space** finds a squad.
-* **R** returns to the whole map.
-
-A click that isn't a drag works as before: it selects a squad, or orders the
-selected one to march. Your squads are picked where they stand on screen;
-the ground under the pointer is found as it rises and falls. A march order
-leaves a ring where it was given and a dashed line along the route.
-
-**Squads on the march.** Each squad is its leader's figure, standing on the
-ground over a disc in its side's colour, with its name and strength above.
-With Ogre Battle 64's sprites extracted, the leader walks the map as the game
-walks its units, in its side's colours:
-* the walking animation while it marches, at ease when it halts;
-* seen from the front as it comes toward the camera, from behind as it goes
-  away, and turned to the side it heads for, as the camera turns too;
-* great beasts larger.
-
-Without the sprites, the leader's painted figure does the same, walking in step.
-* **Size:** figures grow as the camera draws back, so a leader stays legible
-  from across the whole map.
-* **At strongholds:** squads halted at a stronghold are drawn in an arc in
-  front of the building, on the camera's side. The arc spreads as the figures
-  grow, while the squads' places in the game stay close about the centre.
-* **Names:** each stronghold's name sits over its building, and squads'
-  names and strength bars move clear of each other and of the strongholds'
-  names.
-
-While a menu or a battle stands over the map, the land stays in view behind
-it and the map's names and HUD step aside.
-
-The map and the battles share one renderer; a battle plays while the map
-waits behind it.
-
-## What's implemented
-
-**Overworld (free real-time march).** An open strategic map with a player HQ,
-enemy castle, towns, and forts. Select a squad and click *anywhere* — squads
-march in a straight line to any point you pick, not along a fixed network.
-Clicks landing near a stronghold snap onto it so capturing stays easy to aim.
-A squad that halts within an uncontested stronghold's radius liberates it and
-flips its flag; owned strongholds generate income each day. Roaming enemy
-squads strike at the nearest player holding within a town's march of them and
-drive straight at it; with none in reach they take the nearest unclaimed town
-instead, so their front creeps toward you and reaches the keep in time. Garrisons
-hold their forts. A routed squad regroups at the keep for a day, and
-while it does it cannot keep a stronghold from being taken. Taking Castle
-Verlaine wins the campaign; losing Fort Melchor ends it.
-
-**Terrain that costs time, never access.** Nothing on the map is impassable —
-you can always go anywhere — but the ground decides how fast you get there.
-Roads are quickest, open plain is the baseline, and forest, mountain, and water
-each slow a march progressively — how much depends on the squad's type (see
-*Squad types* above): light troops shrug off forest and hills, cavalry hates
-them, fliers ignore the ground entirely. Because the 3D map is grown from
-the very same terrain grid the movement code charges against, what you read
-off the map is always exactly what you pay.
-
-**Auto-battle with 3x3 formations.** When opposing squads meet on the map the
-engagement resolves automatically, and plays out on the 3D battlefield. Each squad fields up to five members on a
-3x3 grid, and the *column* a member occupies decides their battle row — front,
-middle, or back — which in turn decides which attack they use and how many
-times it lands. A knight in front swings twice; an archer gains a third shot
-from the back rank; clerics only heal from the rear. Combatants act in agility
-order, attacks target the enemy's nearest live rank first, and the side that
-lost the smaller share of its strength wins the clash and drives the loser back
-onto its own nearest holding. Because squads move freely, engagements happen wherever two forces
-meet — you can intercept a march in open country, and be intercepted yourself.
-Wiped enemy squads are destroyed; wiped player squads rout home to the keep at
-low strength.
-
-**Class structure and promotion tree.** 36 original classes across the male line
-(Fighter → Knight/Berserker/Ninja/Wizard/Phalanx/Fencer/Beast Tamer/Doll
-Master and their elite third tiers), the female line (Amazon →
-Valkyrie/Archer/Cleric/Witch/Sorceress → Freya/Diana/Priest/Siren), and
-monsters. Each class carries its own base stats, per-level growths, movement
-type, and a distinct attack for each of the three rows. Promotions are gated on
-level, charisma, and alignment, exactly the three-axis gate the genre uses —
-so a chaotic Fighter can become a Berserker or Ninja but never a Knight.
-
-**Alignment.** Every character has an alignment from 0 (chaotic) to 100
-(lawful) that drifts during battle: felling enemies stronger than you is
-honorable and raises it, while preying on the weak lowers it. Since promotions
-read alignment, how you fight determines which classes open up.
-
-**Organize screen.** Browse your squads, reposition members on the formation
-grid, and read a full character sheet in three tabs: *Status* (stats with gear
-bonuses, alignment, Luck, resistances, the attack each row makes), *Gear* (the
-four places and what to put in them) and *Class* (every promotion the class
-offers with its requirements, highlighted green when the character
-qualifies, paged when there are many). The squad's type heads its formation
-panel; its places used, the treasury and the shop rank sit below. *Shop*,
-*Items* and *Recruit* open in the right-hand panel.
+**The interface** (`src/ui/`): translucent night-blue panels with gilded
+corners, set in Cinzel and Alegreya Sans, with icons drawn in code as SVG.
+`tools/ui-preview.html` shows every piece.
 
 ## Layout
 
+The code is laid out in three layers: rules, pictures and screens. How they
+fit together, and why: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ```
 src/
-  core/         pure simulation, no rendering
+  core/         the rules: pure functions over the campaign state, no rendering
     types.ts       shared types, grid/row mapping, elements and resistances
-    character.ts   lineage, stat generation and level-up rolls, class change, alignment
-    items.ts       gear and its rules, effective stats and resistances, supplies, shop, spoils
-    camp.ts        rest at strongholds, the fallen rising at the keep, a squad carried home
-    squad.ts       formation grid, march speed, auto-placement
-    battle.ts      engagement simulator; returns an animatable event log
-    terrain.ts     terrain grid, road stamping, per-tile movement costs
-    movement.ts    free-form marching, stronghold occupancy, retreat
-    state.ts       campaign state and starting scenario
-  data/
-    classes.ts     the built-in class tree: stats, growths, row attacks, promotions
-    items.ts       the built-in item catalogue
-    registry.ts    the active dataset (built-in or extracted); every class lookup goes here
-    expansion/     the scraped class facts the expansion translates
-    names.ts       name pools and the seeded RNG
-  expansion/
-    sources.ts     the shape of the scraped SNES and Symphony of War class facts
-    translate.ts   turns them into classes and routes on the active dataset
-    index.ts       withExpansion(): the expansion, applied
-    looks.ts       which Ogre Battle 64 class's art each translated class wears
-  ob64/
-    decode.ts      reads Ogre Battle 64's class, attack and element tables from a ROM
-    convert.ts     turns them into Palatinus classes and items: roster, promotions, spells, gates, gear
-    lz.ts          the game's asset store and its LZ compression
-    sprites.ts     unit sprite bundles: pose images, palettes, cells, animation scripts, the class table
-    spritePack.ts  one bundle as stored, packed into a file the browser fetches
-  art/
-    raster.ts      a pixel canvas that keeps each pixel's facing and depth: pictures and normal maps
-    humanoid.ts    a person: the jointed rig, armour, heads, weapons and shields
-    creatures.ts   hounds, dragons and horses on four legs; ghosts and sea creatures
-    motion.ts      the animations, as key poses eased into frames
-    looks.ts       what a class looks like, from its gear, palette, tier and name
-    sheet.ts       a class's full sprite set and its portrait, painted and kept
-    normals.ts     a normal map for a sprite drawn without one, from its outline
-  gfx3d/
-    stage.ts       the Three.js battlefield: billboard units, their moves, camera shots, flashes of light
-    arena.ts       the ground a battle is fought on, in the campaign map's manner, under its sky
-    spells.ts      blows, arrows, magic circles and each element's spell, as they look
-    vfx.ts         the pool of glowing particles, and the effects' textures
-    layout.ts      where each squad member stands, and the camera's shots
-    sprites.ts     what the stage needs from a unit's art; sets built from one still drawing
-    ob64Sprites.ts loads the extracted sprites: portraits at boot, animated sets per battle
-    unitArt.ts     a unit's battle art: Ogre Battle 64's if extracted, else the painted figure
-    world.ts       the 3D campaign map: ground, water, woods, strongholds, squads, camera, picking
-    models.ts      the map's buildings, trees, rocks and clouds (src/assets/models/world.glb), loaded once
-    landscape.ts   the ground, water, wind and grass materials, painted in the GPU
-    atmosphere.ts  the sky, the sun and its shadows, cloud shadows, rain and snow
-    sky.ts         the light at each hour, what each weather does, the hour and weather on a campaign day
-    worldMap.ts    the map's shape in 3D: world coordinates, heights from the terrain grid, the camera's views
-    mapFigures.ts  a squad's figure on the map: the leader walking, turned the way it marches
+    character.ts   lineage, stats and level-ups, class change, alignment
+    items.ts       gear and its rules, effective stats, supplies, shop, spoils
+    camp.ts        rest at strongholds, the fallen rising at the keep
+    squad.ts       formation grid, march speed, squad types
+    battle.ts      the engagement simulator; returns an event log to play back
+    terrain.ts     the terrain grid, roads, per-tile movement costs
+    movement.ts    free marching, stronghold occupancy, retreat
+    state.ts       the campaign state and starting scenario
+  data/         the built-in classes and items; registry.ts, the active dataset
+  expansion/    the two other games' classes, translated onto the active dataset
+  ob64/         reading Ogre Battle 64's tables and sprites from a ROM
+  art/          the painted figures: raster, rigs, looks, animations, sheets
+  gfx3d/        the 3D stages: the map (world.ts), battles (stage.ts, arena.ts),
+                effects (spells.ts, vfx.ts), the land and sky, figures, layout
+  gfx/          unit pictures for menus, label decluttering, strength bars
   render/
-    engine.ts      the one renderer (WebGPU or WebGL2) and its finishing chain: AO, bloom, tone mapping, vignette, AA
-    quality.ts     the quality presets, the first guess for a machine, and the player's kept choice
-  app/
-    app.ts         the shell: a base screen and one over it, the frame loop, the frame-rate overlay (F3)
-    timers.ts      things to do after a while, on a screen's own clock
-  screens/
-    title.ts       the title, over the realm turning slowly
-    map.ts         the campaign map: camera and clicks, march orders, capture, enemy AI, encounters
-    mapHud.ts      the map's instruments: the day and sky, the treasury, the squads' cards, the small map
-    settings.ts    the settings sheet: the graphics preset and the keys
-    battle.ts      plays back the simulated engagement on the 3D stage
-    organize.ts    the army screen: formations, gear, class changes, items, the shop, recruits
-  ui/
-    dom.ts         building the interface from plain HTML elements
-    icons.ts       the interface's icons, drawn as SVG line drawings
-    styles.css     the interface's look: translucent night-blue panels framed in gold
-  gfx/
-    unitImages.ts  every class's picture, as a canvas, whichever art it has
-    unitIcon.ts    a class's standing figure for menus, at a given height
-    pixels.ts      pixel sprite templates, per-class palettes, stand-in art for the rest
-    declutter.ts   keeps screen labels (names over units) from sitting on one another
-    strengthBar.ts a battle's strength bar: cut by each blow, a chip draining after
-  main.ts        boot: the renderer, the class data and art, the screens
-tools/
-  extract-ob64.ts  `npm run extract:ob64`: verifies the dump, writes public/ob64/
-  scrape-expansion.ts `npm run scrape:expansion`: the two class sources, as facts
-  png.ts           a minimal PNG writer for the portrait atlas
-  art-preview.*    a page showing every painted frame of chosen classes (dev only)
-  fx-preview.*     a battlefield for looking at each effect, a step at a time (dev only)
-  ui-preview.*     the interface's pieces on one page: icons, buttons, rows, bars (dev only)
+    engine.ts      the one renderer (WebGPU or WebGL2) and its finishing chain
+    quality.ts     the presets, the first guess for a machine, the kept choices
+    governor.ts    adaptive resolution
+  app/          the shell: one base screen and one over it, the frame loop
+  screens/      title, map (+ mapHud.ts, its instruments), battle, organize, settings
+  ui/           dom.ts, icons.ts, comfort.ts (interface size, motion, pace), styles.css
+  main.ts       boot
+tools/          extract-ob64, scrape-expansion, pack-models; art, fx and ui previews
+e2e/            the automated playthrough (playthrough.mjs) and the performance probe (perf.mjs)
+docs/           ARCHITECTURE.md, TESTING.md, OB64.md, screenshots
 ```
-
-The simulation in `src/core/` depends on no renderer — battles resolve as
-pure functions over game state and emit an event log that the battle screen
-merely animates. The figures are painted in code (`src/art/`), each class's
-colours taken from its palette in `gfx/pixels.ts`. Fonts and
-any other third-party assets are listed, with their licences, in
-[CREDITS.md](CREDITS.md).
-
-## The interface
-
-The interface is HTML laid over the 3D view: translucent night-blue panels with
-gilded corners, set in Cinzel and Alegreya Sans. Its icons are drawn in code as
-SVG line drawings (`src/ui/icons.ts`), and `tools/ui-preview.html` shows every
-piece while the dev server runs.
-
-* **The campaign map's instruments** (`src/screens/mapHud.ts`):
-  * the day, the hour and the weather, top left;
-  * the treasury and the strongholds held, top right;
-  * down the left, a card for each of the army's squads, with its leader's
-    face, its orders ("Marching on Elm Vale", "Holding Fort Melchor",
-    "Regrouping", "In battle") and its strength;
-  * a small map of the whole realm, with the strongholds in their owners'
-    colours, every squad, and the view marked on it.
-
-  Click a squad's card, or press its number (**1** to **9**), to choose it and
-  bring it into view. Click the small map to look there. Stronghold names
-  carry their owner's colour, the chosen squad's name stands out, and notices
-  carry an icon.
-* **Battles** (see above) head the field with each side's card: the leader's
-  face, the side's role and name, and a strength bar for the whole squad that
-  falls as its members are struck. The banner below marks what is being done,
-  and the outcome reports what each side dealt and who rose a level.
-* **The army screen** lists the squads with their leaders' faces. Each
-  member's tile shows their level, element and strength, with a crown for the
-  leader. The sheet draws strength as a bar, stats as meters, resistances as
-  chips marked with their elements, and gear by the place it is worn.
-* **The title** has a menu panel with **Settings**: the graphics preset and the
-  keys. The same sheet opens from the map's status bar. **O** opens the army
-  screen and **Esc** closes it.
-
-## Graphics
-
-The game draws straight into a full-window canvas at the display's own
-resolution, with WebGPU where the browser has it and WebGL2 otherwise. Every
-frame passes through ambient occlusion, bloom, tone mapping, a vignette and
-edge smoothing. Four presets, *Low* to *Ultra*, trade sharpness and effects
-against frame rate; the game picks one to suit the machine, and the settings
-sheet changes it (the choice is kept in this browser).
-
-* **F3** (or `?fps`) shows the frame rate, the backend, the preset and the
-  resolution drawn.
-* `?quality=low` (… `ultra`) picks a preset for one visit; `?webgl` forces the
-  WebGL2 path.
-* Should a WebGPU device be lost, the game reloads itself on WebGL2.
-
-What each preset adds on the campaign map:
-
-| | Low | Medium | High | Ultra |
-|---|---|---|---|---|
-| Sun shadows (texels) | none | 1024 | 2048 | 4096 |
-| Grass tufts per meadow tile | none | 6 | 12 | 20 |
-| Raindrops / snowflakes | 1,500 | 4,000 | 8,000 | 14,000 |
-| Tilt-shift | no | yes | yes | yes |
-| Lighting | plain diffuse | physically based | physically based | physically based |
-
-The map's models are packed into `src/assets/models/world.glb` from the KayKit
-pack by `npm run pack:models -- path/to/pack` (`tools/pack-models.ts`).
 
 ## Tests
 
-`npm test` runs 327 tests (310 without extracted ROM data), mostly over the simulation core: the rules
-more than the rendering. They cover the parts that are easy to break silently: that a
-member's column really does select their attack and strike count, that the
-front rank is struck before the back and combat spills backward once it falls,
-that promotions gate on level, stats, and alignment independently (a
-chaotic Fighter is locked out of Knight but can reach Berserker), and that
-alignment drifts in the right direction and stays in bounds.
+`npm test` runs 335 tests (318 without extracted ROM data), mostly over the
+rules, in Node without a browser:
+* battles, marching and terrain, the class tree, the expansion, equipment and
+  items;
+* Ogre Battle 64's decoder, on a synthetic cartridge;
+* the painted figures, the 3D map's shape and the battle's layout;
+* the interface's colours (WCAG AA contrast) and adaptive resolution.
 
-Movement and terrain get their own coverage: that a squad heads straight for an
-arbitrary point rather than drifting along an axis, that it converges on its
-destination instead of oscillating around it, that orders off the edge of the
-map are clamped, that clicks near a stronghold snap onto it while clicks in
-open country stay exactly where they landed, that no terrain is ever
-impassable, that roads beat plain and rough ground is slower, and that fliers
-ignore the ground.
+The suite is mutation-checked: code was broken on purpose, and each break
+that survived got a test of its own.
 
-A few structural tests guard the class tree itself: every promotion points at
-a class that exists, stays within its gender line, never drops a tier, forms no
-cycles, and every non-monster class is reachable from a tier-1 root. These
-catch data-entry mistakes in `classes.ts` that no amount of playtesting would
-reliably surface.
-
-The painted figures are tested without a browser, on the raster itself: that
-shapes face the way they should and the nearer one wins, that outlines and
-the lines between parts fall where they should, that pictures are shaded from
-the upper left and normal maps point the right way, and that every frame of
-every look, beast and spirit stays whole within its canvas, standing on its
-feet.
-
-The battle's look has tests of its own: a strength bar drops at once and
-drains its chip only after a beat, keeps a whole run of quick blows in the
-chip, and rises to a heal; each kind of battlefield gives the squads level
-ground, rises into hills beyond (falling away under a shore's water), and
-keeps its trees and boulders off the battle line and out from before the
-camera. The map's instruments name the hours of the
-day aright, tell a squad's orders (fighting, regrouping, marching on a
-stronghold or holding one) and measure its strength; and every icon is drawn
-within its square.
-
-The suite is mutation-checked rather than trusted on a green run. Deliberately
-breaking the holy-damage bonus, front-rank targeting, road stamping, flier
-terrain immunity, and movement normalisation each produced failures, which is
-what confirms those tests are actually testing something. Two early tests were
-caught passing for the wrong reasons this way and rewritten.
-
-The Ogre Battle 64 path has its own coverage. The decoder runs against a
-synthetic cartridge built in memory with the same layout, so CI never needs a
-ROM: stat and growth fields, the seven resistances, lineage bytes, the
-`0x10` line-break control code in two-line names. The converter's tests check
-that promotions come out of lineage, that story classes stay out of the
-player's tree, that heals are Virtue magic and not merely the heal effect byte,
-and that the inferred gates reproduce the four documented requirements. The
-rules tests cover lineage downgrade, growth as each class held along the way,
-the 0–2 level-up roll (including that it actually varies), class change keeping
-stats, and element-resolved spells. Where `npm run extract:ob64` has been run,
-an extra suite checks the real data: Fighter's eight class changes and
-Amazon's six, every promotion pointing a tier up within the same gender, clean
-names, and the great monsters flagged as large.
-
-The expansion has its own suite. Over the whole expanded tree: every route
-points at a class that exists, never a tier down, only between genders that
-can hold both, with no loops, and every playable translated class reachable
-from a tier-1 class. It checks that no gunpowder class gets in, that the
-existing class wins a merge untouched while gaining routes, that the input
-dataset is never modified, that a class 20% stronger than its SNES tier lands
-20% above this dataset's tier average, that Symphony of War's ratings order
-correctly, that SNES undead immunity survives, that stat gates appear only on
-datasets that gate and lead with the stat the source names, that item routes
-stay shut, that a unit sees only the class changes its gender allows, and
-that every playable translated class can field a squad and fight. Squad type
-tests cover each composition rule at its boundary, and terrain tests each
-type's ground. Each of these was mutation-checked; two guards that the real
-data never exercises (loops, and either-gender classes refusing monsters)
-survived at first, and now have tests of their own.
-
-Equipment and items have their own suites. Gear goes where its type says and
-only on classes that may wear it; equipping moves items to and from the
-inventory and fails without the item in hand; a two-handed weapon sets down
-the shield and refuses one beside it; bonuses add to the stats a unit fights
-with but not its own; resistances add and stay within 0..100; armour blunts
-blows, an elemental weapon strikes half with its element, and a slaying
-weapon strikes its quarry half again as hard and nothing else. Supplies heal
-only up to the maximum, revive only the fallen, reach a whole squad when
-they should, and spend nothing when they would do nothing; relics last;
-a banner draws a squad toward its leader from either side and no further.
-The shop stocks by rank, charges, and buys back at half. Class changes that
-call for an item open only with it in hand, spend it, and shed gear the new
-class cannot use. Large units take two cells and two places, fight from their
-foremost cell, act once, and cannot be set over another unit or past the
-fifth place. Squads rest only on their own strongholds, the fallen rise only
-at the keep, and no two soldiers share a name until a pool runs dry. The
-decoder reads a synthetic item and consumable table; on real data, all 277
-items read, the Fighter and Wizard are dressed as the game dresses them, every
-class can wear its own default gear, and the dragon slayers are marked.
-Twenty-nine mutations of this code were tried; six survived the first suite
-(the resistance cap, the banner's direction, placement past the fifth place,
-rest on an enemy stronghold, the fallen rising away from the keep, names
-reused too early), and each now has a test that catches it.
-
-The sprite decoder runs on bundles built by hand to the documented formats:
-colour and mask frames rebuilt from their differences (both halves of a mask
-byte), drawn through a palette with the mask's alpha; each pose's kind and
-palette read from the pose table, and a table for the wrong number of poses
-ignored; a body dressed by its variant while the weapon keeps its player
-look; cells with signed offsets and mirroring, each part in its own palette,
-faint texels left out; scripts read, played on into the script they link to,
-and the blow marked on its own frame only; the Soldier's stand-ins replaced
-by the other side's art, recoloured, or left out; and a packed bundle
-unpacking to what the ROM holds. Ten mutations were tried; three survived at
-first and now have tests. On real data, Fighter and Lycanthrope share a
-bundle as variants, a bundle's poses take several palettes and its weapon is
-marked, every translated class's borrowed art exists, and every class's
-animations build. The stage's layout and camera, and the choice of which view
-to show and which frame plays when, are tested without a browser.
-
-The 3D map's shape is tested without a browser:
-* **Heights:** deterministic, under the water exactly on the water tiles
-  (even a lone pond, even a lone islet), mountains above open country, and
-  smooth between vertices.
-* **Edges:** the land mirrors past them.
-* **The camera:** it opens on the whole map, stays on it, keeps its
-  distance and pitch within bounds, pans the way it faces, zooms within
-  limits, and turns the short way round.
-* **Headings:** each turns into the right one on screen for any camera turn.
-* **Map figures:** they show their front coming toward the camera and their
-  back going away, turn to the side they head for, walk only while
-  marching, and stand a man's height (great beasts larger).
-
-Twelve mutations were tried; two survived at first (the shore fix, which
-this map happens not to need, and one direction of the yaw wrap) and now
-have tests.
-
-The polish round added its own tests:
-* **Formations:** the rows stand on the diagonal.
-* **Framing:** every action shot keeps the actor and all its targets in
-  frame, and keeps each nearer row further right on screen.
-* **Labels:** they never overlap, and fixed ones hold their place.
-* **Map figures:** they grow with the camera's distance.
-* **Parked squads:** every squad parked at a stronghold stands close enough
-  to hold it, to count against anyone taking it, and to meet an enemy who
-  marches onto it.
+`npm run e2e` plays the game in a real browser through its interface, and
+`npm run perf` measures it. Details: [docs/TESTING.md](docs/TESTING.md).
 
 ## Balance knobs
 
-Class stats, growths, row attacks, and promotion requirements all live in
-`src/data/classes.ts`. Damage and healing formulas are in `src/core/battle.ts`;
-base march speeds and squad-type rules are in `src/core/squad.ts`;
-translation weights are in `src/expansion/translate.ts`; recruit costs are in
-`src/scenes/OrganizeScene.ts`; the built-in items are in `src/data/items.ts`,
-supply effects for the extracted data in `CONSUMABLE_EFFECT` in
-`src/ob64/convert.ts`, and the slaying bonus, shop ranks, spoils and resale
-price in `src/core/items.ts`; rest and revival rates are in `src/core/camp.ts`; terrain movement costs and the
-road bonus are in `TERRAIN_SPEED` and `MARCH_TERRAIN` in `src/core/terrain.ts`; capture and snap
-radii are in `src/core/movement.ts`; the campaign map and starting armies are
-in `src/core/state.ts`. The battle's spacing and camera shots are in
-`src/gfx3d/layout.ts` (`ROW_SHEAR`, `DIAGONAL`, `WIDE`); Ogre Battle 64 sprites' size and the beasts'
-enlargement are `PIXELS_PER_UNIT` and `LARGE_SCALE` in
-`src/gfx3d/ob64Sprites.ts`, and their animation speed is `TICK_MS` in
-`src/ob64/sprites.ts`. The landscape's shapes are in `baseTerrainAt` in
-`src/core/terrain.ts`; the map's heights in `src/gfx3d/worldMap.ts`, with the
-camera's limits and opening view (`VIEW_LIMITS`, `OVERVIEW`); figures' size on
-the map is `FIGURE_HEIGHT` in `src/gfx3d/mapFigures.ts`, and how much they
-grow from afar `FIGURE_FULL_AT` in `src/gfx3d/worldMap.ts`. The river's
-course is `riverX` in `src/core/terrain.ts`.
+| What | Where |
+|---|---|
+| Class stats, growths, row attacks, promotion requirements | `src/data/classes.ts` |
+| Damage and healing formulas | `src/core/battle.ts` |
+| March speeds and squad-type rules | `src/core/squad.ts` |
+| Terrain costs and the road bonus | `TERRAIN_SPEED` and `MARCH_TERRAIN` in `src/core/terrain.ts` |
+| Capture and snap radii | `src/core/movement.ts` |
+| The map, the landscape's shapes, the river | `src/core/state.ts`; `baseTerrainAt` and `riverX` in `src/core/terrain.ts` |
+| Translation weights for the expansion | `src/expansion/translate.ts` |
+| Recruit costs | `recruitCost` in `src/screens/organize.ts` |
+| Built-in items; OB64 supply effects | `src/data/items.ts`; `CONSUMABLE_EFFECT` in `src/ob64/convert.ts` |
+| Slaying bonus, shop ranks, spoils, resale | `src/core/items.ts` |
+| Rest and revival | `src/core/camp.ts` |
+| Battle spacing and camera shots | `ROW_SHEAR`, `DIAGONAL`, `WIDE` in `src/gfx3d/layout.ts` |
+| Battle timing | `MARCH_MS`, `RUN_MS`, `STRIKE_GAP`, `AFTER_MS` in `src/screens/battle.ts` |
+| Map camera limits and opening view | `VIEW_LIMITS`, `OVERVIEW` in `src/gfx3d/worldMap.ts` |
+| Figures' size on the map | `FIGURE_HEIGHT` in `src/gfx3d/mapFigures.ts`; `FIGURE_FULL_AT` in `src/gfx3d/worldMap.ts` |
+| OB64 sprites' size and the beasts' enlargement | `PIXELS_PER_UNIT`, `LARGE_SCALE` in `src/gfx3d/ob64Sprites.ts` |
+| Presets; adaptive resolution's thresholds | `src/render/quality.ts`; `src/render/governor.ts` |
+
+## Credits
+
+Fonts and the KayKit models are listed with their licences in
+[CREDITS.md](CREDITS.md).

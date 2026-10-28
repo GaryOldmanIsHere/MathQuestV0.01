@@ -11,7 +11,6 @@ import { getState, resetState } from './core/state';
 import { allClasses, classOf, installDataset, itemOf } from './data/registry';
 import { canEquip, shopRank, shopStock, SLOTS } from './core/items';
 import { allPromotions, availablePromotions } from './core/character';
-import { convertDataset } from './ob64/convert';
 import { withExpansion } from './expansion';
 import type { Ob64Data } from './ob64/decode';
 import { loadOb64Sprites } from './gfx3d/ob64Sprites';
@@ -38,6 +37,8 @@ async function loadExtractedData(): Promise<void> {
     const res = await fetch('ob64/data.json', { cache: 'no-store' });
     // The dev server answers a missing file with the app's index page.
     if (!res.ok || !res.headers.get('content-type')?.includes('json')) return;
+    // The reader of the game's tables is fetched only by those who have them.
+    const { convertDataset } = await import('./ob64/convert');
     installDataset(withExpansion(convertDataset((await res.json()) as Ob64Data)));
   } catch (err) {
     console.warn('Ogre Battle 64 data present but unreadable; using built-in classes.', err);
@@ -57,14 +58,17 @@ async function boot(): Promise<void> {
     if (loading) loading.textContent = 'This browser cannot draw the game (it needs WebGPU or WebGL2).';
     return;
   }
+  step('boot:renderer');
   const models = loadWorldModels();
   await loadExtractedData();
   await loadOb64Sprites();
   await models;
+  step('boot:data');
   // Painted portraits first; the pixel art fills in for any kind not painted.
   paintPortraits(allClasses());
   buildUnitImages();
   buildClassImages(allClasses());
+  step('boot:art');
 
   const app = new App(engine, ui);
   const toTitle = () => app.show(new TitleScreen(app, newCampaign));
@@ -82,6 +86,19 @@ async function boot(): Promise<void> {
   toTitle();
   loading?.remove();
   app.start();
+  step('boot:title');
+}
+
+/**
+ * Mark the end of a stage of the boot, timed from the last (for the
+ * browser's performance panel, and the probes that read it).
+ */
+let stepFrom = 'boot:start';
+performance.mark(stepFrom);
+function step(name: string): void {
+  performance.mark(name);
+  performance.measure(name, stepFrom, name);
+  stepFrom = name;
 }
 
 /** For the automated playthrough (with ?debug): the game, its state, and every battle's outcome. */

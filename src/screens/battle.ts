@@ -68,6 +68,8 @@ export class BattleScreen implements Screen {
   private attacker: Squad;
   private defender: Squad;
   private disposed = false;
+  /** Whether the field is ready to be seen (its shaders prepared); the map shows until then. */
+  private ready = false;
 
   constructor(
     private app: App,
@@ -86,8 +88,7 @@ export class BattleScreen implements Screen {
 
     this.layer = el('div', { class: 'battle-labels' });
     this.banner = el('div', { class: 'battle-banner', ui: 'battle-banner' }, 'The squads close…');
-    // The battle opens on a flash of light.
-    this.root = el('div', { class: 'screen battle-screen', ui: 'battle' }, this.layer, this.banner, el('div', { class: 'battle-wipe' }));
+    this.root = el('div', { class: 'screen battle-screen is-preparing', ui: 'battle' }, this.layer, this.banner);
 
     // Units appear once their sprites are ready: Ogre Battle 64's are fetched
     // and drawn for this battle; the original art is at hand already.
@@ -100,8 +101,8 @@ export class BattleScreen implements Screen {
     });
   }
 
-  view(): View {
-    return this.stage;
+  view(): View | null {
+    return this.ready ? this.stage : null;
   }
 
   resize(w: number, h: number): void {
@@ -133,6 +134,21 @@ export class BattleScreen implements Screen {
         this.labels.set(id, { char: c, root, fill, chip, width: 0, hp: c.hp, bar: new StrengthBar(c.hp / c.stats.hp) });
       }
     }
+    // The field's shaders are prepared (in parallel, where the browser can)
+    // before it is first shown, rather than all at once as its first frame
+    // is drawn, which would hold the page still for a moment.
+    void this.app.engine.warm(stage).then(() => {
+      if (!this.disposed) this.open();
+    });
+  }
+
+  /** Show the field, opening on a flash of light, and play the battle out on it. */
+  private open(): void {
+    const st = getState();
+    const stage = this.stage;
+    this.ready = true;
+    this.root.classList.remove('is-preparing');
+    this.root.append(el('div', { class: 'battle-wipe' }));
 
     // Who fights whom, over the field, and the clash's name as the squads march on.
     this.root.prepend(el('div', { class: 'battle-heads' }, this.sideCard(this.attacker, 1), this.sideCard(this.defender, -1)));

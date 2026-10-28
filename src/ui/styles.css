@@ -240,6 +240,9 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 
 /* ----------------------------------------------------------------- battle */
 
+/* While the field's shaders are prepared, the map shows through, dimmed, and the battle's own interface waits. */
+.battle-screen.is-preparing { background: rgba(6, 10, 24, 0.45); }
+.battle-screen.is-preparing > * { visibility: hidden; }
 .battle-labels { position: absolute; inset: 0; pointer-events: none !important; overflow: hidden; }
 .battle-labels > .unit-tag { position: absolute; left: 0; top: 0; display: grid; gap: 2px; justify-items: center; will-change: transform; transition: opacity 400ms; }
 .unit-tag .bar { width: 44px; }

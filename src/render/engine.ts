@@ -7,7 +7,8 @@ import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
 import type { Quality, QualitySettings } from './quality';
-import { defaultQuality, QUALITIES, savedQuality, SETTINGS } from './quality';
+import { defaultQuality, QUALITIES, savedAdaptive, savedQuality, SETTINGS } from './quality';
+import { ResolutionGovernor } from './governor';
 
 // The one renderer the whole game draws with, straight into a canvas that
 // fills the window at the display's own resolution. WebGPU where the browser
@@ -46,6 +47,11 @@ export class Engine {
   width = 0;
   height = 0;
   private listeners = new Set<(w: number, h: number) => void>();
+  /**
+   * Draws fewer pixels while frames come slowly (see governor.ts). Off when
+   * the address asks for a preset (?quality=…): that is drawn exactly as asked.
+   */
+  readonly governor: ResolutionGovernor;
 
   private constructor(renderer: THREE.WebGPURenderer, readonly canvas: HTMLCanvasElement) {
     this.renderer = renderer;
@@ -55,6 +61,7 @@ export class Engine {
     const asked = new URLSearchParams(location.search).get('quality') as Quality | null;
     this.quality = (asked && QUALITIES.includes(asked) ? asked : null) ?? savedQuality()
       ?? defaultQuality(this.backend, window.screen.width * window.screen.height * devicePixelRatio ** 2);
+    this.governor = new ResolutionGovernor(!asked && savedAdaptive());
     renderer.toneMapping = THREE.NeutralToneMapping;
     renderer.toneMappingExposure = 1;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -97,8 +104,31 @@ export class Engine {
     if (q === this.quality) return;
     this.quality = q;
     this.renderer.shadowMap.enabled = this.settings.shadows > 0;
+    this.governor.reset();
     this.disposePipeline();
     this.resize();
+  }
+
+  /** Turn adaptive resolution on or off (off: back to the preset's full sharpness). */
+  setAdaptive(on: boolean): void {
+    this.governor.enabled = on;
+    this.governor.reset();
+    this.resize();
+  }
+
+  /**
+   * Weigh a window of frames (their average time, in ms), and draw fewer or
+   * more pixels to suit. True if it did (the canvas is then blank until drawn).
+   */
+  observeFrames(avgMs: number): boolean {
+    if (!this.governor.observe(avgMs)) return false;
+    this.renderer.setPixelRatio(this.pixelRatio());
+    return true;
+  }
+
+  /** Device pixels drawn per CSS pixel: the display's, within the preset's cap, scaled down while frames come slowly. */
+  private pixelRatio(): number {
+    return Math.min(window.devicePixelRatio || 1, this.settings.pixelRatioCap) * this.governor.scale;
   }
 
   /** Be told when the canvas changes size (in CSS pixels). */
@@ -113,7 +143,7 @@ export class Engine {
     const h = Math.max(1, this.canvas.clientHeight || window.innerHeight);
     this.width = w;
     this.height = h;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.settings.pixelRatioCap));
+    this.renderer.setPixelRatio(this.pixelRatio());
     this.renderer.setSize(w, h, false);
     for (const fn of this.listeners) fn(w, h);
   }
@@ -132,14 +162,30 @@ export class Engine {
     this.pipeline.pipeline.render();
   }
 
+  /**
+   * Prepare a view's shaders without holding up the page (in parallel, where
+   * the browser can): resolves when they are ready, or after `capMs` all the
+   * same (what is left is then prepared as it is first drawn).
+   */
+  warm(view: View, capMs = 1500): Promise<void> {
+    const ready = this.renderer.compileAsync(view.scene, view.camera).catch(() => undefined);
+    return Promise.race([ready, new Promise<void>((done) => setTimeout(done, capMs))]).then(() => undefined);
+  }
+
   /** Forget a view's finishing chain (when its scene is let go). */
   release(view: View): void {
     if (this.pipeline?.scene === view.scene) this.disposePipeline();
   }
 
   private disposePipeline(): void {
-    this.pipeline?.pipeline.dispose();
+    const p = this.pipeline?.pipeline;
     this.pipeline = null;
+    if (!p) return;
+    p.dispose();
+    // The pipeline lets go of only its own material: the passes it was built
+    // from keep their screen-sized targets on the graphics card until each is
+    // let go of in turn (a battle's worth of them every battle, otherwise).
+    disposeGraph(p.outputNode as Node | null);
   }
 
   private buildPipeline({ scene, camera, tiltShift }: View): THREE.RenderPipeline {
@@ -180,6 +226,24 @@ export class Engine {
     const m = this.renderer.info.memory as { geometries: number; textures: number };
     return { geometries: m.geometries, textures: m.textures };
   }
+}
+
+/**
+ * Let go of every node in a finishing chain, and the render target any of
+ * them draws into (the scene's pass, a blur's, the edge smoothing's). The
+ * shared tilt-shift strength stays: every chain reads it.
+ */
+function disposeGraph(root: Node | null): void {
+  const seen = new Set<Node>([tiltShiftStrength as unknown as Node]);
+  const visit = (n: Node) => {
+    if (seen.has(n)) return;
+    seen.add(n);
+    for (const child of n.getChildren()) visit(child as Node);
+    const target = (n as { renderTarget?: { isRenderTarget?: boolean; dispose(): void } }).renderTarget;
+    if (target?.isRenderTarget) target.dispose();
+    n.dispose();
+  };
+  if (root) visit(root);
 }
 
 /**

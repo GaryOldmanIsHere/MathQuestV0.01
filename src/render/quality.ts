@@ -62,3 +62,22 @@ export function saveQuality(q: Quality): void {
     // Storage may be unavailable (a private window); the choice lasts the session.
   }
 }
+
+const ADAPTIVE_KEY = 'palatinus.adaptive';
+
+/** Whether to draw fewer pixels while frames come slowly (on unless the player turned it off). */
+export function savedAdaptive(): boolean {
+  try {
+    return localStorage.getItem(ADAPTIVE_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+export function saveAdaptive(on: boolean): void {
+  try {
+    localStorage.setItem(ADAPTIVE_KEY, on ? 'on' : 'off');
+  } catch {
+    // As above: the choice lasts the session.
+  }
+}

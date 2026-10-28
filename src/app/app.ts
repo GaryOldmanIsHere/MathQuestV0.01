@@ -30,11 +30,15 @@ export class App {
   private frames: number[] = [];
   private readonly fps: HTMLElement;
   private readonly events = new Map<string, Set<(payload: unknown) => void>>();
+  /** The view last drawn, and whether it must be drawn again though nothing in it has moved. */
+  private drawn: View | null = null;
+  private stale = true;
 
   constructor(readonly engine: Engine, readonly ui: HTMLElement) {
     this.fps = el('div', { class: 'fps', ui: 'fps', hidden: '' });
     document.body.append(this.fps);
     engine.onResize((w, h) => {
+      this.stale = true;
       this.base?.resize?.(w, h);
       this.overlay?.resize?.(w, h);
     });
@@ -83,11 +87,13 @@ export class App {
   }
 
   private mount(screen: Screen): void {
+    this.stale = true;
     this.ui.append(screen.root);
     screen.resize?.(this.engine.width, this.engine.height);
   }
 
   private unmount(screen: Screen): void {
+    this.stale = true;
     const view = screen.view();
     if (view) this.engine.release(view);
     screen.dispose();
@@ -126,8 +132,17 @@ export class App {
     this.last = t;
     const top = this.overlay ?? this.base;
     top?.update(ms);
-    const view = this.overlay?.view() ?? this.base?.view() ?? null;
-    if (view) this.engine.render(view);
+    const own = this.overlay?.view() ?? null;
+    const view = own ?? this.base?.view() ?? null;
+    // A screen held still under one with no view of its own (the army
+    // screen over the map) looks the same frame after frame: draw it once
+    // and leave the canvas showing it, until the window or the screens change.
+    const still = this.overlay !== null && own === null;
+    if (view && (!still || this.stale || view !== this.drawn)) {
+      this.engine.render(view);
+      this.drawn = view;
+      this.stale = false;
+    }
     this.meter(ms);
   }
 
@@ -136,11 +151,13 @@ export class App {
     if (this.frames.length < 30) return;
     const avg = this.frames.reduce((a, b) => a + b, 0) / this.frames.length;
     this.frames = [];
-    if (this.fps.hidden) return;
     const e = this.engine;
+    if (e.observeFrames(avg)) this.stale = true;
+    if (this.fps.hidden) return;
     const info = e.renderer.info.render as { drawCalls?: number; calls?: number; triangles?: number };
     this.fps.textContent =
-      `${(1000 / Math.max(1, avg)).toFixed(0)} fps · ${avg.toFixed(1)} ms · ${e.backend.toUpperCase()} · ${e.currentQuality} · ` +
+      `${(1000 / Math.max(1, avg)).toFixed(0)} fps · ${avg.toFixed(1)} ms · ${e.backend.toUpperCase()} · ${e.currentQuality}` +
+      `${e.governor.scale < 1 ? ` (${Math.round(e.governor.scale * 100)}%)` : ''} · ` +
       `${Math.round(e.width * e.renderer.getPixelRatio())}×${Math.round(e.height * e.renderer.getPixelRatio())} · ` +
       `${info.drawCalls ?? info.calls ?? 0} draws`;
   }

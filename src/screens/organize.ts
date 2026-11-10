@@ -16,6 +16,8 @@ import type { ItemDef, Slot } from '../core/items';
 import { dismissMember, makeLeader, rallyHome } from '../core/camp';
 import { unitIcon } from '../gfx/unitIcon';
 import { button, el, fill, hpColour } from '../ui/dom';
+import { TACTIC_LABEL, TACTICS } from '../core/types';
+import type { Tactic } from '../core/types';
 import { icon } from '../ui/icons';
 import type { IconName } from '../ui/icons';
 
@@ -183,9 +185,15 @@ export class OrganizeScreen implements Screen {
     const owned = st.nodes.filter((n) => n.owner === 'player').length;
     const held = Object.values(st.inventory).reduce((a, b) => a + b, 0);
     fill(this.info,
-      el('div', { class: 'org-info-line' }, icon('people', 16), `Places ${placesUsed(sq)}/${SQUAD_PLACES} · Large units fill two`),
+      el('label', { class: 'org-info-line org-tactic' }, icon('sword', 16), 'In battle',
+        el('select', {
+          class: 'select', ui: 'tactic', 'aria-label': `${sq.name}'s orders in battle`,
+          'data-tip': 'Blades reach only the enemy\'s front rank; arrows and spells reach anyone',
+          on: { change: (e) => { sq.tactic = (e.target as HTMLSelectElement).value as Tactic; } },
+        }, ...TACTICS.map((t) => el('option', { value: t, selected: (sq.tactic ?? 'nearest') === t ? '' : undefined }, TACTIC_LABEL[t]))),
+      ),
+      el('div', { class: 'org-info-line' }, icon('people', 16), `Places ${placesUsed(sq)}/${SQUAD_PLACES} (large units fill two) · Items carried ${held}`),
       el('div', { class: 'org-info-line gold' }, icon('coin', 16), `Treasury ${st.goth} Goth · Shop rank ${shopRank(owned)}`),
-      el('div', { class: 'org-info-line' }, icon('bag', 16), `Items carried: ${held}`),
       this.message ? el('div', { class: 'org-message', ui: 'message' }, this.message) : null,
     );
   }

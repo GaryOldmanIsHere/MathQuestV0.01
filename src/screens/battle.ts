@@ -238,6 +238,14 @@ export class BattleScreen implements Screen {
     }
     const ev = events[i];
     const next = () => this.playEvents(events, i + 1, done);
+    if (ev.kind === 'round') {
+      // A breath between rounds: the camera draws back and the round is named.
+      stage.highlight(null);
+      stage.cut(WIDE, 380);
+      this.say(`Round ${ev.round}`, 'flag');
+      this.timers.after(650, next);
+      return;
+    }
     if (ev.kind !== 'act' || !stage.has(ev.actorId)) {
       next();
       return;
@@ -326,14 +334,23 @@ export class BattleScreen implements Screen {
     const stage = this.stage;
     const heal = ev.attack.type === 'heal';
     const strikes = ev.targetIds.flatMap((t, k) => (t === id ? [ev.amounts[k]] : []));
+    const results = ev.targetIds.flatMap((t, k) => (t === id ? [ev.results[k]] : []));
     const l = this.labels.get(id);
     const max = l?.char.stats.hp ?? 1;
     const heavy = this.heavy(ev, id);
     strikes.forEach((amount, n) => this.timers.after(n * STRIKE_GAP, () => {
       const p = stage.project(id);
-      if (p) this.floatNumber(p.x + (n % 2 ? 12 : -12) * Math.min(1, n), p.headY - 6 - n * 16, `${heal ? '+' : ''}${amount}`, heal ? 'heal' : 'hit', {
-        big: !heal && amount >= max * 0.25, hue: heal ? undefined : hue,
+      if (results[n] === 'miss') {
+        // The blow goes wide: the unit sways aside, unhurt.
+        if (p) this.floatNumber(p.x, p.headY - 6, 'Miss', 'miss');
+        stage.recoil(id, 0.6);
+        return;
+      }
+      const crit = results[n] === 'crit';
+      if (p) this.floatNumber(p.x + (n % 2 ? 12 : -12) * Math.min(1, n), p.headY - 6 - n * 16, `${heal ? '+' : ''}${amount}${crit ? '!' : ''}`, heal ? 'heal' : 'hit', {
+        big: !heal && (crit || amount >= max * 0.25), hue: heal ? undefined : hue,
       });
+      if (crit && p) this.floatNumber(p.x, p.headY - 40, 'Critical!', 'crit');
       if (l) {
         l.hp = heal ? Math.min(max, l.hp + amount) : Math.max(0, l.hp - amount);
         l.bar.set(l.hp / max);
@@ -343,9 +360,9 @@ export class BattleScreen implements Screen {
       stage.flash(id, hue === 'physical' ? 0xff6a5a : 0xffffff);
       stage.recoil(id, heavy ? 1.4 : 1);
       // The weight of a blow: the moment held, the camera shaken (and pushed in, for a heavy one).
-      stage.hitStop(ev.attack.type === 'melee' ? (heavy ? 90 : 55) : heavy ? 60 : 0);
-      stage.quake(ev.attack.type === 'magic' ? 0.2 : heavy ? 0.22 : 0.1);
-      if (heavy) stage.punch(1);
+      stage.hitStop(ev.attack.type === 'melee' ? (heavy || crit ? 90 : 55) : heavy || crit ? 60 : 0);
+      stage.quake(ev.attack.type === 'magic' ? 0.2 : heavy || crit ? 0.22 : 0.1);
+      if (heavy || crit) stage.punch(1);
     }));
     if (ev.kos.includes(id)) {
       this.timers.after(Math.max(0, strikes.length - 1) * STRIKE_GAP + 120, () => {
@@ -377,7 +394,7 @@ export class BattleScreen implements Screen {
     }
   }
 
-  private floatNumber(x: number, y: number, txt: string, kind: 'hit' | 'heal' | 'ko', o: { big?: boolean; hue?: Hue } = {}): void {
+  private floatNumber(x: number, y: number, txt: string, kind: 'hit' | 'heal' | 'ko' | 'miss' | 'crit', o: { big?: boolean; hue?: Hue } = {}): void {
     const t = el('div', { class: `float-number is-${kind}${o.big ? ' is-big' : ''}` }, txt);
     if (o.hue && o.hue !== 'physical') t.style.setProperty('--tint', `#${ELEMENT_COLOUR[o.hue].toString(16).padStart(6, '0')}`);
     t.style.left = `${Math.round(x)}px`;

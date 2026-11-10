@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { elementBonus, judgeClash, simulateBattle } from './battle';
+import { chooseTarget, critChance, elementBonus, hitChance, judgeClash, simulateBattle } from './battle';
+import type { Combatant } from './battle';
+import { memberRow } from './squad';
 import { makeCharacter } from './character';
 import { makeSquad } from './squad';
 import type { Character, Squad } from './types';
@@ -271,5 +273,141 @@ describe('target acquisition', () => {
     // the front-ranker dies first, so the back-ranker must also have been reached
     expect(frontman.hp).toBe(0);
     expect(backman.hp).toBeLessThan(backman.stats.hp);
+  });
+});
+
+describe('whom a combatant strikes at', () => {
+  const field = (tactic?: Squad['tactic']) => {
+    const chars = new Map<number, Character>();
+    const mine = squadOf('player', [{ classId: 'knight', level: 5, cell: 8 }, { classId: 'archer', level: 5, cell: 0 }], chars);
+    mine.tactic = tactic;
+    // Front rank: cells 2 (top lane) and 8 (bottom lane); the leader, an archer, at the back.
+    const theirs = squadOf('enemy', [
+      { classId: 'archer', level: 5, cell: 3 }, { classId: 'knight', level: 5, cell: 2 }, { classId: 'knight', level: 5, cell: 8 },
+    ], chars);
+    const of = (sq: Squad): Combatant[] => sq.grid.flatMap((id, cell) => (id === null ? [] : [{ char: chars.get(id)!, squad: sq, row: memberRow(sq, id), cell }]));
+    const [knight, archer] = [of(mine).find((c) => c.cell === 8)!, of(mine).find((c) => c.cell === 0)!];
+    return { knight, archer, foes: of(theirs), blade: classOf('knight').attacks.front!, bow: classOf('archer').attacks.back! };
+  };
+
+  it('goes for whoever stands across from it in the front rank, not always the same soldier', () => {
+    const { knight, archer, foes, blade, bow } = field();
+    expect(chooseTarget(knight, blade, foes)!.cell).toBe(8); // its own lane
+    expect(chooseTarget(archer, bow, foes)!.cell).toBe(2); // and the archer's
+  });
+
+  it('lets arrows reach the back rank on orders, but never blades', () => {
+    const { knight, archer, foes, blade, bow } = field('leader');
+    expect(chooseTarget(archer, bow, foes)!.cell).toBe(3); // the leader, behind the front rank
+    expect(chooseTarget(knight, blade, foes)!.row).toBe('front');
+  });
+
+  it('picks the weakest or the strongest of those in reach', () => {
+    const weak = field('weakest');
+    weak.foes.find((c) => c.cell === 2)!.char.hp = 5;
+    expect(chooseTarget(weak.knight, weak.blade, weak.foes)!.cell).toBe(2);
+    const strong = field('strongest');
+    strong.foes.find((c) => c.cell === 2)!.char.hp = 5;
+    expect(chooseTarget(strong.knight, strong.blade, strong.foes)!.cell).toBe(8);
+  });
+
+  it('moves on to the next rank once the front has fallen', () => {
+    const { knight, foes, blade } = field();
+    for (const c of foes) if (c.row === 'front') c.char.hp = 0;
+    expect(chooseTarget(knight, blade, foes)!.cell).toBe(3);
+  });
+});
+
+describe('hits, misses and telling blows', () => {
+  const pair = () => [makeCharacter('knight', 5), makeCharacter('knight', 5)] as const;
+  const blade = classOf('knight').attacks.front!;
+
+  it('lands more surely for the deft, less surely on the quick, within bounds', () => {
+    const [a, t] = pair();
+    const even = hitChance(blade, a, t);
+    a.stats.dex += 6;
+    expect(hitChance(blade, a, t)).toBeGreaterThan(even);
+    a.stats.dex -= 6;
+    t.stats.agi += 6;
+    expect(hitChance(blade, a, t)).toBeLessThan(even);
+    t.stats.agi += 500;
+    expect(hitChance(blade, a, t)).toBe(0.65);
+    a.stats.dex += 5000;
+    expect(hitChance(blade, a, t)).toBe(1);
+  });
+
+  it('never lets a spell miss', () => {
+    const [a, t] = pair();
+    t.stats.agi += 500;
+    expect(hitChance({ ...blade, type: 'magic' }, a, t)).toBe(1);
+  });
+
+  it('tells more often for the lucky', () => {
+    const [a, t] = pair();
+    a.luk = t.luk = 50;
+    expect(critChance(a, t)).toBeCloseTo(0.05);
+    a.luk = 100;
+    expect(critChance(a, t)).toBeGreaterThan(0.05);
+    a.luk = 0;
+    expect(critChance(a, t)).toBeLessThan(0.05);
+  });
+
+  it('records a miss as no harm done, and sees both misses and telling blows over many battles', () => {
+    const seen = new Set<string>();
+    for (let k = 0; k < 60; k++) {
+      const chars = new Map<number, Character>();
+      const mine = squadOf('player', [{ classId: 'knight', level: 5, cell: 2 }, { classId: 'knight', level: 5, cell: 5 }], chars);
+      const theirs = squadOf('enemy', [{ classId: 'ninja', level: 5, cell: 2 }, { classId: 'ninja', level: 5, cell: 5 }], chars);
+      for (const c of chars.values()) c.stats.hp = c.hp = 10000;
+      for (const e of simulateBattle({ squad: mine, chars }, { squad: theirs, chars }).events) {
+        if (e.kind !== 'act') continue;
+        e.results.forEach((r, i) => {
+          seen.add(r);
+          if (r === 'miss') expect(e.amounts[i]).toBe(0);
+          else expect(e.amounts[i]).toBeGreaterThan(0);
+        });
+      }
+    }
+    expect(seen).toEqual(new Set(['hit', 'miss', 'crit']));
+  });
+});
+
+describe('rounds', () => {
+  it('gives each fighter one strike a round, as many rounds as its row gives strikes', () => {
+    const chars = new Map<number, Character>();
+    const mine = squadOf('player', [{ classId: 'knight', level: 5, cell: 2 }], chars);
+    const theirs = squadOf('enemy', [{ classId: 'knight', level: 5, cell: 2 }], chars);
+    for (const c of chars.values()) c.stats.hp = c.hp = 10000;
+    const { events } = simulateBattle({ squad: mine, chars }, { squad: theirs, chars });
+    const count = classOf('knight').attacks.front!.count;
+    const acts = events.filter((e) => e.kind === 'act');
+    expect(acts).toHaveLength(count * 2);
+    for (const e of acts) if (e.kind === 'act') expect(e.targetIds).toHaveLength(1);
+    expect(events.filter((e) => e.kind === 'round')).toHaveLength(count - 1);
+  });
+
+  it('gives the fallen no later strikes', () => {
+    const chars = new Map<number, Character>();
+    const mine = squadOf('player', [{ classId: 'knight', level: 9, cell: 2 }], chars);
+    const theirs = squadOf('enemy', [{ classId: 'knight', level: 5, cell: 2 }, { classId: 'knight', level: 5, cell: 5 }], chars);
+    const victim = chars.get(theirs.grid[2]!)!;
+    victim.hp = 1;
+    victim.stats.agi = 0; // struck before it can act
+    chars.get(mine.grid[2]!)!.stats.dex = 9999;
+    const { events } = simulateBattle({ squad: mine, chars }, { squad: theirs, chars });
+    expect(events.some((e) => e.kind === 'act' && e.actorId === victim.id)).toBe(false);
+  });
+});
+
+describe('what a squad learns', () => {
+  it('is shared: a healer and a soldier who never struck grow with the rest', () => {
+    const chars = new Map<number, Character>();
+    const mine = squadOf('player', [
+      { classId: 'knight', level: 5, cell: 2 }, { classId: 'cleric', level: 5, cell: 0 }, { classId: 'cleric', level: 5, cell: 3 },
+    ], chars);
+    const theirs = squadOf('enemy', [{ classId: 'fighter', level: 5, cell: 2 }], chars);
+    for (const c of chars.values()) c.stats.hp = c.hp = 10000;
+    simulateBattle({ squad: mine, chars }, { squad: theirs, chars });
+    for (const id of mine.grid) if (id !== null) expect(chars.get(id)!.exp + chars.get(id)!.level * 1000, chars.get(id)!.name).toBeGreaterThan(5000);
   });
 });

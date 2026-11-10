@@ -28,7 +28,7 @@ These show the built-in data at the High preset.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 342 unit tests (325 without extracted ROM data)
+npm test         # 353 unit tests (336 without extracted ROM data)
 npm run build    # type-check + production bundle into dist/
 npm run e2e      # an automated playthrough in a real browser (needs npm run dev)
 npm run perf     # boot, frame times and GPU memory over a run of battles (needs npm run dev)
@@ -60,13 +60,24 @@ meet, they fight.
 | Settings | The gear button | Tab to it, **Enter** |
 | Frame rate | | **F3** |
 
-**Battles** play themselves. What you decide is who fights, and where each
-member stands: on the army screen, a member's *column* on the 3x3 grid sets
-their battle row (front, middle or back), and their row sets which attack
-they make and how often. A knight in front swings twice; an archer gains a
-third shot from the back; clerics heal from the middle and the rear. The side that
-loses the smaller share of its strength (by health truly lost) wins and
-drives the other back; a squad defending its own keep holds its ground.
+**Battles** are fought in rounds, and play themselves. What you decide is who
+fights, where each member stands, and whom the squad goes for:
+* On the army screen, a member's *column* on the 3x3 grid sets their battle
+  row (front, middle or back), and their row sets which attack they make and
+  how many strikes it gives. A knight in front strikes twice; an archer gains
+  a third shot from the back; clerics heal from the middle and the rear.
+* Each round, everyone with a strike left makes one, the quick before the
+  slow. A blow can miss (the deft miss less, the quick are missed more) and
+  can tell for half again as much (the lucky more often). Spells never miss.
+* Blades reach only the enemy's front rank, and go for whoever stands across
+  from them. Arrows and spells reach anyone.
+* Each squad's **orders in battle** (army screen) choose among those in
+  reach: the nearest, the weakest, the strongest, or the leader.
+* What one soldier learns the squad shares, so healers grow with the rest.
+
+The side that loses the smaller share of its strength (by health truly lost)
+wins and drives the other back; a squad defending its own keep holds its
+ground.
 
 ## What's in the game
 
@@ -327,7 +338,7 @@ docs/           ARCHITECTURE.md, TESTING.md, OB64.md, screenshots
 
 ## Tests
 
-`npm test` runs 342 tests (325 without extracted ROM data), mostly over the
+`npm test` runs 353 tests (336 without extracted ROM data), mostly over the
 rules, in Node without a browser:
 * battles, marching and terrain, the class tree, the expansion, equipment and
   items;

@@ -151,6 +151,17 @@ export interface Character {
 
 // A squad is an Ogre Battle "unit": up to 5 members on a 3x3 grid.
 // Grid cells are indexed 0..8: columns are rows-of-battle (front/mid/back).
+/**
+ * A squad's orders in battle: whom its members strike at, of those they can
+ * reach. Blades reach only the enemy's foremost rank; arrows and spells reach
+ * anyone.
+ */
+export type Tactic = 'nearest' | 'weakest' | 'strongest' | 'leader';
+export const TACTICS: Tactic[] = ['nearest', 'weakest', 'strongest', 'leader'];
+export const TACTIC_LABEL: Record<Tactic, string> = {
+  nearest: 'Strike the nearest', weakest: 'Strike the weakest', strongest: 'Strike the strongest', leader: 'Strike the leader',
+};
+
 export interface Squad {
   id: number;
   name: string;
@@ -162,6 +173,8 @@ export interface Squad {
   //    6     7     8
   grid: (number | null)[];
   leaderId: number;
+  /** Whom the squad goes for in battle (the nearest, unless ordered otherwise). */
+  tactic?: Tactic;
   // Overworld position/state. Squads move freely: a destination is an
   // arbitrary map point, not a stronghold or a step along a road.
   nodeId: number; // last stronghold occupied, for AI and rally purposes

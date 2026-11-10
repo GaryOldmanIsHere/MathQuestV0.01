@@ -317,6 +317,8 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .float-number.is-big { font-size: 2rem; }
 .float-number.is-heal { --tint: #8cf09a; }
 .float-number.is-ko { --tint: #ff6a50; font: 700 1.3rem var(--display); letter-spacing: 0.08em; }
+.float-number.is-miss { --tint: #c8d0e0; font: 600 1.05rem var(--display); letter-spacing: 0.08em; opacity: 0.9; }
+.float-number.is-crit { --tint: #ffd75a; font: 700 1.25rem var(--display); letter-spacing: 0.08em; }
 @keyframes number-pop {
   0% { opacity: 0; transform: translate(-50%, 4px) scale(1.9); }
   10% { opacity: 1; transform: translate(-50%, 0) scale(0.92); }
@@ -374,6 +376,7 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .org-info { padding: 12px 14px; display: grid; gap: 6px; font-size: 0.9rem; color: var(--ink-soft); }
 .org-info-line { display: flex; align-items: center; gap: 8px; }
 .org-info-line .icon { color: var(--gold); }
+.org-tactic .select { margin-left: auto; }
 .org-message { color: var(--good); margin-top: 4px; }
 .org-side { padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; max-height: calc(100vh / var(--ui-scale, 1) - 110px); }
 .org-empty { margin: auto; color: var(--ink-faint); text-align: center; display: grid; justify-items: center; gap: 10px; }

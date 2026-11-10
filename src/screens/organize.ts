@@ -17,6 +17,7 @@ import { dismissMember, makeLeader, rallyHome } from '../core/camp';
 import { unitIcon } from '../gfx/unitIcon';
 import { button, el, fill, hpColour } from '../ui/dom';
 import { TACTIC_LABEL, TACTICS } from '../core/types';
+import { FOUND_SQUAD_COST, foundSquad, PLAYER_SQUADS_MAX, recruitCost, recruitLevel, transferMember } from '../core/campaign';
 import type { Tactic } from '../core/types';
 import { icon } from '../ui/icons';
 import type { IconName } from '../ui/icons';
@@ -26,10 +27,7 @@ import type { IconName } from '../ui/icons';
 // from the army's shop, and recruit new tier-1 soldiers into a squad. It
 // opens over the map, which waits, darkened, behind it.
 
-/** What it costs to enlist a recruit of a class: monsters and the large come dear. */
-export function recruitCost(def: ClassDef): number {
-  return def.gender === 'X' ? (def.size === 2 ? 260 : 160) : 90;
-}
+export { recruitCost } from '../core/campaign';
 
 type Mode = 'sheet' | 'recruit' | 'shop' | 'items';
 type Tab = 'status' | 'gear' | 'class';
@@ -56,21 +54,15 @@ export class OrganizeScreen implements Screen {
   private info = el('div', { class: 'org-info panel', ui: 'org-info' });
   private side = el('div', { class: 'org-side panel', ui: 'org-side' });
   private squadButtons: HTMLButtonElement[] = [];
+  private squadsBox = el('div', { class: 'org-squads' });
+  /** Choosing the leader of a squad about to be founded. */
+  private founding = false;
   private modeButtons = new Map<Mode, HTMLButtonElement>();
 
   constructor(private app: App) {
     const st = getState();
     const playerSquads = st.squads.filter((s) => s.side === 'player');
-    this.squadButtons = playerSquads.slice(0, 6).map((sq, i) => {
-      const b = button(sq.name, () => {
-        this.squad = sq;
-        this.selectedChar = null;
-        this.refresh();
-      }, { ui: `squad-${i}`, class: 'org-squad' });
-      const leader = st.chars.get(sq.leaderId);
-      b.prepend(el('span', { class: 'org-squad-face' }, leader ? unitIcon(classOf(leader.classId).palette, 30) : null));
-      return b;
-    });
+    this.listSquads();
     const modeButton = (label: string, mode: Mode, mark: IconName) => {
       const b = button(label, () => {
         this.mode = this.mode === mode ? 'sheet' : mode;
@@ -88,7 +80,7 @@ export class OrganizeScreen implements Screen {
       el('div', { class: 'org-layout' },
         el('nav', { class: 'org-nav panel' },
           el('div', { class: 'label' }, 'Squads'),
-          el('div', { class: 'org-squads' }, ...this.squadButtons),
+          this.squadsBox,
           el('div', { class: 'org-modes' }, modeButton('Shop', 'shop', 'coin'), modeButton('Items', 'items', 'bag'), modeButton('Recruit', 'recruit', 'people')),
           back,
         ),
@@ -117,6 +109,31 @@ export class OrganizeScreen implements Screen {
 
   dispose(): void {
     window.removeEventListener('keydown', this.onKey);
+  }
+
+  /** The army's squads down the side, and (while there is room for one) the way to found another. */
+  private listSquads(): void {
+    const st = getState();
+    const mine = st.squads.filter((s) => s.side === 'player');
+    this.squadButtons = mine.slice(0, PLAYER_SQUADS_MAX).map((sq, i) => {
+      const b = button(sq.name, () => {
+        this.squad = sq;
+        this.selectedChar = null;
+        this.founding = false;
+        this.refresh();
+      }, { ui: `squad-${i}`, class: 'org-squad' });
+      const leader = st.chars.get(sq.leaderId);
+      b.prepend(el('span', { class: 'org-squad-face' }, leader ? unitIcon(classOf(leader.classId).palette, 30) : null));
+      return b;
+    });
+    const found = mine.length < PLAYER_SQUADS_MAX ? button(`New squad · ${FOUND_SQUAD_COST} Goth`, () => {
+      this.founding = !this.founding;
+      this.mode = this.founding ? 'recruit' : 'sheet';
+      this.message = this.founding ? 'Choose who is to lead the new squad.' : '';
+      this.refresh();
+    }, { ui: 'new-squad', class: 'org-squad org-found', 'data-tip': 'Found a squad at the keep, led by a fresh recruit' }) : null;
+    found?.prepend(icon('flag', 18));
+    fill(this.squadsBox, ...this.squadButtons, found);
   }
 
   private refresh(): void {
@@ -185,6 +202,8 @@ export class OrganizeScreen implements Screen {
     const owned = st.nodes.filter((n) => n.owner === 'player').length;
     const held = Object.values(st.inventory).reduce((a, b) => a + b, 0);
     fill(this.info,
+      // What was just done or refused, first: it must not fall below the fold.
+      this.message ? el('div', { class: 'org-message', ui: 'message' }, this.message) : null,
       el('label', { class: 'org-info-line org-tactic' }, icon('sword', 16), 'In battle',
         el('select', {
           class: 'select', ui: 'tactic', 'aria-label': `${sq.name}'s orders in battle`,
@@ -194,7 +213,6 @@ export class OrganizeScreen implements Screen {
       ),
       el('div', { class: 'org-info-line' }, icon('people', 16), `Places ${placesUsed(sq)}/${SQUAD_PLACES} (large units fill two) · Items carried ${held}`),
       el('div', { class: 'org-info-line gold' }, icon('coin', 16), `Treasury ${st.goth} Goth · Shop rank ${shopRank(owned)}`),
-      this.message ? el('div', { class: 'org-message', ui: 'message' }, this.message) : null,
     );
   }
 
@@ -256,6 +274,7 @@ export class OrganizeScreen implements Screen {
     if (!sq || c.id === sq.leaderId) return el('div', { class: 'sheet-actions' }, el('span', { class: 'chip gold' }, 'Leader'));
     const st = getState();
     const asked = this.dismissing === c.id;
+    const others = st.squads.filter((o) => o.side === 'player' && o !== sq);
     return el('div', { class: 'sheet-actions' },
       c.hp > 0 ? button('Lead', () => {
         makeLeader(st, sq, c.id);
@@ -275,6 +294,19 @@ export class OrganizeScreen implements Screen {
         }
         this.refresh();
       }, { ui: 'dismiss', class: `btn-small ${asked ? 'btn-danger' : ''}` }),
+      others.length ? el('select', {
+        class: 'select select-small', ui: 'transfer', 'aria-label': `Move ${c.name} to another squad`,
+        on: {
+          change: (e) => {
+            const to = others[(e.target as HTMLSelectElement).selectedIndex - 1];
+            if (!to) return;
+            const refused = transferMember(st, sq, to, c.id);
+            this.message = refused ?? `${c.name} joins ${to.name}.`;
+            if (!refused) this.selectedChar = null;
+            this.refresh();
+          },
+        },
+      }, el('option', { value: '' }, 'Move to…'), ...others.map((o) => el('option', { value: String(o.id) }, o.name))) : null,
     );
   }
 
@@ -482,23 +514,38 @@ export class OrganizeScreen implements Screen {
   private drawRecruits(): void {
     const st = getState();
     const sq = this.squad!;
-    const room = SQUAD_PLACES - placesUsed(sq);
+    const founding = this.founding;
+    const room = founding ? SQUAD_PLACES : SQUAD_PLACES - placesUsed(sq);
+    const level = recruitLevel(st);
+    const fee = founding ? FOUND_SQUAD_COST : 0;
     const pool = allClasses()
       .filter((d) => d.tier === 1 && d.playable)
       .sort((a, b) => recruitCost(a) - recruitCost(b) || a.name.localeCompare(b.name));
     fill(this.side,
-      el('h2', {}, 'Recruit'),
-      el('p', { class: room ? 'muted' : 'bad' }, `Treasury ${st.goth} Goth · ${sq.name} ${room ? `has ${room} place${room > 1 ? 's' : ''}` : 'is full'}`),
+      el('h2', {}, founding ? 'Found a squad' : 'Recruit'),
+      el('p', { class: room ? 'muted' : 'bad' }, founding
+        ? `Treasury ${st.goth} Goth · Founding costs ${FOUND_SQUAD_COST} Goth, and its leader's hire. Recruits come at level ${level}.`
+        : `Treasury ${st.goth} Goth · ${sq.name} ${room ? `has ${room} place${room > 1 ? 's' : ''}` : 'is full'} · Recruits come at level ${level}.`),
       el('div', { class: 'rows scroll', ui: 'recruits' }, ...pool.map((def) => {
-        const cost = recruitCost(def);
+        const cost = recruitCost(def, level) + fee;
         const ok = room >= def.size && st.goth >= cost;
-        const from = def.origin === 'snes' ? 'Ogre Battle (SNES)' : def.origin === 'sow' ? 'Symphony of War' : def.source === 'ob64' ? 'Ogre Battle 64' : 'Palatinus';
         return el('button', {
           type: 'button', class: 'row recruit', ui: `enlist-${def.id}`, disabled: !ok,
           on: {
             click: () => {
               if (!ok) return;
-              const recruit = makeCharacter(def.id, 3);
+              if (founding) {
+                const made = foundSquad(st, def.id, def);
+                if (!made) return;
+                this.founding = false;
+                this.squad = made;
+                this.selectedChar = null;
+                this.listSquads();
+                this.message = `${made.name} is founded at the keep.`;
+                this.refresh();
+                return;
+              }
+              const recruit = makeCharacter(def.id, level);
               if (!autoPlace(sq, recruit)) return;
               st.chars.set(recruit.id, recruit);
               st.goth -= cost;
@@ -509,7 +556,7 @@ export class OrganizeScreen implements Screen {
         },
           unitIcon(def.palette, 34),
           el('span', { class: 'v' }, def.name),
-          el('span', { class: 'sub' }, `${SQUAD_TYPE_LABEL[marchOf(def)]} · ${from}`),
+          el('span', { class: 'sub' }, `${SQUAD_TYPE_LABEL[marchOf(def)]} · Lv ${level}`),
           el('span', { class: 'price gold' }, `${cost} Goth${def.size === 2 ? ' · Large' : ''}`),
         );
       })),

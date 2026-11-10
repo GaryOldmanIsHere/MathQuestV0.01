@@ -8,7 +8,7 @@ import { SLOTS, unequip } from './items';
 // recovers a little each day; at its own headquarters the fallen rise again.
 // Anywhere else, only supplies help.
 
-export const REST_HEAL = 0.15;
+export const REST_HEAL = 0.3;
 export const RISE_AT_HQ = 0.25;
 
 function isHome(node: MapNode, sq: Squad): boolean {
@@ -23,7 +23,9 @@ export function restSquads(st: GameState): void {
     for (const id of squadMemberIds(sq)) {
       const c = st.chars.get(id)!;
       if (c.hp > 0) c.hp = Math.min(c.stats.hp, c.hp + Math.max(1, Math.round(c.stats.hp * REST_HEAL)));
-      else if (isHome(node, sq)) c.hp = Math.max(1, Math.round(c.stats.hp * RISE_AT_HQ));
+      // The fallen rise only at the player's keep: the enemy's losses are for good,
+      // so a siege wears its castle's guard down (it raises fresh squads instead).
+      else if (sq.side === 'player' && isHome(node, sq)) c.hp = Math.max(1, Math.round(c.stats.hp * RISE_AT_HQ));
     }
   }
 }

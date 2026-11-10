@@ -28,7 +28,7 @@ These show the built-in data at the High preset.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 353 unit tests (336 without extracted ROM data)
+npm test         # 363 unit tests (346 without extracted ROM data)
 npm run build    # type-check + production bundle into dist/
 npm run e2e      # an automated playthrough in a real browser (needs npm run dev)
 npm run perf     # boot, frame times and GPU memory over a run of battles (needs npm run dev)
@@ -57,7 +57,8 @@ meet, they fight.
 | March | Click anywhere on the map (clicks near a stronghold snap onto it) | **M**: a list of strongholds, nearest first; arrows and **Enter** |
 | Look around | Drag to pan, wheel to zoom, right-drag to turn; click the small map to look there | **W A S D** or arrows to pan, **Q E** to turn, **Space** to find the chosen squad, **R** for the whole map |
 | The army screen | *Organize* | **O**, and **Esc** to close |
-| Settings | The gear button | Tab to it, **Enter** |
+| Pause; speed | *Pause* and the *1×* button | **P** holds the clock (orders can still be given); **F** runs it at 1×, 2× or 3× |
+| Settings | The gear button (holds the clock while open) | Tab to it, **Enter** |
 | Frame rate | | **F3** |
 
 **Battles** are fought in rounds, and play themselves. What you decide is who
@@ -89,11 +90,21 @@ every three, without touching the campaign. The map is grown from the very
 terrain grid that marching is charged on, so what you see is exactly what a
 march costs. Roads are quickest; forest, hills and water slow a march by how
 much depends on the squad's make-up: light troops shrug off forest and hills,
-cavalry hates them, fliers ignore the ground. Enemy squads strike at the
-nearest of your holdings within reach; a routed squad regroups at the keep.
+cavalry hates them, fliers ignore the ground. A campaign day lasts half a minute.
+
+**The enemy.** Garrisons hold their forts and the castle, and return to a
+post they were driven from. Roaming squads strike at your nearest holding in
+reach, take unclaimed towns, and move up to the front when nothing is in
+reach; one too hurt to fight falls back to rest first. Every fifth day, while
+Castle Verlaine stands, a fresh squad marches out of it, stronger the later
+it comes. A routed squad of yours regroups at the keep.
+
+**The castle.** Its garrison does not give ground and its fallen do not rise:
+no one squad can break it, but an army that comes together can. Destroy its
+guard, then hold the castle for a day.
 
 **The map's instruments.**
-* Top left: the day, the hour and the weather.
+* Top left: the day and the weather.
 * Top right: the treasury, and the strongholds held.
 * Down the left: a card for each of your squads, with its leader's face, its
   orders ("Marching on Elm Vale", "Holding Fort Melchor", "Regrouping", "In
@@ -119,7 +130,10 @@ member's sheet in three tabs:
 * **Gear:** the four places, and what to put in them.
 * **Class:** every class change and what it asks.
 
-*Shop*, *Items* and *Recruit* open beside it.
+*Shop*, *Items* and *Recruit* open beside it. Recruits arrive a level under
+your army's average. *New squad* founds another squad at the keep (up to six)
+led by a fresh recruit, and *Move to…* on a soldier's sheet passes them to
+another squad standing nearby.
 
 **Classes.** 36 original classes along a male line (Fighter → Knight,
 Berserker, Ninja, Wizard…), a female line (Amazon → Valkyrie, Archer,
@@ -338,7 +352,7 @@ docs/           ARCHITECTURE.md, TESTING.md, OB64.md, screenshots
 
 ## Tests
 
-`npm test` runs 353 tests (336 without extracted ROM data), mostly over the
+`npm test` runs 363 tests (346 without extracted ROM data), mostly over the
 rules, in Node without a browser:
 * battles, marching and terrain, the class tree, the expansion, equipment and
   items;

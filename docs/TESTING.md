@@ -4,7 +4,7 @@ Three kinds of check, from quickest to slowest:
 
 | | Command | What it runs | Where |
 |---|---|---|---|
-| Unit tests | `npm test` | 353 tests (336 without extracted ROM data), in Node, no browser | CI, every push |
+| Unit tests | `npm test` | 363 tests (346 without extracted ROM data), in Node, no browser | CI, every push |
 | Automated playthrough | `npm run e2e` | A real browser plays the game through its interface | By hand, with `npm run dev` running |
 | Performance probe | `npm run perf` | Boot time, frame times, GPU memory over a run of battles | By hand, with `npm run dev` running |
 

@@ -6,6 +6,7 @@ import { classOf, itemOf } from '../data/registry';
 import { moveSpeed, squadMemberIds, squadType, SQUAD_TYPE_LABEL } from '../core/squad';
 import { addLoot, rollLoot } from '../core/items';
 import { restSquads } from '../core/camp';
+import { enemyOrder, reinforce } from '../core/campaign';
 import { WorldStage, worldDetail } from '../gfx3d/world';
 import type { Weather } from '../gfx3d/sky';
 import { hourOf, weatherOn } from '../gfx3d/sky';
@@ -57,7 +58,9 @@ interface SquadTag {
 const DRAG_SLOP = 6;
 
 /** A campaign day, in ms of the map's clock. */
-const DAY_MS = 12000;
+const DAY_MS = 30000;
+/** How long a routed squad sits out at the keep before it can fight or hold again. */
+const REGROUP_MS = 12000;
 
 /** The longest stretch of the map's clock the campaign moves in one step. */
 const STEP_MS = 50;
@@ -95,6 +98,10 @@ export class MapScreen implements Screen {
   private clock = 0;
   aiTimer = 0;
   private dayTimer = 0;
+  /** The campaign's clock held (orders can still be given), and how fast it runs when not. */
+  private paused = false;
+  private rate = 1;
+  private clockButtons: { pause: HTMLButtonElement; speed: HTMLButtonElement } | null = null;
   /** Headquarters under siege: by which side, and since when on the map's clock. */
   private sieges = new Map<number, { side: 'player' | 'enemy'; since: number }>();
   private terrain: Terrain[] = [];
@@ -126,6 +133,9 @@ export class MapScreen implements Screen {
     });
     const settingsButton = button('', () => openSettings(this.app, this.root), { ui: 'settings', class: 'btn-icon btn-quiet', 'aria-label': 'Settings', 'data-tip': 'Settings' });
     settingsButton.append(icon('gear', 20));
+    const pauseButton = button('Pause', () => this.setPaused(!this.paused), { ui: 'pause', 'data-tip': 'Hold the clock; orders can still be given (P)' });
+    const speedButton = button('1×', () => this.setRate(this.rate >= 3 ? 1 : this.rate + 1), { ui: 'speed', 'data-tip': 'How fast the campaign runs (F)', 'aria-label': 'Campaign speed' });
+    this.clockButtons = { pause: pauseButton, speed: speedButton };
     const marchButton = button('March', () => this.openMarchList(), { ui: 'march', 'data-tip': 'March the chosen squad on a stronghold (M)' });
     marchButton.prepend(icon('flag', 18));
     const organizeButton = button('Organize', () => this.openOrganize(), { ui: 'organize', class: 'btn-primary', 'data-tip': 'The army screen (O)' });
@@ -142,6 +152,7 @@ export class MapScreen implements Screen {
         el('span', {}, el('span', { class: 'kbd' }, 'Q'), el('span', { class: 'kbd' }, 'E'), ' turn'),
         el('span', {}, el('span', { class: 'kbd' }, '1'), '–', el('span', { class: 'kbd' }, '9'), ' squads'),
         el('span', {}, el('span', { class: 'kbd' }, 'M'), ' march'),
+        el('span', {}, el('span', { class: 'kbd' }, 'P'), ' pause'),
         el('span', {}, el('span', { class: 'kbd' }, 'R'), ' whole map'),
       ),
       this.toasts,
@@ -149,6 +160,8 @@ export class MapScreen implements Screen {
         el('span', { class: 'hud-stats', 'aria-hidden': 'true' }, icon('route', 18)),
         this.hint,
         settingsButton,
+        pauseButton,
+        speedButton,
         marchButton,
         organizeButton,
       ),
@@ -199,6 +212,23 @@ export class MapScreen implements Screen {
     for (const off of this.unlisten) off();
     this.unlisten = [];
     this.world.dispose();
+  }
+
+  /** Hold or release the campaign's clock. While held, squads can still be chosen and given orders. */
+  private setPaused(paused: boolean): void {
+    this.paused = paused;
+    this.root.classList.toggle('is-paused', paused);
+    if (this.clockButtons) {
+      this.clockButtons.pause.textContent = paused ? 'Resume' : 'Pause';
+      this.clockButtons.pause.classList.toggle('is-on', paused);
+    }
+    this.hint.textContent = paused ? 'Paused. Give your orders, then press P to go on.' : 'The campaign goes on.';
+  }
+
+  /** Set how fast the campaign runs: 1, 2 or 3 times. */
+  private setRate(rate: number): void {
+    this.rate = rate;
+    if (this.clockButtons) this.clockButtons.speed.textContent = `${rate}×`;
   }
 
   private openOrganize(): void {
@@ -261,6 +291,8 @@ export class MapScreen implements Screen {
       if (e.code === 'KeyR') this.world.setView(OVERVIEW);
       if (e.code === 'KeyO') this.openOrganize();
       if (e.code === 'KeyM') this.openMarchList();
+      if (e.code === 'KeyP') this.setPaused(!this.paused);
+      if (e.code === 'KeyF') this.setRate(this.rate >= 3 ? 1 : this.rate + 1);
       // 1 to 9 choose the army's squads, as the roster numbers them.
       const digit = /^Digit([1-9])$/.exec(e.code);
       if (digit) {
@@ -558,18 +590,15 @@ export class MapScreen implements Screen {
 
   private aiTick(): void {
     const st = getState();
-    const roamers = st.squads.filter((s) => s.side === 'enemy' && !s.moving);
-    for (const sq of roamers) {
-      // A garrison sits on its own fort and holds it.
-      const here = strongholdAt(st.nodes, sq.x, sq.y);
-      if (here && here.owner === 'enemy' && (here.kind === 'hq-enemy' || here.kind === 'fort')) continue;
-
-      // Otherwise strike for the closest player holding within reach — straight
-      // there, since the enemy is no more bound to the roads than the player is.
-      // Unclaimed ground it takes at a slower pace: some three days a town, so
-      // the front creeps on the keep rather than rushing it.
-      const best = strikeTarget(st.nodes, sq.x, sq.y);
-      if (best && rng() < (best.owner === 'player' ? 0.6 : 0.2)) this.orderMarch(sq, best.x, best.y);
+    for (const sq of st.squads) {
+      if (sq.side !== 'enemy' || sq.moving || this.isRecovering(sq)) continue;
+      const order = enemyOrder(st, sq);
+      if (order.kind === 'hold') continue;
+      // It does not set out on the instant: a strike at the player's holdings
+      // more readily than a claim on unclaimed ground or a move up the road,
+      // so the front creeps on the keep rather than rushing it.
+      const eager = order.why === 'home' || order.why === 'rest' ? 1 : order.why === 'strike' ? 0.6 : order.why === 'claim' ? 0.2 : 0.3;
+      if (rng() < eager) this.orderMarch(sq, order.to.x, order.to.y);
     }
   }
 
@@ -631,8 +660,8 @@ export class MapScreen implements Screen {
           for (const c of members) c.hp = Math.max(1, Math.floor(c.stats.hp * 0.25));
           // It sits out a day to regroup, so it is not thrown straight back at
           // whoever routed it (perhaps camped on the keep itself).
-          this.cooldowns.set(sq.id, now + DAY_MS);
-          this.recovering.set(sq.id, now + DAY_MS);
+          this.cooldowns.set(sq.id, now + REGROUP_MS);
+          this.recovering.set(sq.id, now + REGROUP_MS);
           this.toast(`${sq.name} routed! They regroup at the keep.`, 'warn');
         }
       } else {
@@ -640,10 +669,11 @@ export class MapScreen implements Screen {
         // The beaten side gives ground, falling back on its own nearest holding.
         const lostAsAttacker = side === 'attackerId' && payload.winner === 'defender';
         const lostAsDefender = side === 'defenderId' && payload.winner === 'attacker';
-        // Not from its own keep, though: there is nowhere further back, and
-        // the army's last stronghold is held until its defenders are down.
+        // Not from its own headquarters, though (the keep, or the enemy's
+        // castle): there is nowhere further back, and a side's last
+        // stronghold is held until its defenders are down.
         const here = strongholdAt(st.nodes, sq.x, sq.y);
-        const atKeep = sq.side === 'player' && here?.kind === 'hq-player' && here.owner === 'player';
+        const atKeep = here?.owner === sq.side && here.kind === (sq.side === 'player' ? 'hq-player' : 'hq-enemy');
         if ((lostAsAttacker || lostAsDefender) && !atKeep) {
           const foe = st.squads.find((o) => o.id === payload[side === 'attackerId' ? 'defenderId' : 'attackerId']);
           const away = retreatTarget(st.nodes, sq.side, sq.x, sq.y, foe?.x ?? sq.x, foe?.y ?? sq.y);
@@ -791,11 +821,18 @@ export class MapScreen implements Screen {
       const income = st.nodes.filter((n) => n.owner === 'player').length * 50;
       st.goth += income;
       restSquads(st);
+      const fresh = reinforce(st);
+      if (fresh) {
+        this.syncAll();
+        this.toast(`${fresh.name} marches out of Castle Verlaine!`, 'bad', 6000);
+      }
     }
   }
 
   update(frameMs: number): void {
-    const deltaMs = frameMs * SPEED;
+    // The settings sheet holds the clock, as the pause does.
+    const held = this.paused || this.root.querySelector('.settings') !== null;
+    const deltaMs = held ? 0 : frameMs * SPEED * this.rate;
     const st = getState();
     if (st.phase === 'playing') {
       this.steerCamera(frameMs / 1000);
@@ -816,7 +853,7 @@ export class MapScreen implements Screen {
       this.world.setWeather(this.sky.weather);
     }
     // The world goes on moving (flags, the camera) even once the campaign is over.
-    this.drawWorld(st.phase === 'playing' ? deltaMs : frameMs);
+    this.drawWorld(st.phase === 'playing' && !held ? deltaMs : frameMs);
     // The instruments, a few times a second.
     this.instrumentsAt -= frameMs;
     if (this.instrumentsAt <= 0 && !this.covered) {

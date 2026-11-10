@@ -81,8 +81,8 @@ const RAW: Record<string, RawClassDef> = {
     desc: 'A dread knight cloaked in darkness. Fear marches with him.',
     base: s(88, 27, 20, 10, 12, 13), growth: s(8, 3.4, 2.6, 1.2, 1.4, 1.8),
     attacks: {
-      front: { name: 'Dark Blade', type: 'melee', count: 3, power: 1.3, target: 'one', element: 'bane' },
-      mid: { name: 'Dark Blade', type: 'melee', count: 2, power: 1.2, target: 'one', element: 'bane' },
+      front: { name: 'Dark Blade', type: 'melee', count: 2, power: 1.2, target: 'one', element: 'bane' },
+      mid: { name: 'Dark Blade', type: 'melee', count: 1, power: 1.2, target: 'one', element: 'bane' },
       back: { name: 'Dread Wave', type: 'magic', count: 1, power: 1.1, target: 'row', element: 'bane' },
     },
     promotesTo: [],

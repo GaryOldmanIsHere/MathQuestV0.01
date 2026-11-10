@@ -173,6 +173,8 @@ export interface Squad {
   //    6     7     8
   grid: (number | null)[];
   leaderId: number;
+  /** A garrison's post: the stronghold it holds, and returns to if driven off. Roaming squads have none. */
+  home?: number;
   /** Whom the squad goes for in battle (the nearest, unless ordered otherwise). */
   tactic?: Tactic;
   // Overworld position/state. Squads move freely: a destination is an

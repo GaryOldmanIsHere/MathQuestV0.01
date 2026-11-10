@@ -46,6 +46,8 @@ const KEYS: [string[], string][] = [
   [['1', '–', '9'], 'Choose a squad'],
   [['Space'], 'Find the chosen squad'],
   [['M'], 'March the chosen squad on a stronghold'],
+  [['P'], 'Pause (orders can still be given)'],
+  [['F'], 'Campaign speed: 1×, 2×, 3×'],
   [['R'], 'The whole map'],
   [['O'], 'The army screen'],
   [['Esc'], 'Close a sheet or the army screen'],

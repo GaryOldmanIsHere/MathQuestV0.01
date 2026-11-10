@@ -109,6 +109,9 @@ export function newCampaign(): GameState {
     const members = roster.map(([cls, lv]) => makeCharacter(cls, lv));
     const sq = makeSquad('enemy', [], members[0], nodeId, pos.x, pos.y, name);
     for (const c of members) if (autoPlace(sq, c)) reg(c);
+    // Those on a fort or the castle are its garrison; those on towns roam.
+    const kind = nodes.find((n) => n.id === nodeId)!.kind;
+    if (kind === 'fort' || kind === 'hq-enemy') sq.home = nodeId;
     squads.push(sq);
   };
 

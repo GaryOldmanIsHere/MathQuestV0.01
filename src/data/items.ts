@@ -145,7 +145,7 @@ for (const [name, rank, price, bonus, resist] of TRINKETS) gear(name, 'accessory
 function usable(name: string, kind: 'supply' | 'relic', rank: number, price: number, target: 'unit' | 'squad', effect: ItemEffect, desc: string): void {
   items.push({ id: slug(name), name, kind, rank, price, forSale: kind === 'supply', target, effect, desc, source: 'builtin' });
 }
-usable('Mending Herb', 'supply', 1, 15, 'unit', { heal: 0.35 }, 'Restores a third of one unit\'s HP.');
+usable('Mending Herb', 'supply', 1, 40, 'unit', { heal: 0.25 }, 'Restores a quarter of one unit\'s HP.');
 usable('Mending Draught', 'supply', 2, 45, 'unit', { heal: 0.75 }, 'Restores most of one unit\'s HP.');
 usable('Field Kit', 'supply', 2, 90, 'squad', { heal: 0.4 }, 'Restores some HP to a whole squad.');
 usable('Camp Feast', 'supply', 5, 220, 'squad', { heal: 1 }, 'Restores a whole squad to full HP.');

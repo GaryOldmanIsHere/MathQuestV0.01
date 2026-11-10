@@ -328,11 +328,12 @@ export function useItem(itemId: string, target: Character, squad: Character[], i
     for (const c of who) {
       for (const [k, v] of Object.entries(e.stats ?? {}) as [keyof Stats, number][]) {
         c.stats[k] += v;
+        (c.boosts ??= {})[k] = (c.boosts[k] ?? 0) + v;
         if (k === 'hp') c.hp += v;
       }
       if (e.luk) c.luk = Math.min(100, c.luk + e.luk);
       if (e.ali) c.ali = Math.max(0, Math.min(100, c.ali + e.ali));
-      if (e.level) c.level += e.level;
+      if (e.level) levelUp(c, e.level);
     }
     done.push(`strengthened ${who.map((c) => c.name).join(', ')}`);
   }
@@ -385,6 +386,12 @@ export function sell(itemId: string, inv: Inventory, treasury: { goth: number })
   return true;
 }
 
+/** How a unit grows by whole levels at once (a relic's gift); set by character.ts, which knows the classes' growth. */
+let levelUp: (c: Character, levels: number) => void = (c, levels) => { c.level += levels; };
+export function setLevelUp(fn: typeof levelUp): void {
+  levelUp = fn;
+}
+
 export interface Loot {
   goth: number;
   items: string[];
@@ -398,7 +405,8 @@ export function rollLoot(fallen: Character[]): Loot {
   const levels = fallen.reduce((s, c) => s + c.level, 0);
   const loot: Loot = { goth: 20 + levels * 6, items: [] };
   const top = Math.max(1, Math.ceil(Math.max(...fallen.map((c) => c.level), 1) / 3));
-  const pool = (kind: ItemDef['kind']) => allItems().filter((i) => i.kind === kind && i.rank <= top && i.rank > 0);
+  // Key items are rare finds whatever the fallen's standing: none is of a rank so low.
+  const pool = (kind: ItemDef['kind']) => allItems().filter((i) => i.kind === kind && i.rank > 0 && (kind === 'key' || i.rank <= top));
   const roll = (chance: number, kind: ItemDef['kind']) => {
     const p = pool(kind);
     if (p.length && rng() < chance) loot.items.push(p[Math.floor(rng() * p.length)].id);

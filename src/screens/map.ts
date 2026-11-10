@@ -95,6 +95,8 @@ export class MapScreen implements Screen {
   private clock = 0;
   aiTimer = 0;
   private dayTimer = 0;
+  /** Headquarters under siege: by which side, and since when on the map's clock. */
+  private sieges = new Map<number, { side: 'player' | 'enemy'; since: number }>();
   private terrain: Terrain[] = [];
   private covered = false;
   private width = 1;
@@ -490,7 +492,25 @@ export class MapScreen implements Screen {
     const contested = st.squads.some(
       (o) => o.side === hostile && !this.isRecovering(o) && Math.hypot(o.x - node.x, o.y - node.y) < CONTEST_RADIUS,
     );
-    if (contested) return;
+    if (contested) {
+      this.sieges.delete(node.id);
+      return;
+    }
+    // A headquarters does not fall at a touch: it must be held a full day
+    // with no one to dispute it, which gives its side a day to come back.
+    if (node.owner !== sq.side && (node.kind === 'hq-player' || node.kind === 'hq-enemy')) {
+      const siege = this.sieges.get(node.id);
+      if (!siege || siege.side !== sq.side) {
+        this.sieges.set(node.id, { side: sq.side, since: this.clock });
+        this.toast(
+          sq.side === 'enemy' ? `${sq.name} is at the gates of ${node.name}! It falls in a day unless relieved.` : `${sq.name} lays siege to ${node.name}: hold it a day to take it.`,
+          sq.side === 'enemy' ? 'bad' : 'warn', 8000,
+        );
+        return;
+      }
+      if (this.clock - siege.since < DAY_MS) return;
+      this.sieges.delete(node.id);
+    }
     if (node.owner !== sq.side) {
       if (DEBUG) {
         captures.push({
@@ -520,6 +540,12 @@ export class MapScreen implements Screen {
    */
   private pressClaims(): void {
     const st = getState();
+    // A siege is lifted the moment no one of the besieging side stands halted there.
+    for (const [id, siege] of this.sieges) {
+      const node = st.nodes.find((n) => n.id === id)!;
+      const held = st.squads.some((o) => o.side === siege.side && !o.moving && !this.isRecovering(o) && strongholdAt(st.nodes, o.x, o.y) === node);
+      if (!held || node.owner === siege.side) this.sieges.delete(id);
+    }
     for (const sq of st.squads) {
       if (sq.moving || this.isRecovering(sq)) continue;
       const node = strongholdAt(st.nodes, sq.x, sq.y);
@@ -614,7 +640,11 @@ export class MapScreen implements Screen {
         // The beaten side gives ground, falling back on its own nearest holding.
         const lostAsAttacker = side === 'attackerId' && payload.winner === 'defender';
         const lostAsDefender = side === 'defenderId' && payload.winner === 'attacker';
-        if (lostAsAttacker || lostAsDefender) {
+        // Not from its own keep, though: there is nowhere further back, and
+        // the army's last stronghold is held until its defenders are down.
+        const here = strongholdAt(st.nodes, sq.x, sq.y);
+        const atKeep = sq.side === 'player' && here?.kind === 'hq-player' && here.owner === 'player';
+        if ((lostAsAttacker || lostAsDefender) && !atKeep) {
           const foe = st.squads.find((o) => o.id === payload[side === 'attackerId' ? 'defenderId' : 'attackerId']);
           const away = retreatTarget(st.nodes, sq.side, sq.x, sq.y, foe?.x ?? sq.x, foe?.y ?? sq.y);
           orderTo(sq, away.x, away.y);
@@ -732,10 +762,10 @@ export class MapScreen implements Screen {
     panel.querySelector<HTMLElement>('[data-ui="to-title"]')?.focus();
   }
 
-  private toast(msg: string, tone: 'good' | 'bad' | 'warn'): void {
+  private toast(msg: string, tone: 'good' | 'bad' | 'warn', ms = 2600): void {
     const mark: Record<typeof tone, IconName> = { good: 'flag', bad: 'skull', warn: 'shield' };
     const t = el('div', { class: `toast is-${tone}` }, icon(mark[tone], 18), msg);
-    t.style.animationDuration = `${2600 / SPEED}ms`;
+    t.style.animationDuration = `${ms / SPEED}ms`;
     t.addEventListener('animationend', () => t.remove());
     this.toasts.append(t);
   }

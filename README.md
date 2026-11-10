@@ -28,7 +28,7 @@ These show the built-in data at the High preset.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 335 unit tests (318 without extracted ROM data)
+npm test         # 342 unit tests (325 without extracted ROM data)
 npm run build    # type-check + production bundle into dist/
 npm run e2e      # an automated playthrough in a real browser (needs npm run dev)
 npm run perf     # boot, frame times and GPU memory over a run of battles (needs npm run dev)
@@ -41,7 +41,9 @@ Firefox or Safari.
 
 You hold Fort Melchor, the keep in the west. The enemy holds Castle Verlaine
 in the east and the strongholds between. **Take Castle Verlaine to win; lose
-Fort Melchor and the campaign is over.** Strongholds you hold pay Goth (gold)
+Fort Melchor and the campaign is over.** A headquarters falls only when held
+for a full day with no one to dispute it, so a keep left empty can still be
+relieved. Strongholds you hold pay Goth (gold)
 every day; spend it on gear and recruits.
 
 **Giving orders.** Choose a squad, then send it anywhere: squads march in a
@@ -62,8 +64,9 @@ meet, they fight.
 member stands: on the army screen, a member's *column* on the 3x3 grid sets
 their battle row (front, middle or back), and their row sets which attack
 they make and how often. A knight in front swings twice; an archer gains a
-third shot from the back; clerics heal only from the rear. The side that
-loses the smaller share of its strength wins and drives the other back.
+third shot from the back; clerics heal from the middle and the rear. The side that
+loses the smaller share of its strength (by health truly lost) wins and
+drives the other back; a squad defending its own keep holds its ground.
 
 ## What's in the game
 
@@ -324,7 +327,7 @@ docs/           ARCHITECTURE.md, TESTING.md, OB64.md, screenshots
 
 ## Tests
 
-`npm test` runs 335 tests (318 without extracted ROM data), mostly over the
+`npm test` runs 342 tests (325 without extracted ROM data), mostly over the
 rules, in Node without a browser:
 * battles, marching and terrain, the class tree, the expansion, equipment and
   items;

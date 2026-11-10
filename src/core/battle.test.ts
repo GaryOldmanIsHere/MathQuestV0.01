@@ -106,15 +106,51 @@ describe('judging a clash', () => {
         { classId: 'archer', level: 5, cell: 3 },
       ], chars);
       const champion = squadOf('enemy', [{ classId: 'black-knight', level: 4 + (k % 6), cell: 2 }], chars);
-      const strength = (sq: Squad) => sq.grid.filter((id) => id !== null).reduce((a, id) => a + chars.get(id!)!.stats.hp, 0);
+      const members = (sq: Squad) => sq.grid.filter((id) => id !== null).map((id) => chars.get(id!)!);
+      const strength = (sq: Squad) => members(sq).reduce((a, c) => a + c.stats.hp, 0);
+      const health = (sq: Squad) => members(sq).reduce((a, c) => a + c.hp, 0);
       const [mine, theirs] = [strength(five), strength(champion)];
+      const [mineBefore, theirsBefore] = [health(five), health(champion)];
       const result = simulateBattle({ squad: five, chars }, { squad: champion, chars });
       if (result.attackerWiped || result.defenderWiped) continue;
-      const end = result.events.at(-1) as { attackerDamage: number; defenderDamage: number };
-      expect(result.winner).toBe(judgeClash(end.defenderDamage / mine, end.attackerDamage / theirs));
+      // By the health each side has truly lost: what was mended is not counted, nor a blow's excess.
+      expect(result.winner).toBe(judgeClash((mineBefore - health(five)) / mine, (theirsBefore - health(champion)) / theirs));
       judged++;
     }
     expect(judged).toBeGreaterThan(0);
+  });
+});
+
+describe('what a clash is judged on', () => {
+  it('counts a blow for no more than the health it took, and not what a healer mended', () => {
+    // One frail soldier felled by a blow many times his health: by the blow's
+    // size the champion's side "lost" far more than its whole strength.
+    for (let k = 0; k < 20; k++) {
+      const chars = new Map<number, Character>();
+      const mine = squadOf('player', [{ classId: 'knight', level: 9, cell: 2 }, { classId: 'knight', level: 9, cell: 5 }], chars);
+      const theirs = squadOf('enemy', [
+        { classId: 'fighter', level: 3, cell: 2 }, { classId: 'knight', level: 9, cell: 5 }, { classId: 'knight', level: 9, cell: 8 },
+      ], chars);
+      chars.get(theirs.grid[2]!)!.hp = 1;
+      const members = (sq: Squad) => sq.grid.filter((id) => id !== null).map((id) => chars.get(id!)!);
+      const lost = (sq: Squad, before: number) => (before - members(sq).reduce((a, c) => a + c.hp, 0)) / members(sq).reduce((a, c) => a + c.stats.hp, 0);
+      const before = [mine, theirs].map((sq) => members(sq).reduce((a, c) => a + c.hp, 0));
+      const result = simulateBattle({ squad: mine, chars }, { squad: theirs, chars });
+      if (result.attackerWiped || result.defenderWiped) continue;
+      expect(result.winner).toBe(judgeClash(lost(mine, before[0]), lost(theirs, before[1])));
+    }
+  });
+
+  it('lets a healer mend as many times as her row gives', () => {
+    const chars = new Map<number, Character>();
+    const mine = squadOf('player', [{ classId: 'cleric', level: 5, cell: 0 }, { classId: 'knight', level: 5, cell: 2 }], chars);
+    const theirs = squadOf('enemy', [{ classId: 'fighter', level: 1, cell: 2 }], chars);
+    const knight = chars.get(mine.grid[2]!)!;
+    knight.stats.hp = 10000;
+    knight.hp = 100;
+    const result = simulateBattle({ squad: mine, chars }, { squad: theirs, chars });
+    const heal = result.events.find((e) => e.kind === 'act' && e.attack.type === 'heal') as { attack: { count: number }; amounts: number[] };
+    expect(heal.amounts.length).toBe(heal.attack.count);
   });
 });
 
@@ -185,7 +221,9 @@ describe('holy damage', () => {
     const chars = new Map<number, Character>();
     const squad = squadOf('enemy', [{ classId: 'fighter', level: 5, cell: 2 }], chars);
     const living = chars.get(squad.grid[2]!)!;
-    expect(elementBonus(holy, living)).toBe(1);
+    // A holy blade is half blade: against the living it lands no harder than a plain one.
+    expect(elementBonus(holy, living)).toBeCloseTo((1 + elementBonus(plain, living)) / 2);
+    expect(elementBonus(holy, living)).toBeLessThanOrEqual(1);
   });
 
   it('gives no bonus to a non-holy attack against the undead', () => {

@@ -151,7 +151,10 @@ export class MapHud {
       fill(this.dial, icon(hourIcon, 24));
       this.dial.classList.toggle('is-night', hourIcon === 'moon');
       this.day.textContent = `Day ${st.day}`;
-      fill(this.sky, hourWord, el('span', { class: 'muted' }, '·'), icon(skyIcon, 15), skyWord);
+      // The weather only: the sky's day and night turn far more slowly than
+      // the campaign's days are counted, so an hour named beside the day would mislead.
+      void hourWord;
+      fill(this.sky, icon(skyIcon, 15), skyWord);
     }
     // The treasury and the strongholds.
     const owned = st.nodes.filter((n) => n.owner === 'player').length;

@@ -317,7 +317,7 @@ export function waterMaterial(field: Float32Array, simple = false): THREE.Materi
   if (simple) {
     // One drifting sample, its two channels read as the surface's slope.
     const s = noise.sample(p.mul(0.08).add(vec2(t.mul(0.012), t.mul(0.009))));
-    surface = normalize(vec3(s.g.sub(0.5).mul(tilt).mul(3), 1, s.b.sub(0.5).mul(tilt).mul(3)));
+    surface = normalize(vec3(s.g.sub(0.5).mul(tilt).mul(1.1), 1, s.b.sub(0.5).mul(tilt).mul(1.1)));
   } else {
     // The slope across a span of several of the noise's texels, so it runs smoothly from texel to texel.
     const e = 0.35;
@@ -335,7 +335,8 @@ export function waterMaterial(field: Float32Array, simple = false): THREE.Materi
 
   const opacity = clamp(smoothstep(0.0, 0.5, depth).mul(0.35).add(0.6).add(froth.mul(0.3)), 0, 0.97);
   if (simple) {
-    const material = new MeshPhongNodeMaterial({ shininess: 90, specular: 0x8899aa, transparent: true, depthWrite: false });
+    // A soft, broad glint: a sharp one on so plain a surface glitters like static.
+    const material = new MeshPhongNodeMaterial({ shininess: 18, specular: 0x24303c, transparent: true, depthWrite: false });
     material.colorNode = mix(body, color(0xf2f6f4), froth);
     material.normalNode = transformNormalToView(surface);
     material.opacityNode = opacity;

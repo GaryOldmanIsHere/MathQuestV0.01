@@ -45,8 +45,6 @@ export function newCampaign(): GameState {
     ...d,
     owner: d.kind === 'hq-player' ? 'player' : d.kind === 'town' && d.id <= 2 ? 'neutral' : 'enemy',
   }));
-  nodes.find((n) => n.id === 4)!.owner = 'neutral';
-  nodes.find((n) => n.id === 5)!.owner = 'neutral';
 
   const chars = new Map<number, Character>();
   const squads: Squad[] = [];

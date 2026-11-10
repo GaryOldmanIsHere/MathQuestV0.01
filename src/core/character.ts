@@ -1,7 +1,7 @@
 import type { Character, ClassDef, Element, Gender, GateStat, PromotionReq, Stats } from './types';
 import { genderCompatible } from './types';
 import { classOf, findItemByName } from '../data/registry';
-import { defaultGearFor, shedForbiddenGear, type Inventory } from './items';
+import { defaultGearFor, setLevelUp, shedForbiddenGear, type Inventory } from './items';
 import { claimName, FEMALE_NAMES, freshName, MALE_NAMES, MONSTER_NAMES, pick, rng } from '../data/names';
 
 let nextCharId = 1;
@@ -113,6 +113,17 @@ export function expToNext(level: number): number {
   return 20 + level * 10;
 }
 
+/**
+ * A built-in class's stats at the unit's level, with what its relics have
+ * added for good (those are kept apart, since the class's own are worked out
+ * afresh at each level and class change).
+ */
+export function builtinStats(c: Character): Stats {
+  const stats = statsAt(c.classId, c.level);
+  for (const [k, v] of Object.entries(c.boosts ?? {}) as [keyof Stats, number][]) stats[k] += v;
+  return stats;
+}
+
 /** Grant exp; returns number of levels gained. */
 export function grantExp(c: Character, amount: number): number {
   c.exp += amount;
@@ -129,7 +140,7 @@ export function grantExp(c: Character, amount: number): number {
       // Each level grows as the unit's current class, on top of what it has.
       for (let i = 0; i < ups; i++) c.stats = addCapped(c.stats, rollGrowth(def));
     } else {
-      c.stats = statsAt(c.classId, c.level);
+      c.stats = builtinStats(c);
     }
     c.hp = Math.max(1, Math.floor(c.stats.hp * hpRatio));
   }
@@ -186,8 +197,10 @@ export function promote(c: Character, classId: string, inv?: Inventory): void {
   c.classId = classId;
   if (inv) shedForbiddenGear(c, inv);
   if (classOf(classId).source !== 'ob64') {
-    c.stats = statsAt(classId, c.level);
-    c.hp = c.stats.hp;
+    // The same share of its strength as before: a class change neither heals nor raises the fallen.
+    const share = c.stats.hp > 0 ? c.hp / c.stats.hp : 1;
+    c.stats = builtinStats(c);
+    c.hp = c.hp <= 0 ? 0 : Math.max(1, Math.round(c.stats.hp * share));
   }
 }
 
@@ -197,3 +210,8 @@ export function shiftAlignment(c: Character, victimLevel: number): void {
   const delta = diff >= 2 ? 2 : diff >= 0 ? 1 : diff >= -2 ? -1 : -2;
   c.ali = Math.max(0, Math.min(100, c.ali + delta));
 }
+
+// A relic that raises a level grows the unit as the level itself would.
+setLevelUp((c, levels) => {
+  for (let i = 0; i < levels; i++) grantExp(c, expToNext(c.level) - c.exp);
+});

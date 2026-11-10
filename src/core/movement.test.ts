@@ -176,7 +176,9 @@ describe('where the enemy strikes', () => {
 
   it('comes for the keep in the end even if the player never moves', () => {
     // Each roaming squad takes what it strikes at, then strikes again from there.
-    for (const id of roamers) {
+    // (Those of the middle: from Ashfield, in the far east, nothing unclaimed
+    // is within reach until the player comes nearer.)
+    for (const id of [4, 5]) {
       const nodes = opening();
       let at = nodes[id];
       at.owner = 'enemy'; // a squad takes the town it stands on at once

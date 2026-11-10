@@ -52,7 +52,11 @@ export function elementBonus(att: RowAttack, target: Character, actor?: Characte
   // Drakonite (the dragons' own element) has no resistance column; it lands as physical.
   const key: ResistKey = att.element && att.element !== 'drakonite' ? att.element : 'physical';
   let mult = resistMultiplier(resist[key]);
-  const weapon = actor && (att.type === 'melee' || att.type === 'ranged') ? weaponOf(actor) : null;
+  const blow = att.type === 'melee' || att.type === 'ranged';
+  // A blow that carries an element (a dark blade, a flaming fang) is still a
+  // blow: armour blunts its half, the element's resistance the other.
+  if (blow && key !== 'physical') mult = (mult + resistMultiplier(resist.physical)) / 2;
+  const weapon = actor && blow ? weaponOf(actor) : null;
   if (weapon?.element && weapon.element !== 'drakonite' && !att.element) {
     mult = (mult + resistMultiplier(resist[weapon.element])) / 2;
   }
@@ -130,6 +134,12 @@ export function simulateBattle(
   const strength = (side: Combatant[]) => side.reduce((sum, c) => sum + c.char.stats.hp, 0);
   const atkStrength = Math.max(1, strength(atk));
   const defStrength = Math.max(1, strength(def));
+  // And the health each went in with: what it has lost by the end is the
+  // difference, so a blow past a unit's last breath counts for no more than
+  // that breath, and what a healer mends is not counted as lost.
+  const health = (side: Combatant[]) => side.reduce((sum, c) => sum + Math.max(0, c.char.hp), 0);
+  const atkHealth = health(atk);
+  const defHealth = health(def);
   const events: BattleEvent[] = [];
   const damageBy = { attacker: 0, defender: 0 };
   const expGained = new Map<number, number>();
@@ -163,11 +173,15 @@ export function simulateBattle(
       const targets = attack.target === 'allies' ? hurt.slice(0, 3) : hurt.slice(0, 1);
       const ids: number[] = [];
       const amounts: number[] = [];
-      for (const t of targets) {
-        const amt = Math.min(healOf(attack, actor.char), t.char.stats.hp - t.char.hp);
-        t.char.hp += amt;
-        ids.push(t.char.id);
-        amounts.push(amt);
+      // As many times as the row gives (a healer's back row mends twice).
+      for (let cast = 0; cast < attack.count; cast++) {
+        for (const t of targets) {
+          const amt = Math.min(healOf(attack, actor.char), t.char.stats.hp - t.char.hp);
+          if (amt <= 0) continue;
+          t.char.hp += amt;
+          ids.push(t.char.id);
+          amounts.push(amt);
+        }
       }
       events.push({ kind: 'act', actorId: actor.char.id, attack, targetIds: ids, amounts, kos: [] });
       continue;
@@ -224,7 +238,7 @@ export function simulateBattle(
   let winner: 'attacker' | 'defender' | 'draw';
   if (defenderWiped && !attackerWiped) winner = 'attacker';
   else if (attackerWiped && !defenderWiped) winner = 'defender';
-  else winner = judgeClash(damageBy.defender / atkStrength, damageBy.attacker / defStrength);
+  else winner = judgeClash((atkHealth - health(atk)) / atkStrength, (defHealth - health(def)) / defStrength);
 
   // Only the player's army learns from battle. The enemy's squads keep the
   // levels the campaign gives them, as Ogre Battle's do: a garrison that

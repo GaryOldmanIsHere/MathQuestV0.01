@@ -219,8 +219,10 @@ export class Atmosphere {
     this.flatLight.setHex(light.sun).lerp(new THREE.Color(1, 1, 1), 0.65).multiplyScalar(bright);
     // Distance fades into the horizon's colour; mist draws it in close.
     this.fog.color.copy(this.horizon.value);
-    this.fog.near = THREE.MathUtils.lerp(80, 6, this.now.fog);
-    this.fog.far = THREE.MathUtils.lerp(190, 70, this.now.fog);
+    // Measured from how far off the camera stands, so the land it looks at
+    // is veiled, never lost: from the whole map's view as from close by.
+    this.fog.near = THREE.MathUtils.lerp(80, view * 0.55, this.now.fog);
+    this.fog.far = THREE.MathUtils.lerp(190, view * 2.6 + 40, this.now.fog);
 
     // The sun (or moon) crosses the sky from the east; shadows cover what is in view.
     const day = this.hour > 0.23 && this.hour < 0.79;

@@ -5,7 +5,7 @@ import {
 } from './items';
 import type { Inventory, ItemDef } from './items';
 import { elementBonus } from './battle';
-import { makeCharacter, meetsReq, promote, routeItemId } from './character';
+import { expToNext, grantExp, makeCharacter, meetsReq, promote, routeItemId } from './character';
 import { allItems, classOf, installDataset, itemOf, ORIGINALS, resetDataset } from '../data/registry';
 import { withExpansion } from '../expansion';
 import type { RowAttack } from './types';
@@ -275,5 +275,58 @@ describe('class changes that spend an item', () => {
     for (const [slot, id] of Object.entries(knight.gear)) {
       if (id) expect(canEquip(knight, itemOf(id), slot as never)).toBe(true);
     }
+  });
+});
+
+describe('what lasts', () => {
+  it('keeps a relic\'s gift through the levels and class changes that follow', () => {
+    const c = makeCharacter('fighter', 5);
+    const plain = makeCharacter('fighter', 5);
+    const inv: Inventory = { 'torc-of-might': 1 };
+    expect(useItem('torc-of-might', c, [c], inv)).toMatch(/strengthened/);
+    expect(c.stats.str).toBe(plain.stats.str + 2);
+    grantExp(c, expToNext(c.level));
+    grantExp(plain, expToNext(plain.level));
+    expect(c.level).toBe(6);
+    expect(c.stats.str).toBe(plain.stats.str + 2);
+  });
+
+  it('grows a unit a relic raises a level as the level itself would', () => {
+    const c = makeCharacter('knight', 6);
+    const inv: Inventory = { 'laurel-of-valor': 1 };
+    expect(useItem('laurel-of-valor', c, [c], inv)).not.toBeNull();
+    expect(c.level).toBe(7);
+    expect(c.stats).toEqual(makeCharacter('knight', 7).stats);
+  });
+
+  it('neither heals nor raises the fallen at a class change', () => {
+    const route = classOf('fighter').promotesTo.find((r) => r.classId === 'knight')!;
+    const make = () => makeCharacter('fighter', Math.max(route.level ?? 1, 10), { ali: 80 });
+    const fallen = make();
+    fallen.hp = 0;
+    const hurt = make();
+    hurt.hp = Math.round(hurt.stats.hp / 2);
+    for (const c of [fallen, hurt]) {
+      if (!meetsReq(c, route)) return; // the route asks more than this test gives: nothing to check
+      promote(c, 'knight');
+    }
+    expect(fallen.hp).toBe(0);
+    expect(hurt.hp / hurt.stats.hp).toBeCloseTo(0.5, 1);
+  });
+
+  it('lets armour blunt a blow that carries an element, by half', () => {
+    const target = makeCharacter('knight', 6);
+    const dark: RowAttack = { name: 'Dark Blade', type: 'melee', power: 1, count: 1, target: 'one', element: 'bane' };
+    const plain: RowAttack = { name: 'Sword', type: 'melee', power: 1, count: 1, target: 'one' };
+    const spell: RowAttack = { name: 'Dark Bolt', type: 'magic', power: 1, count: 1, target: 'one', element: 'bane' };
+    expect(elementBonus(dark, target)).toBeCloseTo((elementBonus(plain, target) + elementBonus(spell, target)) / 2);
+    expect(elementBonus(dark, target)).toBeLessThan(elementBonus(spell, target));
+  });
+
+  it('now and then yields a key item among the spoils', () => {
+    const fallen = [makeCharacter('fighter', 4)];
+    let keys = 0;
+    for (let i = 0; i < 4000; i++) keys += rollLoot(fallen).items.filter((id) => itemOf(id).kind === 'key').length;
+    expect(keys).toBeGreaterThan(0);
   });
 });

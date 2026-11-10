@@ -142,6 +142,8 @@ export interface Character {
   element: Element;
   /** Base stats; gear adds to them (see effectiveStats). */
   stats: Stats;
+  /** Stats gained for good from relics, kept through level-ups and class changes. */
+  boosts?: Partial<Stats>;
   gear: Gear;
   hp: number; // current hp
   kills: number;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getState, resetState } from '../core/state';
-import { hourName, marchChoices, orders, strengthOf } from './mapHud';
+import { clockOf, hourName, marchChoices, orders, strengthOf } from './mapHud';
 import { TILE } from '../core/terrain';
 import { ICONS, iconPath } from '../ui/icons';
 import { squadMemberIds } from '../core/squad';
@@ -77,5 +77,15 @@ describe('the icon set', () => {
       }
     }
     for (const e of ['flame', 'water', 'wind', 'earth', 'virtue', 'bane', 'drakonite', 'physical']) expect(ICONS).toContain(e);
+  });
+});
+
+describe('the clock', () => {
+  it('reads the hour to the nearest ten minutes, round the day', () => {
+    expect(clockOf(0)).toBe('00:00');
+    expect(clockOf(0.5)).toBe('12:00');
+    expect(clockOf(0.3)).toBe('07:10');
+    expect(clockOf(0.9999)).toBe('23:50');
+    expect(clockOf(1.5)).toBe(clockOf(0.5));
   });
 });

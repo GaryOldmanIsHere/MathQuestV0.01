@@ -13,7 +13,7 @@ import { unitIcon } from '../gfx/unitIcon';
 import { enemyOrder, forecast, reinforce } from '../core/campaign';
 import { WorldStage, worldDetail } from '../gfx3d/world';
 import type { Weather } from '../gfx3d/sky';
-import { hourOf, weatherOn } from '../gfx3d/sky';
+import { hourOf, OPENING_HOUR, weatherOn } from '../gfx3d/sky';
 import { mapFigureFor } from '../gfx3d/mapFigures';
 import { prepareSprites } from '../gfx3d/ob64Sprites';
 import { figureScale, OVERVIEW, panView, parkedAt } from '../gfx3d/worldMap';
@@ -72,6 +72,8 @@ const STEP_MS = 50;
 /** For the automated playthrough: every stronghold that changed hands, and who stood near. */
 /** Squads this close on the map (pixels) stand together: a click on one lists them all. */
 const TOGETHER = 24;
+/** How near the view comes to a squad chosen from its card or by its number. */
+const FOLLOW_DISTANCE = 30;
 const captures: unknown[] = [];
 exposeDebug('captures', captures);
 
@@ -92,6 +94,10 @@ export class MapScreen implements Screen {
   private closeInspect: (() => void) | null = null;
   /** How to put away the list of squads standing together, while it is open. */
   private closeStack: (() => void) | null = null;
+  /** Whether the view keeps to the chosen squad as it marches (until the player moves the view). */
+  private following = false;
+  /** The chosen squad's commands, set about its feet. */
+  private ring: HTMLElement;
   /** The two squads in a battle now, if one is being fought. */
   private fighting = new Set<number>();
   private selected: Squad | null = null;
@@ -121,14 +127,14 @@ export class MapScreen implements Screen {
   private height = 1;
   private unlisten: (() => void)[] = [];
 
-  constructor(private app: App, private exits: MapExits, dayTimer = 0) {
+  constructor(private app: App, private exits: MapExits, dayTimer = OPENING_HOUR * (DAY_MS / 1000)) {
     this.dayTimer = dayTimer;
     const st = getState();
     this.terrain = buildTerrainGrid(st.nodes);
     // The map in 3D, grown from the same terrain grid marching is charged on.
     this.world.build(this.terrain, st.nodes, worldDetail(app.engine.settings));
     this.world.setView(OVERVIEW, true);
-    this.world.setHour(hourOf(0));
+    this.world.setHour(hourOf(this.dayTimer / (DAY_MS / 1000)));
     this.world.setWeather(weatherOn(st.day), true);
 
     this.labels = el('div', { class: 'map-labels' });
@@ -142,8 +148,23 @@ export class MapScreen implements Screen {
     this.instruments = new MapHud(this.terrain, {
       // A squad's card chooses it; the chosen squad's card lets it go.
       choose: (sq) => (sq === this.selected ? this.deselect() : this.chooseSquad(sq, true)),
-      lookAt: (x, y) => this.world.lookAt(x, y),
+      lookAt: (x, y) => {
+        this.following = false;
+        this.world.lookAt(x, y);
+      },
     });
+    // The chosen squad's commands: a small ring of buttons that goes where the squad goes.
+    const command = (ui: string, tip: string, mark: IconName, act: () => void) => {
+      const b = button('', act, { ui: `ring-${ui}`, class: 'btn-icon ring-btn', 'aria-label': tip, 'data-tip': tip });
+      b.append(icon(mark, 17));
+      return b;
+    };
+    this.ring = el('div', { class: 'squad-ring', ui: 'squad-ring', role: 'toolbar', 'aria-label': 'Commands for the chosen squad', hidden: '' },
+      command('march', 'March on a stronghold (M)', 'flag', () => this.openMarchList()),
+      command('halt', 'Halt here', 'shield', () => this.halt()),
+      command('army', 'The army screen (O)', 'people', () => this.openOrganize()),
+      command('release', 'Let the squad go (Esc)', 'close', () => this.deselect()),
+    );
     const settingsButton = button('', () => openSettings(this.app, this.root), { ui: 'settings', class: 'btn-icon btn-quiet', 'aria-label': 'Settings', 'data-tip': 'Settings' });
     settingsButton.append(icon('gear', 20));
     const pauseButton = button('Pause', () => this.setPaused(!this.paused), { ui: 'pause', 'data-tip': 'Hold the clock; orders can still be given (P)' });
@@ -169,6 +190,7 @@ export class MapScreen implements Screen {
         el('span', {}, el('span', { class: 'kbd' }, 'R'), ' whole map'),
       ),
       this.toasts,
+      this.ring,
       this.guide.root,
       el('div', { class: 'hud panel' },
         el('span', { class: 'hud-stats', 'aria-hidden': 'true' }, icon('route', 18)),
@@ -292,6 +314,7 @@ export class MapScreen implements Screen {
       if (!press || this.covered) return;
       if (!press.dragging && Math.hypot(p.x - press.x, p.y - press.y) < DRAG_SLOP) return;
       press.dragging = true;
+      this.following = false;
       if (press.button === 0) this.world.drag(press.lastX, press.lastY, p.x, p.y);
       else this.world.turn((p.x - press.lastX) * 0.01);
       press.lastX = p.x;
@@ -317,7 +340,10 @@ export class MapScreen implements Screen {
         e.preventDefault();
         this.findSquad();
       }
-      if (e.code === 'KeyR') this.world.setView(OVERVIEW);
+      if (e.code === 'KeyR') {
+        this.following = false;
+        this.world.setView(OVERVIEW);
+      }
       if (e.code === 'KeyO') this.openOrganize();
       if (e.code === 'KeyM') this.openMarchList();
       if (e.code === 'KeyP') this.setPaused(!this.paused);
@@ -345,7 +371,10 @@ export class MapScreen implements Screen {
     const step = this.world.view.distance * 0.9 * dt;
     const right = (down('KeyD', 'ArrowRight') ? 1 : 0) - (down('KeyA', 'ArrowLeft') ? 1 : 0);
     const forward = (down('KeyW', 'ArrowUp') ? 1 : 0) - (down('KeyS', 'ArrowDown') ? 1 : 0);
-    if (right || forward) this.world.setView(panView(this.world.view, right * step, forward * step));
+    if (right || forward) {
+      this.following = false;
+      this.world.setView(panView(this.world.view, right * step, forward * step));
+    }
     const turn = (down('KeyE') ? 1 : 0) - (down('KeyQ') ? 1 : 0);
     if (turn) this.world.turn(turn * 1.6 * dt);
   }
@@ -413,6 +442,7 @@ export class MapScreen implements Screen {
   private deselect(): void {
     if (!this.selected) return;
     this.selected = null;
+    this.following = false;
     this.world.select(null);
     this.hint.textContent = 'Select a squad, then click a stronghold to march.';
   }
@@ -546,10 +576,22 @@ export class MapScreen implements Screen {
     this.world.select(sq.id, this.routeOf(sq));
     const type = squadType(squadMemberIds(sq).map((id) => st.chars.get(id)!));
     this.hint.textContent = `${sq.name} (${SQUAD_TYPE_LABEL[type]}) — click anywhere to march.`;
+    // The view keeps to the squad from here on; chosen from its card or by its number, it also comes in close.
+    this.following = true;
     if (look) {
       const p = this.shownAt(sq);
-      this.world.lookAt(p.x, p.y);
+      this.world.lookAt(p.x, p.y, Math.min(this.world.view.distance, FOLLOW_DISTANCE));
     }
+  }
+
+  /** Stop the chosen squad where it stands. */
+  private halt(): void {
+    const sq = this.selected;
+    if (!sq || !sq.moving) return;
+    haltSquad(sq);
+    this.world.select(sq.id, null);
+    this.hint.textContent = `${sq.name} holds its ground.`;
+    play('order');
   }
 
   /** Bring the selected squad into view, or the next of the army's squads. */
@@ -562,6 +604,7 @@ export class MapScreen implements Screen {
     this.world.select(sq.id, this.routeOf(sq));
     const p = this.shownAt(sq);
     this.world.lookAt(p.x, p.y, 18);
+    this.following = true;
   }
 
   // -------------------------------------------------------------- movement --
@@ -890,13 +933,29 @@ export class MapScreen implements Screen {
       const p = this.shownAt(sq);
       world.setSquad(sq.id, p.x, p.y, sq.side, mapFigureFor(classOf(leader.classId), sq.side), sq.moving);
     }
-    if (this.selected?.moving) world.refreshRoute(this.routeOf(this.selected));
+    if (this.selected?.moving) {
+      world.refreshRoute(this.routeOf(this.selected));
+      // The view goes with a squad on the march, unless the player has moved it away.
+      if (this.following && !this.press) world.centreOn(this.selected.x, this.selected.y);
+    }
     world.held = this.paused;
     world.update(Math.min(deltaMs, 50 * SPEED));
     if (this.covered) return;
 
     const W = this.width;
     const H = this.height;
+    // The chosen squad's commands, about its feet.
+    const chosen = this.selected && st.squads.includes(this.selected) && !this.battleActive && st.phase === 'playing' ? this.selected : null;
+    const feet = chosen ? (() => {
+      const p = this.shownAt(chosen);
+      return world.project(p.x, p.y, 0);
+    })() : null;
+    const ringOn = !!feet && feet.visible && feet.y < H - 150 && feet.y > 60;
+    this.ring.hidden = !ringOn;
+    if (ringOn && feet) {
+      this.ring.style.transform = `translate(${Math.round(feet.x)}px, ${Math.round(feet.y + 26)}px) translateX(-50%)`;
+      this.ring.classList.toggle('is-marching', !!chosen?.moving);
+    }
     const shownNames: { label: { el: HTMLElement; width: number; height: number }; x: number; y: number }[] = [];
     for (const n of st.nodes) {
       const label = this.nodeLabels.get(n.id)!;

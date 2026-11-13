@@ -138,7 +138,7 @@ export class WorldStage {
   private textures = new Map<SpriteImage, THREE.Texture>();
   private selection: THREE.Mesh;
   private selectedId: number | null = null;
-  private route: THREE.Line | null = null;
+  private route: THREE.Group | null = null;
   private pulses: Pulse[] = [];
   /** Whether the campaign's clock is held (the map sets it): marching figures then keep still. */
   held = false;
@@ -560,7 +560,11 @@ export class WorldStage {
   private setRoute(s: SquadMesh | undefined, target: { x: number; y: number } | null): void {
     if (this.route) {
       this.scene.remove(this.route);
-      this.route.geometry.dispose();
+      this.route.traverse((o) => {
+        const m = o as THREE.Mesh;
+        m.geometry?.dispose();
+        (m.material as THREE.Material | undefined)?.dispose();
+      });
       this.route = null;
     }
     if (!s || !target) return;
@@ -572,11 +576,26 @@ export class WorldStage {
       const y = s.y + ((target.y - s.y) * k) / n;
       pts.push(new THREE.Vector3(x / TILE, this.groundAt(x, y) + 0.12, y / TILE));
     }
-    this.route = new THREE.Line(
+    const line = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(pts),
       new THREE.LineDashedMaterial({ color: 0xf0e090, dashSize: 0.35, gapSize: 0.25 }),
     );
-    this.route.computeLineDistances();
+    line.computeLineDistances();
+    // A flag stands where the march ends, drawn larger from afar as the figures are.
+    const end = pts[pts.length - 1];
+    const grow = figureScale(this.shown.distance);
+    const flag = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.1, 6).translate(0, 0.55, 0), new THREE.MeshBasicMaterial({ color: 0xf4ecd0 }));
+    const cloth = new THREE.Mesh(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 1.1, 0), new THREE.Vector3(0.55, 0.9, 0), new THREE.Vector3(0, 0.7, 0)]),
+      new THREE.MeshBasicMaterial({ color: 0x6f9bff, side: THREE.DoubleSide }),
+    );
+    flag.add(pole, cloth);
+    flag.position.copy(end);
+    flag.scale.setScalar(grow);
+    flag.rotation.y = this.shown.yaw;
+    this.route = new THREE.Group();
+    this.route.add(line, flag);
     this.scene.add(this.route);
   }
 
@@ -598,7 +617,7 @@ export class WorldStage {
 
   /** A stronghold changes hands: rings in the new holder's colour spread from it, one after another. */
   celebrate(x: number, y: number, owner: Owner): void {
-    for (let k = 0; k < 3; k++) this.ping(x, y, OWNER_COLOUR[owner], 2.2 + k * 1.3, 700 + k * 260);
+    for (let k = 0; k < 3; k++) this.ping(x, y, OWNER_COLOUR[owner], 1.1 + k * 0.6, 700 + k * 260);
   }
 
   // ------------------------------------------------------------- the camera --
@@ -638,6 +657,11 @@ export class WorldStage {
   /** Turn the camera about the point it looks at. */
   turn(radians: number): void {
     this.wanted = clampView({ ...this.wanted, yaw: this.wanted.yaw + radians });
+  }
+
+  /** Keep the view centred on a map point, at the distance it stands (for following a squad). */
+  centreOn(x: number, y: number): void {
+    this.wanted = clampView({ ...this.wanted, x: x / TILE, z: y / TILE });
   }
 
   /** Centre the view on a map point, closer in. */

@@ -25,15 +25,15 @@ export interface Hour {
  * dawn, the white light of noon, a golden evening, then dusk.
  */
 export const HOURS: Hour[] = [
-  { at: 0.0, elevation: 0.9, sun: 0x8ea4e0, sunPower: 0.55, sky: 0x41558c, ground: 0x1e2a30, fill: 0.75, zenith: 0x0b1430, horizon: 0x26365e },
-  { at: 0.2, elevation: 0.7, sun: 0x8ea4e0, sunPower: 0.5, sky: 0x41558c, ground: 0x1e2a30, fill: 0.75, zenith: 0x111c40, horizon: 0x2e3f6a },
+  { at: 0.0, elevation: 0.9, sun: 0xb4c6f8, sunPower: 1.35, sky: 0x7890d0, ground: 0x3e4e5c, fill: 1.15, zenith: 0x0b1430, horizon: 0x26365e },
+  { at: 0.2, elevation: 0.7, sun: 0xb4c6f8, sunPower: 1.3, sky: 0x7890d0, ground: 0x3e4e5c, fill: 1.15, zenith: 0x111c40, horizon: 0x2e3f6a },
   { at: 0.26, elevation: 0.12, sun: 0xffa060, sunPower: 1.1, sky: 0xb0a0c0, ground: 0x4a4038, fill: 0.85, zenith: 0x5a74b0, horizon: 0xf0a878 },
   { at: 0.34, elevation: 0.55, sun: 0xffe0b8, sunPower: 1.8, sky: 0xd8e4f8, ground: 0x4a5a3a, fill: 1.0, zenith: 0x5a8ed8, horizon: 0xc8dcf0 },
   { at: 0.5, elevation: 1.05, sun: 0xfff4e4, sunPower: 2.1, sky: 0xf0f4ff, ground: 0x4a5a3a, fill: 1.05, zenith: 0x4a86e0, horizon: 0xbcd6f0 },
   { at: 0.66, elevation: 0.6, sun: 0xffe2b0, sunPower: 1.9, sky: 0xe8e8f4, ground: 0x4e5636, fill: 1.0, zenith: 0x5a8ad8, horizon: 0xd8d8e0 },
   { at: 0.74, elevation: 0.14, sun: 0xff9048, sunPower: 1.25, sky: 0xc8a8b8, ground: 0x4a3a30, fill: 0.85, zenith: 0x48609c, horizon: 0xf09858 },
-  { at: 0.8, elevation: 0.5, sun: 0x9aa8e0, sunPower: 0.5, sky: 0x5a5a90, ground: 0x2a2a30, fill: 0.75, zenith: 0x1c2450, horizon: 0x5a4a6a },
-  { at: 1.0, elevation: 0.9, sun: 0x8ea4e0, sunPower: 0.55, sky: 0x41558c, ground: 0x1e2a30, fill: 0.75, zenith: 0x0b1430, horizon: 0x26365e },
+  { at: 0.8, elevation: 0.5, sun: 0xb8c2f4, sunPower: 1.25, sky: 0x8484bc, ground: 0x44444e, fill: 1.1, zenith: 0x1c2450, horizon: 0x5a4a6a },
+  { at: 1.0, elevation: 0.9, sun: 0xb4c6f8, sunPower: 1.35, sky: 0x7890d0, ground: 0x3e4e5c, fill: 1.15, zenith: 0x0b1430, horizon: 0x26365e },
 ];
 
 /** What each kind of weather does to the light and the air. */
@@ -46,15 +46,18 @@ export const WEATHER: Record<Weather, { sun: number; grey: number; clouds: numbe
 };
 
 /** How many campaign days one turn of day and night takes. */
-export const DAYS_PER_CYCLE = 6;
+export const DAYS_PER_CYCLE = 1;
 
 /**
- * The hour over the map (0 midnight, 0.5 noon) `progress` days into the
- * campaign: it opens in the morning, and night falls about every sixth day.
+ * The hour over the map (0 midnight, 0.5 noon) `progress` days by the
+ * calendar: a campaign day runs from midnight to midnight, and sees one night.
  */
 export function hourOf(progress: number): number {
-  return (0.3 + progress / DAYS_PER_CYCLE) % 1;
+  return (((progress / DAYS_PER_CYCLE) % 1) + 1) % 1;
 }
+
+/** The hour a campaign opens at: early morning. */
+export const OPENING_HOUR = 0.3;
 
 /**
  * The weather on a campaign day: it holds for three days at a time, mostly

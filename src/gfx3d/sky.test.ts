@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { DAYS_PER_CYCLE, hourLight, hourOf, HOURS, weatherOn } from './sky';
+import { DAYS_PER_CYCLE, hourLight, hourOf, HOURS, OPENING_HOUR, weatherOn } from './sky';
 
 describe('the hour over the map', () => {
-  it('opens the campaign in the morning', () => {
-    expect(hourOf(0)).toBeCloseTo(0.3);
+  it('opens the campaign in the morning, on a day that began at midnight', () => {
+    expect(hourOf(0)).toBeCloseTo(0);
+    expect(OPENING_HOUR).toBeGreaterThan(0.26);
+    expect(OPENING_HOUR).toBeLessThan(0.45);
+    expect(hourOf(OPENING_HOUR)).toBeCloseTo(OPENING_HOUR);
   });
 
   it('turns through a whole day and night every cycle of campaign days', () => {

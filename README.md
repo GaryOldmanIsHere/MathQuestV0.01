@@ -55,6 +55,7 @@ meet, they fight.
 |---|---|---|
 | Choose a squad | Click it, or its card on the left; squads standing together open a list to pick from | **1** – **9** |
 | Let it go | Click it, or its card, again | **Esc** |
+| Its commands | The ring of buttons at its feet: march on a stronghold, halt, the army screen, let go | |
 | March | Click anywhere on the map (clicks near a stronghold snap onto it) | **M**: a list of strongholds, nearest first; arrows and **Enter** |
 | Look around | Drag to pan, wheel to zoom, right-drag to turn; click the small map to look there | **W A S D** or arrows to pan, **Q E** to turn, **Space** to find the chosen squad, **R** for the whole map |
 | The army screen | *Organize* | **O**, and **Esc** to close |
@@ -62,6 +63,12 @@ meet, they fight.
 | Pause; speed | *Pause* and the *1×* button | **P** holds the clock (orders can still be given); **F** runs it at 1×, 2× or 3× |
 | Settings | The gear button (holds the clock while open) | Tab to it, **Enter** |
 | Frame rate | | **F3** |
+
+**The view and the clock.** The view keeps to the chosen squad as it marches
+(choosing it from its card or by its number also comes in close) until you
+move the view yourself. A dashed line and a flag show where it is bound. The
+clock reads the day and the hour: a campaign day runs from midnight to
+midnight, with one night in it, and its income comes at midnight.
 
 **Saving.** The campaign is kept in this browser at each day's end, after
 each battle and on leaving the army screen; *Continue* on the title takes it

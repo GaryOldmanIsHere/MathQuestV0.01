@@ -204,6 +204,7 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .realm-dial.is-night { color: #dfe6ff; background: radial-gradient(circle at 50% 70%, rgba(120, 140, 220, 0.35), rgba(12, 16, 40, 0.9)); }
 .realm-text { display: grid; gap: 1px; }
 .realm-day { font: 600 1.05rem/1 var(--display); color: var(--gold-bright); letter-spacing: 0.06em; }
+.realm-clock { margin-left: 8px; font: 600 0.95rem/1 var(--body); color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .realm-sky { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--ink-soft); }
 /* The treasury and the strongholds, top right. */
 .wealth { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; align-items: center; gap: 18px; padding: 10px 16px; border-radius: 999px; font-variant-numeric: tabular-nums; }
@@ -280,6 +281,12 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .inspect-odds b.is-good { color: var(--good); }
 .inspect-odds b.is-bad { color: var(--bad); }
 
+/* The chosen squad's commands, set about its feet. */
+.squad-ring { position: absolute; left: 0; top: 0; display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(8, 12, 28, 0.78); border: 1px solid var(--panel-edge); box-shadow: var(--shadow); pointer-events: auto; z-index: 5; }
+.squad-ring[hidden] { display: none; }
+.ring-btn { width: 30px; height: 30px; min-width: 0; padding: 0; border-radius: 50%; }
+.squad-ring:not(.is-marching) [data-ui="ring-halt"] { opacity: 0.4; }
+.map-screen.is-covered .squad-ring { display: none; }
 .stack-list { position: absolute; width: 220px; display: grid; gap: 3px; padding: 8px; pointer-events: auto; z-index: 21; }
 .stack-item { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; text-align: left; padding: 5px 8px; text-transform: none; letter-spacing: 0; font: 600 0.95rem var(--body); }
 .stack-item.is-on { border-color: var(--gold-bright); }

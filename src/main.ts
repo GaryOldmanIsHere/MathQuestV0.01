@@ -78,7 +78,7 @@ async function boot(): Promise<void> {
 
   const app = new App(engine, ui);
   const toTitle = () => app.show(new TitleScreen(app, newCampaign, continueCampaign));
-  const toMap = (dayTimer = 0) => app.show(new MapScreen(app, {
+  const toMap = (dayTimer?: number) => app.show(new MapScreen(app, {
     battle: (attackerId, defenderId, ground, done) => app.open(new BattleScreen(app, { attackerId, defenderId, ground }, done)),
     organize: () => app.open(new OrganizeScreen(app)),
     title: toTitle,

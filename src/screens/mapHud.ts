@@ -49,6 +49,13 @@ export function hourName(hour: number): [string, IconName] {
   return [name, ic];
 }
 
+/** The time of day as a clock reads it, to the nearest ten minutes: 0 is 00:00, 0.5 is 12:00. */
+export function clockOf(hour: number): string {
+  const h = ((hour % 1) + 1) % 1;
+  const minutes = (Math.floor((h * 24 * 60) / 10) * 10) % (24 * 60);
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
 /** A squad's strength: the share of its members' health left, 0 to 1. */
 export function strengthOf(sq: Squad): number {
   const st = getState();
@@ -145,15 +152,14 @@ export class MapHud {
     // The day, the hour and the weather.
     const [hourWord, hourIcon] = hourName(s.hour);
     const [skyWord, skyIcon] = WEATHER_WORD[s.weather];
-    const key = `${st.day}|${hourWord}|${s.weather}`;
+    const clock = clockOf(s.hour);
+    const key = `${st.day}|${clock}|${s.weather}`;
     if (key !== this.shown) {
       this.shown = key;
       fill(this.dial, icon(hourIcon, 24));
       this.dial.classList.toggle('is-night', hourIcon === 'moon');
-      this.day.textContent = `Day ${st.day}`;
-      // The weather only: the sky's day and night turn far more slowly than
-      // the campaign's days are counted, so an hour named beside the day would mislead.
-      void hourWord;
+      // The day and the hour (a campaign day is one turn of day and night), then the weather.
+      fill(this.day, `Day ${st.day}`, el('span', { class: 'realm-clock', title: hourWord }, clock));
       fill(this.sky, icon(skyIcon, 15), skyWord);
     }
     // The treasury and the strongholds.

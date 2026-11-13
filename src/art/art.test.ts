@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Raster } from './raster';
-import { FOOT_X, FOOT_Y, paintHuman, REST, SLOT } from './humanoid';
+import { FOOT_X, FOOT_Y, paintHuman, REST, SLOT, stanceOf } from './humanoid';
 import type { HumanLook } from './humanoid';
 import { DRAGON, FLOAT_REST, floatBlend, HORSE, HOUND, paintGhost, paintQuad, paintSea, QUAD_REST, quadBlend } from './creatures';
 import { floatKeys, framesOf, humanBlend, humanKeys, humanStart, quadKeys } from './motion';
@@ -138,17 +138,18 @@ describe('figures', () => {
       const look = humanLookOf(def);
       for (const anim of ANIMS) {
         const { keys, loop } = humanKeys(anim, look.weapon);
-        for (const f of framesOf(keys, loop, humanStart, humanBlend)) {
+        for (const f of framesOf(keys, loop, stanceOf(look.weapon), humanBlend)) {
           for (const seen of ['front', 'back'] as const) {
             const r = paintHuman(look, f.pose, seen);
             expect(cutOff(r), `${def.id} ${anim} ${seen}`).toBe('');
-            if (anim !== 'fall') expect(Math.abs(lowest(r) - FOOT_Y), `${def.id} ${anim}`).toBeLessThanOrEqual(2);
+            // (In the picture's own pixels: `r.k` to the painters' unit.)
+            if (anim !== 'fall') expect(Math.abs(lowest(r) / r.k - FOOT_Y), `${def.id} ${anim}`).toBeLessThanOrEqual(2);
           }
         }
       }
     }
     const r = paintHuman(humanLookOf(humans[0]), REST, 'front');
-    expect(r.filled(FOOT_X, FOOT_Y - 30)).toBe(true);
+    expect(r.filled(FOOT_X * r.k, (FOOT_Y - 30) * r.k)).toBe(true);
   }, 30000);
 
   it('paints beasts and spirits whole in every frame', () => {
@@ -159,7 +160,7 @@ describe('figures', () => {
           for (const seen of ['front', 'back'] as const) {
             const r = paintQuad(spec, f.pose, seen);
             expect(cutOff(r), `${spec.w}x${spec.h} ${anim} ${seen}`).toBe('');
-            if (anim !== 'fall') expect(lowest(r), `${spec.w}x${spec.h} ${anim}`).toBeGreaterThanOrEqual(spec.h - 4);
+            if (anim !== 'fall') expect(lowest(r) / r.k, `${spec.w}x${spec.h} ${anim}`).toBeGreaterThanOrEqual(spec.h - 4);
           }
         }
       }

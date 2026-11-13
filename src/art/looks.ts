@@ -58,6 +58,8 @@ export function humanLookOf(def: ClassDef): HumanLook {
     weapon,
     shield,
     cape: def.tier >= 3 || /lord|king|queen|paladin|master/.test(name),
+    plume: (head === 'helm' || head === 'greathelm') && (def.tier >= 2 || /knight|paladin|valkyrie|guard|captain/.test(name)),
+    beard: def.gender === 'M' && caster && /wizard|mage|sorcer|warlock|magus|sage|enchant|archmage|druid/.test(name),
   };
 }
 
@@ -68,20 +70,29 @@ const rgb = (hex: string): [number, number, number] => {
 const mixRgb = (a: [number, number, number], b: [number, number, number], t: number): [number, number, number] =>
   [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
+/** A colour with its saturation raised `by` (the painted figures wear strong, clear colours). */
+function vivid(c: [number, number, number], by: number): [number, number, number] {
+  const grey = c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11;
+  const f = (v: number) => Math.max(0, Math.min(255, grey + (v - grey) * by));
+  return [f(c[0]), f(c[1]), f(c[2])];
+}
+
 /** A class's colours by slot (see SLOT), from its pixel-art palette. */
 export function slotColours(p: Palette): [number, number, number][] {
   const out: [number, number, number][] = [];
   out[SLOT.skin] = rgb(p.s);
   out[SLOT.eye] = rgb(p.e);
-  out[SLOT.hair] = rgb(p.h);
-  out[SLOT.armour] = rgb(p.a);
-  out[SLOT.trim] = rgb(p.b);
-  out[SLOT.metal] = rgb(p.w);
+  out[SLOT.hair] = vivid(rgb(p.h), 1.15);
+  out[SLOT.armour] = vivid(rgb(p.a), 1.3);
+  out[SLOT.trim] = vivid(rgb(p.b), 1.3);
+  // Steel: the palette's bright metal, greyed toward blue so its highlights have room to shine.
+  out[SLOT.metal] = mixRgb(rgb(p.w), [104, 116, 146], 0.46);
   out[SLOT.wood] = rgb(p.x);
-  out[SLOT.shield] = rgb(p.d);
+  out[SLOT.shield] = vivid(rgb(p.d), 1.25);
   out[SLOT.dark] = mixRgb(rgb(p.a), [34, 26, 30], 0.68);
   out[SLOT.cloth] = mixRgb(rgb(p.a), [226, 216, 196], 0.45);
   out[SLOT.glow] = [255, 244, 190];
+  out[SLOT.pale] = [236, 232, 220];
   return out;
 }
 

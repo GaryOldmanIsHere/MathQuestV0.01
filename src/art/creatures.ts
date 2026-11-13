@@ -1,4 +1,4 @@
-import { normalize3, Raster } from './raster';
+import { DETAIL, normalize3, Raster } from './raster';
 import { SLOT } from './humanoid';
 
 // The beasts, painted as the people are (see humanoid.ts): on four legs, a
@@ -85,7 +85,7 @@ export function saddleOf(spec: QuadSpec, pose: QuadPose, dir: number): [number, 
 
 /** Paint a four-legged creature, into `into` if given (a horse under its rider). */
 export function paintQuad(spec: QuadSpec, pose: QuadPose, seen: 'front' | 'back', into?: Raster): Raster {
-  const r = into ?? new Raster(spec.w, spec.h);
+  const r = into ?? new Raster(spec.w, spec.h, DETAIL);
   const S: SlotMap = { ...SLOT, ...spec.slots };
   const dir = seen === 'front' ? -1 : 1;
   const ground = spec.h - 3;
@@ -271,7 +271,7 @@ export function floatBlend(a: FloatPose, b: FloatPose, t: number): FloatPose {
 }
 
 export function paintGhost(pose: FloatPose, seen: 'front' | 'back'): Raster {
-  const r = new Raster(GHOST_W, GHOST_H);
+  const r = new Raster(GHOST_W, GHOST_H, DETAIL);
   const dir = seen === 'front' ? -1 : 1;
   const cx = GHOST_W / 2 + dir * pose.lean * 4;
   const top = 12 - pose.rise;
@@ -311,7 +311,7 @@ export const SEA_W = 104;
 export const SEA_H = 64;
 
 export function paintSea(pose: FloatPose, seen: 'front' | 'back'): Raster {
-  const r = new Raster(SEA_W, SEA_H);
+  const r = new Raster(SEA_W, SEA_H, DETAIL);
   const dir = seen === 'front' ? -1 : 1;
   const cx = SEA_W / 2 + dir * pose.lean * 3;
   const cy = 30 - pose.rise * 0.5;

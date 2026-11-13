@@ -297,7 +297,11 @@ shape.
 
 **The painted figures** (`src/art/`). Every class has its own figure,
 painted in code when it is first needed, in the HD-2D manner: pixel art about
-53 pixels tall that the 3D scene lights as it lights the land.
+96 pixels tall that the 3D scene lights as it lights the land. They are drawn
+in the manner of the tactics games of the 1990s: about four and a half heads
+tall and broad in the shoulder, standing on guard with the weapon raised,
+shaded in four hard bands (cool in shade, warm in light) under a bold
+outline, steel glinting white.
 * Each part is a solid shape on the pixel grid that records which way it
   faces, so one drawing yields both a picture and a normal map.
 * People are dressed from their class's rules: the weapon it may carry,
@@ -305,8 +309,13 @@ painted in code when it is first needed, in the HD-2D manner: pixel art about
   where a hand is free, a cape at the higher tiers.
 * Hounds, dragons, golems, ghosts and sea creatures have rigs of their own,
   and mounted classes ride a horse whose coat the class chooses.
-* Six animations are eased between key poses: at ease, marching, attacking
-  (a swing, a thrust or a shot), casting, flinching and falling.
+* Six animations are eased between key poses: on guard, marching, attacking
+  (a swing, a thrust or a shot), casting, flinching and falling. A figure
+  stands as its legs put it, so the foot on the ground stays there.
+* Figures are designed on a coarse grid and painted twice as fine
+  (`DETAIL` in `raster.ts`).
+* `tools/style-compare.html` (with `npm run dev`) sets the painted figures
+  beside Ogre Battle 64's own, where those were extracted.
 
 `tools/art-preview.html?classes=knight,wyvern&anim=attack&scale=4` shows
 every frame while the dev server runs (`&normals` for the normal maps).

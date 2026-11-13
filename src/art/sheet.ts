@@ -1,13 +1,13 @@
 import type { ClassDef } from '../core/types';
 import type { Anim, AnimClip, SpriteFrame, SpriteSet, SpriteView } from '../gfx3d/sprites';
 import { ANIMS } from '../gfx3d/sprites';
-import { Raster } from './raster';
-import { FOOT_X, FOOT_Y, HIP_Y, paintHuman, SLOT } from './humanoid';
+import { DETAIL, Raster } from './raster';
+import { FOOT_X, FOOT_Y, HIP_Y, paintHuman, SLOT, stanceOf } from './humanoid';
 import type { HumanLook, Pose } from './humanoid';
 import { DRAGON, GHOST_H, GHOST_W, HORSE, HORSE_SLOT, HOUND, paintGhost, paintQuad, paintSea, saddleOf, SEA_H, SEA_W } from './creatures';
 import type { QuadSpec } from './creatures';
 import { floatBlend, FLOAT_REST, QUAD_REST, quadBlend } from './creatures';
-import { floatKeys, framesOf, humanBlend, humanKeys, humanStart, quadKeys } from './motion';
+import { floatKeys, framesOf, humanBlend, humanKeys, quadKeys } from './motion';
 import type { FigureKind } from './looks';
 import { figureKindOf, humanLookOf, paletteOf, slotColours } from './looks';
 import { hasUnitImage, setUnitImage } from '../gfx/unitImages';
@@ -19,8 +19,8 @@ import { hasUnitImage, setUnitImage } from '../gfx/unitImages';
 /** How tall a figure stands, in world units (as the stage and the map expect). */
 const STANDS = 1.55;
 /** How many pixels tall a person stands, crown to sole. */
-const PERSON_PX = 53;
-const PIXELS_PER_UNIT = PERSON_PX / STANDS;
+const PERSON_PX = 48;
+const PIXELS_PER_UNIT = (PERSON_PX * DETAIL) / STANDS;
 
 type Colours = [number, number, number][];
 
@@ -80,15 +80,23 @@ interface Painter {
   largeScale: number;
 }
 
+/** The pose a person's portrait shows: their stance, a spear stood upright so the picture is not all spear. */
+function portraitPose(look: HumanLook): Pose {
+  const stance = stanceOf(look.weapon);
+  if (look.weapon !== 'spear') return stance;
+  const nearArm: [number, number] = [0.5, 1.1];
+  return { ...stance, nearArm, grip: Math.PI - 0.1 - (nearArm[0] + nearArm[1]) };
+}
+
 function humanPainter(look: HumanLook): Painter {
   return {
     anchor: [FOOT_X, FOOT_Y + 1],
     largeScale: 1.45,
     frames(anim, seen) {
       const { keys, loop } = humanKeys(anim, look.weapon);
-      return framesOf(keys, loop, humanStart, humanBlend).map((f) => ({ raster: paintHuman(look, f.pose, seen), ms: f.ms, hit: f.hit }));
+      return framesOf(keys, loop, stanceOf(look.weapon), humanBlend).map((f) => ({ raster: paintHuman(look, f.pose, seen), ms: f.ms, hit: f.hit }));
     },
-    portrait: () => paintHuman(look, humanStart, 'front'),
+    portrait: () => paintHuman(look, portraitPose(look), 'front'),
   };
 }
 
@@ -107,7 +115,7 @@ function quadPainter(spec: QuadSpec, largeScale: number): Painter {
 /** A rider on a horse: the horse's paces under the rider's own motions, in step. */
 function riderPainter(look: HumanLook): Painter {
   const paint = (horse: typeof QUAD_REST, man: Pose, seen: 'front' | 'back') => {
-    const r = new Raster(HORSE.w, HORSE.h);
+    const r = new Raster(HORSE.w, HORSE.h, DETAIL);
     const dir = seen === 'front' ? -1 : 1;
     const [sx, sy] = saddleOf(HORSE, horse, dir);
     // The rider's far leg behind the horse, the rest of the rider over it.
@@ -127,7 +135,7 @@ function riderPainter(look: HumanLook): Painter {
       const h = quadKeys(anim, HORSE);
       const m = humanKeys(anim === 'walk' ? 'idle' : anim, look.weapon);
       const horse = framesOf(h.keys, h.loop, QUAD_REST, quadBlend);
-      const man = framesOf(m.keys, m.loop, humanStart, humanBlend);
+      const man = framesOf(m.keys, m.loop, stanceOf(look.weapon), humanBlend);
       // The longer run leads; the other is sampled to match it.
       const lead = man.length > horse.length && anim !== 'walk' ? man : horse;
       return lead.map((f, i) => {
@@ -136,7 +144,7 @@ function riderPainter(look: HumanLook): Painter {
         return { raster: paint(hp, mp, seen), ms: f.ms, hit: f.hit };
       });
     },
-    portrait: () => paint(QUAD_REST, humanStart, 'front'),
+    portrait: () => paint(QUAD_REST, portraitPose(look), 'front'),
   };
 }
 
@@ -177,7 +185,7 @@ function viewOf(p: Painter, colours: Colours, seen: 'front' | 'back'): SpriteVie
       get: () => (clip ??= {
         frames: p.frames(anim, seen).map((f): SpriteFrame => {
           const { image, normal, x, y } = imagesOf(f.raster, colours);
-          return { image, normal, anchorX: p.anchor[0] - x, anchorY: p.anchor[1] - y, ms: f.ms, hit: f.hit };
+          return { image, normal, anchorX: p.anchor[0] * DETAIL - x, anchorY: p.anchor[1] * DETAIL - y, ms: f.ms, hit: f.hit };
         }),
         loop: anim === 'idle' || anim === 'walk',
       }),

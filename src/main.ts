@@ -8,7 +8,8 @@ import './ui/styles.css';
 import { applyComfort, watchSystemMotion } from './ui/comfort';
 import { App } from './app/app';
 import { Engine } from './render/engine';
-import { getState, resetState } from './core/state';
+import { getState, installState, resetState } from './core/state';
+import { adopt, loadCampaign } from './core/save';
 import { allClasses, classOf, installDataset, itemOf } from './data/registry';
 import { canEquip, shopRank, shopStock, SLOTS } from './core/items';
 import { allPromotions, availablePromotions } from './core/character';
@@ -19,6 +20,7 @@ import { loadWorldModels } from './gfx3d/models';
 import { paintPortraits } from './art/sheet';
 import { buildClassImages, buildUnitImages } from './gfx/pixels';
 import { exposeDebug } from './debug';
+import { wireSound } from './audio/sound';
 import { TitleScreen } from './screens/title';
 import { MapScreen } from './screens/map';
 import { BattleScreen } from './screens/battle';
@@ -49,6 +51,7 @@ async function loadExtractedData(): Promise<void> {
 async function boot(): Promise<void> {
   applyComfort();
   watchSystemMotion();
+  wireSound();
   const canvas = document.getElementById('view') as HTMLCanvasElement;
   const ui = document.getElementById('ui') as HTMLElement;
   const loading = document.getElementById('loading');
@@ -74,12 +77,20 @@ async function boot(): Promise<void> {
   step('boot:art');
 
   const app = new App(engine, ui);
-  const toTitle = () => app.show(new TitleScreen(app, newCampaign));
-  const toMap = () => app.show(new MapScreen(app, {
+  const toTitle = () => app.show(new TitleScreen(app, newCampaign, continueCampaign));
+  const toMap = (dayTimer = 0) => app.show(new MapScreen(app, {
     battle: (attackerId, defenderId, ground, done) => app.open(new BattleScreen(app, { attackerId, defenderId, ground }, done)),
     organize: () => app.open(new OrganizeScreen(app)),
     title: toTitle,
-  }));
+  }, dayTimer));
+  /** Take up the campaign kept in this browser, if there is one. */
+  function continueCampaign(): void {
+    const kept = loadCampaign();
+    if (!kept) return;
+    adopt(kept.state);
+    installState(kept.state);
+    toMap(kept.dayTimer);
+  }
   function newCampaign(): void {
     resetState();
     toMap();

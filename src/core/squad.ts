@@ -4,6 +4,10 @@ import { classOf } from '../data/registry';
 import { pick, SQUAD_NAMES } from '../data/names';
 
 let nextSquadId = 1;
+/** Number new squads from `n` on (after a saved campaign is loaded, past its highest). */
+export function setNextSquadId(n: number): void {
+  nextSquadId = n;
+}
 
 export function makeSquad(
   side: 'player' | 'enemy',

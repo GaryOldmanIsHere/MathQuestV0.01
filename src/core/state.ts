@@ -137,3 +137,9 @@ export function resetState(): GameState {
   state = newCampaign();
   return state;
 }
+
+/** Take up a campaign read from a save as the one in play. */
+export function installState(loaded: GameState): GameState {
+  state = loaded;
+  return state;
+}

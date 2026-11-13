@@ -4,7 +4,7 @@ Three kinds of check, from quickest to slowest:
 
 | | Command | What it runs | Where |
 |---|---|---|---|
-| Unit tests | `npm test` | 363 tests (346 without extracted ROM data), in Node, no browser | CI, every push |
+| Unit tests | `npm test` | 372 tests (355 without extracted ROM data), in Node, no browser | CI, every push |
 | Automated playthrough | `npm run e2e` | A real browser plays the game through its interface | By hand, with `npm run dev` running |
 | Performance probe | `npm run perf` | Boot time, frame times, GPU memory over a run of battles | By hand, with `npm run dev` running |
 
@@ -94,6 +94,15 @@ tests each type's ground.
   and shed gear the new class cannot use.
 * Large units take two cells and two places, fight from their foremost cell,
   act once, and cannot be set over another unit or past the fifth place.
+* A saved campaign reads back as it was kept (squads, soldiers, gear, gold,
+  the day and its clock), new soldiers and squads take numbers and names no
+  one holds, and a save that is damaged, from another dataset or already
+  ended is refused.
+* A fight's forecast changes nothing in the campaign, and favours the fit
+  over the badly hurt.
+* Every sound is short and within a speaker's range, and playing one where
+  there is no audio does nothing. The guide moves on only when the player
+  does what its step waits for.
 * Squads rest only on their own strongholds, the fallen rise only at the
   keep, and no two soldiers share a name until a pool runs dry.
 

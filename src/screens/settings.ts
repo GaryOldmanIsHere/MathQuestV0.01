@@ -3,7 +3,8 @@ import { QUALITIES, saveAdaptive, saveQuality } from '../render/quality';
 import type { Quality } from '../render/quality';
 import { button, el } from '../ui/dom';
 import { icon } from '../ui/icons';
-import { BATTLE_PACES, comfort, MOTIONS, setComfort, UI_SCALES } from '../ui/comfort';
+import { BATTLE_PACES, comfort, MOTIONS, setComfort, SOUND_LEVELS, UI_SCALES } from '../ui/comfort';
+import { play } from '../audio/sound';
 import type { Motion } from '../ui/comfort';
 
 // The settings sheet, opened from the title or the map: how hard the
@@ -27,6 +28,7 @@ export function qualitySelect(app: App, ui = 'quality'): HTMLSelectElement {
 }
 
 const MOTION_LABEL: Record<Motion, string> = { system: 'As the system asks', reduce: 'Reduced', full: 'Full' };
+const SOUND_LABEL: Record<number, string> = { 0: 'Off', 0.5: 'Quiet', 1: 'Full' };
 const PACE_LABEL: Record<number, string> = { 1: 'Steady', 1.5: 'Brisk (1.5×)', 2: 'Swift (2×)' };
 
 /** A choice among `values`, shown by `label`, calling `change` with the one chosen. */
@@ -48,6 +50,7 @@ const KEYS: [string[], string][] = [
   [['M'], 'March the chosen squad on a stronghold'],
   [['P'], 'Pause (orders can still be given)'],
   [['F'], 'Campaign speed: 1×, 2×, 3×'],
+  [['Click an enemy'], 'Look a squad over; with a squad chosen, attack it'],
   [['R'], 'The whole map'],
   [['O'], 'The army screen'],
   [['Esc'], 'Close a sheet or the army screen'],
@@ -94,6 +97,7 @@ export function openSettings(app: App, host: HTMLElement): void {
     row('Interface size', choice('settings-scale', 'Interface size', UI_SCALES, c.uiScale, (v) => `${Math.round(v * 100)}%`, (uiScale) => setComfort({ uiScale }))),
     row('Motion', choice('settings-motion', 'Motion', MOTIONS, c.motion, (v) => MOTION_LABEL[v], (motion) => setComfort({ motion })), 'Reduced: no camera shake, softer flashes'),
     row('Battle pace', choice('settings-pace', 'Battle pace', BATTLE_PACES, c.battlePace, (v) => PACE_LABEL[v], (battlePace) => setComfort({ battlePace }))),
+    row('Sound', choice('settings-sound', 'Sound', SOUND_LEVELS, c.sound, (v) => SOUND_LABEL[v], (sound) => { setComfort({ sound }); play('capture'); })),
     el('h3', {}, 'Keys'),
     el('div', { class: 'settings-keys' }, ...KEYS.flatMap(([keys, what]) => [
       el('span', {}, ...keys.map((k) => (k === '–' ? ' – ' : el('span', { class: 'kbd' }, k)))),

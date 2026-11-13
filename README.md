@@ -28,7 +28,7 @@ These show the built-in data at the High preset.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 363 unit tests (346 without extracted ROM data)
+npm test         # 372 unit tests (355 without extracted ROM data)
 npm run build    # type-check + production bundle into dist/
 npm run e2e      # an automated playthrough in a real browser (needs npm run dev)
 npm run perf     # boot, frame times and GPU memory over a run of battles (needs npm run dev)
@@ -57,9 +57,18 @@ meet, they fight.
 | March | Click anywhere on the map (clicks near a stronghold snap onto it) | **M**: a list of strongholds, nearest first; arrows and **Enter** |
 | Look around | Drag to pan, wheel to zoom, right-drag to turn; click the small map to look there | **W A S D** or arrows to pan, **Q E** to turn, **Space** to find the chosen squad, **R** for the whole map |
 | The army screen | *Organize* | **O**, and **Esc** to close |
+| Size up the enemy | Click an enemy squad: who is in it, its strength, and how a fight with the chosen squad is likely to go (the chosen squad is also sent against it) | |
 | Pause; speed | *Pause* and the *1×* button | **P** holds the clock (orders can still be given); **F** runs it at 1×, 2× or 3× |
 | Settings | The gear button (holds the clock while open) | Tab to it, **Enter** |
 | Frame rate | | **F3** |
+
+**Saving.** The campaign is kept in this browser at each day's end, after
+each battle and on leaving the army screen; *Continue* on the title takes it
+up again. A new campaign replaces it, and a campaign won or lost is cleared.
+
+**The guide.** A first campaign opens with a small card that names the next
+thing to try and moves on as you do it. It never stops the game, and *Skip
+the guide* puts it away for good.
 
 **Battles** are fought in rounds, and play themselves. What you decide is who
 fights, where each member stands, and whom the squad goes for:
@@ -197,6 +206,9 @@ frame rate; the game picks one to suit the machine, and Settings changes it.
     light, and cuts the interface's animations short.
   * *Battle pace:* steady, brisk (1.5×) or swift (2×). This changes only how
     fast a battle is shown, never its outcome.
+  * *Sound:* off, quiet or full. The sounds are made in the browser as
+    they are needed (short tones and noise; there are no recordings), and
+    begin with your first click or key.
   * *Adaptive resolution,* and the graphics preset.
 * **Readable:** every text colour is tested at 4.5 to 1 or better against its
   panel over anything the view may show behind it (WCAG AA). Who holds a
@@ -342,7 +354,9 @@ src/
     quality.ts     the presets, the first guess for a machine, the kept choices
     governor.ts    adaptive resolution
   app/          the shell: one base screen and one over it, the frame loop
-  screens/      title, map (+ mapHud.ts, its instruments), battle, organize, settings
+  screens/      title, map (+ mapHud.ts, its instruments; guide.ts, the first campaign's hints),
+                battle, organize, settings
+  audio/        sound.ts: the game's sounds, synthesised
   ui/           dom.ts, icons.ts, comfort.ts (interface size, motion, pace), styles.css
   main.ts       boot
 tools/          extract-ob64, scrape-expansion, pack-models; art, fx and ui previews
@@ -352,7 +366,7 @@ docs/           ARCHITECTURE.md, TESTING.md, OB64.md, screenshots
 
 ## Tests
 
-`npm test` runs 363 tests (346 without extracted ROM data), mostly over the
+`npm test` runs 372 tests (355 without extracted ROM data), mostly over the
 rules, in Node without a browser:
 * battles, marching and terrain, the class tree, the expansion, equipment and
   items;

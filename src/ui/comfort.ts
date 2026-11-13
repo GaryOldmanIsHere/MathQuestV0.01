@@ -12,13 +12,16 @@ export interface Comfort {
   motion: Motion;
   /** How fast battles play out (only how they are shown: the blows are the same). */
   battlePace: number;
+  /** How loud the game's sounds are: 0 (off) to 1. */
+  sound: number;
 }
 
 export const UI_SCALES = [0.85, 1, 1.15, 1.3] as const;
 export const BATTLE_PACES = [1, 1.5, 2] as const;
+export const SOUND_LEVELS = [0, 0.5, 1] as const;
 export const MOTIONS: Motion[] = ['system', 'reduce', 'full'];
 
-export const DEFAULT_COMFORT: Comfort = { uiScale: 1, motion: 'system', battlePace: 1 };
+export const DEFAULT_COMFORT: Comfort = { uiScale: 1, motion: 'system', battlePace: 1, sound: 1 };
 
 const KEY = 'palatinus.comfort';
 
@@ -36,6 +39,7 @@ export function parseComfort(text: string | null): Comfort {
     uiScale: pick(raw.uiScale, UI_SCALES, DEFAULT_COMFORT.uiScale),
     motion: pick(raw.motion, MOTIONS, DEFAULT_COMFORT.motion),
     battlePace: pick(raw.battlePace, BATTLE_PACES, DEFAULT_COMFORT.battlePace),
+    sound: pick(raw.sound, SOUND_LEVELS, DEFAULT_COMFORT.sound),
   };
 }
 

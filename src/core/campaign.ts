@@ -4,6 +4,7 @@ import { makeCharacter } from './character';
 import { autoPlace, makeSquad, placesUsed, squadMemberIds, SQUAD_PLACES } from './squad';
 import { strikeTarget, strongholdAt } from './movement';
 import type { Point } from './movement';
+import { simulateBattle } from './battle';
 
 // The campaign's larger rules: what the enemy's squads set out to do, the
 // reinforcements its castle raises, and how the player's army grows (stronger
@@ -182,3 +183,34 @@ export function transferMember(st: GameState, from: Squad, to: Squad, charId: nu
 
 /** How near two squads must stand for a soldier to pass between them. */
 export const TRANSFER_REACH = 60;
+
+// -------------------------------------------------------------- forecasts --
+
+export interface Forecast {
+  /** Shares of the trial battles the first squad won, drew and lost: they sum to 1. */
+  win: number;
+  draw: number;
+  loss: number;
+}
+
+/**
+ * How a fight between two squads is likely to go, were `mine` to attack
+ * `theirs` as both stand now: the battle is fought `runs` times over on
+ * copies, so nothing in the campaign changes.
+ */
+export function forecast(st: GameState, mine: Squad, theirs: Squad, runs = 24): Forecast {
+  const tally = { attacker: 0, defender: 0, draw: 0 };
+  for (let i = 0; i < runs; i++) {
+    const side = (sq: Squad) => {
+      const squad = structuredClone(sq);
+      const chars = new Map(squadMemberIds(sq).flatMap((id) => {
+        const c = st.chars.get(id);
+        return c ? [[id, structuredClone(c)] as const] : [];
+      }));
+      return { squad, chars };
+    };
+    tally[simulateBattle(side(mine), side(theirs)).winner]++;
+  }
+  const n = Math.max(1, runs);
+  return { win: tally.attacker / n, draw: tally.draw / n, loss: tally.defender / n };
+}

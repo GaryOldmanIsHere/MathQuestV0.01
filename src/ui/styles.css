@@ -233,7 +233,7 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 /* The status bar, bottom. */
 .map-help { position: absolute; bottom: 86px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; font-size: 0.8rem; color: #f0ead8; opacity: 0.85; text-shadow: 0 1px 2px #000; pointer-events: none !important; }
 /* The keys' reminder steps aside while a sheet or the march list is open over it. */
-.map-screen:has(.march-list, .settings) .map-help { visibility: hidden; }
+.map-screen:has(.march-list, .settings, .inspect) .map-help { visibility: hidden; }
 .hud { position: absolute; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 16px; }
 .hud-stats { display: flex; align-items: center; gap: 8px; font: 600 1rem var(--body); white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
 .hud-stats .icon { color: var(--gold); }
@@ -254,6 +254,30 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .end-panel > .icon { color: var(--gold-bright); filter: drop-shadow(0 0 12px rgba(243, 220, 152, 0.6)); }
 .end-panel.is-defeat > .icon { color: var(--bad); filter: none; }
 .end-panel.is-defeat h2 { color: var(--bad); }
+
+/* The first campaign's guide, and an enemy squad's sheet. */
+.guide { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); width: min(520px, calc(60vw / var(--ui-scale, 1))); display: grid; gap: 8px; padding: 12px 14px; pointer-events: auto; animation: pop-up var(--slow) var(--ease); }
+.guide[hidden] { display: none; }
+.guide-head { display: flex; align-items: center; gap: 8px; color: var(--gold-bright); }
+.guide-head h3 { flex: 1; font-size: 1.05rem; }
+.guide-count { font-size: 0.82rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.guide p { margin: 0; line-height: 1.4; color: var(--ink); font-size: 0.95rem; }
+.guide-foot { display: flex; justify-content: flex-end; }
+.guide-foot .btn { padding: 4px 10px; font-size: 0.88rem; }
+.map-screen.is-covered .guide, .map-screen.is-covered .inspect { display: none; }
+.inspect { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); width: min(460px, calc(92vw / var(--ui-scale, 1))); display: grid; gap: 8px; padding: 12px 16px; pointer-events: auto; z-index: 20; animation: pop-up var(--slow) var(--ease); }
+.inspect h3 { display: flex; align-items: center; gap: 6px; color: var(--enemy); }
+.inspect-kind { flex: 1; text-align: right; font-size: 0.88rem; color: var(--ink-soft); }
+.inspect-members { display: grid; gap: 3px; }
+.inspect-member { display: grid; grid-template-columns: 30px 1fr auto 46px 90px; align-items: center; gap: 10px; font-size: 0.95rem; }
+.inspect-member.is-down { opacity: 0.45; }
+.inspect-level, .inspect-row { color: var(--ink-soft); font-size: 0.85rem; text-transform: capitalize; font-variant-numeric: tabular-nums; }
+.inspect-bar { height: 7px; border-radius: 4px; background: rgba(0, 0, 0, 0.5); overflow: hidden; }
+.inspect-bar i { display: block; height: 100%; }
+.inspect-odds { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-top: 8px; border-top: 1px solid var(--panel-line); font-size: 0.95rem; color: var(--ink-soft); }
+.inspect-odds b { color: var(--ink); }
+.inspect-odds b.is-good { color: var(--good); }
+.inspect-odds b.is-bad { color: var(--bad); }
 
 /* The march list: the chosen squad's orders by keyboard (M). */
 .march-list { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); width: min(460px, calc(92vw / var(--ui-scale, 1))); max-height: calc(56vh / var(--ui-scale, 1)); display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: 14px 16px; pointer-events: auto; z-index: 20; animation: pop-up var(--slow) var(--ease); }

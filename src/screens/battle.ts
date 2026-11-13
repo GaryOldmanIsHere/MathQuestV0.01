@@ -1,3 +1,4 @@
+import { play } from '../audio/sound';
 import type { App, Screen } from '../app/app';
 import { Timers } from '../app/timers';
 import type { View } from '../render/engine';
@@ -243,6 +244,7 @@ export class BattleScreen implements Screen {
       stage.highlight(null);
       stage.cut(WIDE, 380);
       this.say(`Round ${ev.round}`, 'flag');
+      play('round');
       this.timers.after(650, next);
       return;
     }
@@ -343,6 +345,7 @@ export class BattleScreen implements Screen {
       if (results[n] === 'miss') {
         // The blow goes wide: the unit sways aside, unhurt.
         if (p) this.floatNumber(p.x, p.headY - 6, 'Miss', 'miss');
+        play('miss');
         stage.recoil(id, 0.6);
         return;
       }
@@ -355,6 +358,7 @@ export class BattleScreen implements Screen {
         l.hp = heal ? Math.min(max, l.hp + amount) : Math.max(0, l.hp - amount);
         l.bar.set(l.hp / max);
       }
+      play(heal ? 'heal' : crit ? 'crit' : ev.attack.type === 'magic' ? 'spell' : ev.attack.type === 'ranged' ? 'arrow' : heavy ? 'heavy' : 'hit');
       if (heal) return;
       stage.play(id, 'hit');
       stage.flash(id, hue === 'physical' ? 0xff6a5a : 0xffffff);
@@ -373,6 +377,7 @@ export class BattleScreen implements Screen {
         stage.fall(id);
         const p = stage.project(id);
         if (p) this.floatNumber(p.x, p.headY - 34, 'Down!', 'ko');
+        play('ko');
         // The empty bar shows a moment before the name goes.
         this.timers.after(700, () => l?.root.classList.add('is-down'));
       });
@@ -451,6 +456,7 @@ export class BattleScreen implements Screen {
     // A loss is a loss for the player's side, whichever side that was.
     const ours = this.attacker.side === 'player' ? 'attacker' : this.defender.side === 'player' ? 'defender' : null;
     const lost = ours !== null && winner !== 'draw' && winner !== ours;
+    play(lost ? 'defeat' : ours !== null && winner === ours ? 'victory' : 'bell');
     const ups = [...levelUps.keys()].flatMap((id) => {
       const c = st.chars.get(id);
       return c ? [c] : [];

@@ -1,3 +1,4 @@
+import { loadCampaign } from '../core/save';
 import type { App, Screen } from '../app/app';
 import type { View } from '../render/engine';
 import { newCampaign } from '../core/state';
@@ -18,7 +19,7 @@ export class TitleScreen implements Screen {
   readonly root: HTMLElement;
   private world = new WorldStage();
 
-  constructor(app: App, onNewCampaign: () => void) {
+  constructor(app: App, onNewCampaign: () => void, onContinue: () => void) {
     const nodes = newCampaign().nodes;
     this.world.build(buildTerrainGrid(nodes), nodes, worldDetail(app.engine.settings));
     this.world.setView({ ...OVERVIEW, distance: OVERVIEW.distance * 0.72, pitch: 0.62 }, true);
@@ -28,7 +29,14 @@ export class TitleScreen implements Screen {
 
     const authentic = datasetSource() === 'ob64';
     const parade = allClasses().filter((c) => c.playable).slice(0, 24);
-    const start = button('New campaign', onNewCampaign, { ui: 'new-campaign', class: 'btn-primary' });
+    // A campaign kept in this browser can be taken up where it was left.
+    const kept = loadCampaign()?.summary;
+    const resume = kept ? button(`Continue · Day ${kept.day}, ${kept.held} of ${kept.strongholds} strongholds`, onContinue, { ui: 'continue', class: 'btn-primary' }) : null;
+    resume?.prepend(icon('castle', 20));
+    const start = button('New campaign', onNewCampaign, {
+      ui: 'new-campaign', class: kept ? '' : 'btn-primary',
+      ...(kept ? { 'data-tip': 'Starts afresh: the kept campaign is replaced at its first save' } : {}),
+    });
     start.prepend(icon('flag', 20));
     const settings = button('Settings', () => openSettings(app, this.root), { ui: 'title-settings' });
     settings.prepend(icon('gear', 18));
@@ -44,7 +52,7 @@ export class TitleScreen implements Screen {
         el('h1', { class: 'title-name' }, 'Palatinus'),
         el('div', { class: 'title-sub' }, 'Tactics'),
         el('p', { class: 'title-tag' }, 'A real-time strategy RPG in the spirit of the classics'),
-        el('div', { class: 'title-menu panel' }, start, settings),
+        el('div', { class: 'title-menu panel' }, resume, start, settings),
         el('p', { class: 'title-brief' }, 'March your squads. Liberate the towns. Take Castle Verlaine.'),
         el('div', { class: `title-data ${authentic ? 'is-authentic' : ''}`, ui: 'dataset' },
           `Class data: ${datasetLabel()} · ${allClasses().length} classes`),

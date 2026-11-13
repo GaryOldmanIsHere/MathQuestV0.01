@@ -3,7 +3,7 @@ import { newCampaign } from './state';
 import type { GameState } from './state';
 import {
   AI_REST_BELOW, enemyOrder, ENEMY_SQUADS_MAX, FOUND_SQUAD_COST, foundSquad, PLAYER_SQUADS_MAX, recruitCost, recruitLevel,
-  reinforce, reinforcementLevel, REINFORCE_EVERY, strengthShare, transferMember,
+  forecast, reinforce, reinforcementLevel, REINFORCE_EVERY, strengthShare, transferMember,
 } from './campaign';
 import { squadMemberIds } from './squad';
 import { restSquads } from './camp';
@@ -149,5 +149,28 @@ describe('growing the army', () => {
     expect(transferMember(st, azure, fresh, soldier)).toBeNull();
     expect(azure.grid).not.toContain(soldier);
     expect(fresh.grid).toContain(soldier);
+  });
+});
+
+describe('a fight\'s forecast', () => {
+  it('gives shares that sum to one, and changes nothing in the campaign', () => {
+    const st = newCampaign();
+    const mine = st.squads.find((s) => s.side === 'player')!;
+    const theirs = st.squads.find((s) => s.side === 'enemy')!;
+    const before = JSON.stringify([...st.chars.values()]) + JSON.stringify(st.squads);
+    const f = forecast(st, mine, theirs, 12);
+    expect(f.win + f.draw + f.loss).toBeCloseTo(1);
+    expect(JSON.stringify([...st.chars.values()]) + JSON.stringify(st.squads)).toBe(before);
+  });
+
+  it('favours the fit over the badly hurt', () => {
+    const st = newCampaign();
+    const mine = st.squads.find((s) => s.side === 'player')!;
+    const theirs = st.squads.find((s) => s.side === 'enemy')!;
+    const fresh = forecast(st, mine, theirs, 30);
+    for (const id of squadMemberIds(mine)) st.chars.get(id)!.hp = Math.max(1, Math.round(st.chars.get(id)!.stats.hp * 0.1));
+    const hurtOdds = forecast(st, mine, theirs, 30);
+    expect(hurtOdds.loss).toBeGreaterThan(fresh.loss);
+    expect(hurtOdds.win).toBeLessThanOrEqual(fresh.win);
   });
 });

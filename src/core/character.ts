@@ -5,6 +5,10 @@ import { defaultGearFor, setLevelUp, shedForbiddenGear, type Inventory } from '.
 import { claimName, FEMALE_NAMES, freshName, MALE_NAMES, MONSTER_NAMES, pick, rng } from '../data/names';
 
 let nextCharId = 1;
+/** Number new characters from `n` on (after a saved campaign is loaded, past its highest). */
+export function setNextCharId(n: number): void {
+  nextCharId = n;
+}
 
 const STAT_KEYS: (keyof Stats)[] = ['hp', 'str', 'vit', 'int', 'men', 'agi', 'dex'];
 

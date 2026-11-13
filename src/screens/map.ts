@@ -70,6 +70,8 @@ const REGROUP_MS = 12000;
 const STEP_MS = 50;
 
 /** For the automated playthrough: every stronghold that changed hands, and who stood near. */
+/** Squads this close on the map (pixels) stand together: a click on one lists them all. */
+const TOGETHER = 24;
 const captures: unknown[] = [];
 exposeDebug('captures', captures);
 
@@ -88,6 +90,8 @@ export class MapScreen implements Screen {
   private guide = new Guide();
   /** The enemy squad being looked over, and how to put its sheet away. */
   private closeInspect: (() => void) | null = null;
+  /** How to put away the list of squads standing together, while it is open. */
+  private closeStack: (() => void) | null = null;
   /** The two squads in a battle now, if one is being fought. */
   private fighting = new Set<number>();
   private selected: Squad | null = null;
@@ -136,7 +140,8 @@ export class MapScreen implements Screen {
     this.toasts = el('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
     this.hint = el('div', { class: 'hud-hint', ui: 'hint', 'aria-live': 'polite' }, 'Select a squad, then click a stronghold to march.');
     this.instruments = new MapHud(this.terrain, {
-      choose: (sq) => this.chooseSquad(sq, true),
+      // A squad's card chooses it; the chosen squad's card lets it go.
+      choose: (sq) => (sq === this.selected ? this.deselect() : this.chooseSquad(sq, true)),
       lookAt: (x, y) => this.world.lookAt(x, y),
     });
     const settingsButton = button('', () => openSettings(this.app, this.root), { ui: 'settings', class: 'btn-icon btn-quiet', 'aria-label': 'Settings', 'data-tip': 'Settings' });
@@ -211,6 +216,7 @@ export class MapScreen implements Screen {
     if (covered) {
       this.closeMarchList?.();
       this.closeInspect?.();
+      this.closeStack?.();
     }
     this.press = null;
     this.held.clear();
@@ -315,7 +321,12 @@ export class MapScreen implements Screen {
       if (e.code === 'KeyO') this.openOrganize();
       if (e.code === 'KeyM') this.openMarchList();
       if (e.code === 'KeyP') this.setPaused(!this.paused);
-      if (e.code === 'Escape') this.closeInspect?.();
+      // Escape puts away whatever is open; with nothing open, it lets the chosen squad go.
+      if (e.code === 'Escape') {
+        if (this.closeStack) this.closeStack();
+        else if (this.closeInspect) this.closeInspect();
+        else if (!this.closeMarchList) this.deselect();
+      }
       if (e.code === 'KeyF') this.setRate(this.rate >= 3 ? 1 : this.rate + 1);
       // 1 to 9 choose the army's squads, as the roster numbers them.
       const digit = /^Digit([1-9])$/.exec(e.code);
@@ -349,33 +360,92 @@ export class MapScreen implements Screen {
   private clickMap(sx: number, sy: number): void {
     const st = getState();
     if (this.battleActive || st.phase !== 'playing') return;
-    // Squads are picked where they stand on screen. Squads stacked on one
-    // spot (the keep, at the start) are picked in turn: each click on the
-    // stack selects the next of them.
-    const stack = st.squads.filter((s) => {
-      if (s.side !== 'player') return false;
-      const at = this.squadOnScreen(s);
-      return at.visible && Math.hypot(sx - at.x, sy - at.y) < 22;
-    });
-    if (stack.length && !(stack.length === 1 && stack[0] === this.selected)) {
-      const at = this.selected ? stack.indexOf(this.selected) : -1;
-      this.chooseSquad(stack[(at + 1) % stack.length], false);
+    // Squads are picked where they stand on screen. Where several stand
+    // together (the keep, at the start), a list of them opens to pick from.
+    this.closeStack?.();
+    this.closeInspect?.();
+    // The squad under the click, and with it every squad of its side standing
+    // on the same spot (they are drawn fanned out, but stand together).
+    const under = (side: 'player' | 'enemy') => {
+      const hit = st.squads.filter((s) => {
+        if (s.side !== side) return false;
+        const at = this.squadOnScreen(s);
+        return at.visible && Math.hypot(sx - at.x, sy - at.y) < 22;
+      });
+      if (!hit.length) return hit;
+      const together = st.squads.filter((s) => s.side === side && !hit.includes(s) && hit.some((h) => Math.hypot(s.x - h.x, s.y - h.y) < TOGETHER));
+      return [...hit, ...together];
+    };
+    const mine = under('player');
+    if (mine.length > 1) {
+      this.openStack(mine, sx, sy);
+      return;
+    }
+    if (mine.length === 1) {
+      // A click on the chosen squad lets it go; on another, chooses it.
+      if (mine[0] === this.selected) this.deselect();
+      else this.chooseSquad(mine[0], false);
       return;
     }
     // An enemy squad clicked is looked over; with a squad chosen, that squad is also sent against it.
-    this.closeInspect?.();
-    const foe = st.squads.find((s) => {
-      if (s.side !== 'enemy') return false;
-      const at = this.squadOnScreen(s);
-      return at.visible && Math.hypot(sx - at.x, sy - at.y) < 22;
-    });
-    if (foe) this.inspect(foe);
-    const ground = this.world.pick(sx, sy);
-    if (this.selected && foe) {
-      this.orderMarch(this.selected, foe.x, foe.y);
-      this.hint.textContent = `${this.selected.name} marches against ${foe.name}.`;
+    const foes = under('enemy');
+    if (foes.length > 1) {
+      this.openStack(foes, sx, sy);
+      return;
     }
-    else if (this.selected && ground) this.orderMarch(this.selected, ground.x, ground.y);
+    if (foes.length === 1) {
+      this.engage(foes[0]);
+      return;
+    }
+    const ground = this.world.pick(sx, sy);
+    if (this.selected && ground) this.orderMarch(this.selected, ground.x, ground.y);
+  }
+
+  /** Look an enemy squad over, and send the chosen squad (if any) against it. */
+  private engage(foe: Squad): void {
+    this.inspect(foe);
+    if (!this.selected) return;
+    this.orderMarch(this.selected, foe.x, foe.y);
+    this.hint.textContent = `${this.selected.name} marches against ${foe.name}.`;
+  }
+
+  /** Let the chosen squad go: clicks on the map then order no one. */
+  private deselect(): void {
+    if (!this.selected) return;
+    this.selected = null;
+    this.world.select(null);
+    this.hint.textContent = 'Select a squad, then click a stronghold to march.';
+  }
+
+  /** The squads standing together under a click, listed beside it to pick one from. */
+  private openStack(squads: Squad[], sx: number, sy: number): void {
+    const close = () => {
+      list.remove();
+      this.closeStack = null;
+    };
+    const list = el('div', { class: 'stack-list panel', ui: 'stack-list', role: 'menu', 'aria-label': 'Squads here' },
+      ...squads.map((sq) => {
+        const pick = () => {
+          close();
+          if (sq.side === 'player') this.chooseSquad(sq, false);
+          else this.engage(sq);
+        };
+        const leader = getState().chars.get(sq.leaderId);
+        const row = button('', pick, { class: `stack-item is-${sq.side} ${sq === this.selected ? 'is-on' : ''}`, ui: `stack-${sq.id}`, role: 'menuitem' });
+        row.append(
+          leader ? unitIcon(classOf(leader.classId).palette, 26) : '',
+          el('span', { class: 'stack-name' }, sq.name),
+          el('span', { class: 'stack-strength' }, `${Math.round(strengthOf(sq) * 100)}%`),
+        );
+        return row;
+      }),
+    );
+    // Beside the click, kept within the view.
+    list.style.left = `${Math.min(Math.max(8, sx + 14), this.width - 230)}px`;
+    list.style.top = `${Math.min(Math.max(8, sy - 20), this.height - 60 - squads.length * 40)}px`;
+    this.closeStack = close;
+    this.root.append(list);
+    list.querySelector<HTMLElement>('button')?.focus();
   }
 
   /**

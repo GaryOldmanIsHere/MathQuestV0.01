@@ -53,7 +53,7 @@ const KEYS: [string[], string][] = [
   [['Click an enemy'], 'Look a squad over; with a squad chosen, attack it'],
   [['R'], 'The whole map'],
   [['O'], 'The army screen'],
-  [['Esc'], 'Close a sheet or the army screen'],
+  [['Esc'], 'Close a sheet or the army screen; let the chosen squad go'],
   [['F3'], 'Frame rate'],
 ];
 

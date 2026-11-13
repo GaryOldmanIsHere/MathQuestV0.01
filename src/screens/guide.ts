@@ -19,7 +19,7 @@ export interface GuideStep {
 }
 
 export const GUIDE: GuideStep[] = [
-  { title: 'Choose a squad', icon: 'people', text: 'Click one of your squads at Fort Melchor, or press 1. Squads standing together are chosen in turn.', until: ['select'] },
+  { title: 'Choose a squad', icon: 'people', text: 'Click one of your squads at Fort Melchor, or press 1. Squads standing together open a list to pick from. Esc, or a second click, lets a squad go.', until: ['select'] },
   { title: 'Give it a march', icon: 'flag', text: 'Click a town, or any ground, to send it there. M lists every stronghold. Roads are quickest; hills and woods are slow.', until: ['order'] },
   { title: 'Take a stronghold', icon: 'castle', text: 'A squad that reaches a stronghold takes it, once no one is left to dispute it. Squads that meet fight. Each stronghold you hold pays 50 goth a day.', until: ['capture', 'battle'] },
   { title: 'Look over the army', icon: 'shield', text: 'Organize (O) is where squads are formed. The front rank takes the blows, each row changes how a unit fights, and tactics choose whom a squad strikes first. Recruits, gear and the shop are there too.', until: ['army'] },

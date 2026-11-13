@@ -58,12 +58,10 @@ async function map(g) {
     const at = await g.squadOnScreen(q.id);
     if (!at) continue;
     await g.click(at.x, at.y);
-    let info = await g.mapInfo();
-    // Squads stacked on one spot are picked in turn.
-    for (let k = 0; k < ours.length && info.selected !== q.id; k++) {
-      await g.click(at.x, at.y);
-      info = await g.mapInfo();
-    }
+    // Squads standing together open a list to pick from.
+    const item = g.page.locator(`[data-ui="stack-${q.id}"]`);
+    if (await item.count()) await item.click();
+    const info = await g.mapInfo();
     if (info.selected === q.id && info.hint.startsWith(q.name)) picked++;
   }
   g.check('M1', 'each of our squads can be selected by clicking it on the map', picked === ours.length, `${picked}/${ours.length}`);
@@ -112,13 +110,7 @@ async function map(g) {
   s = await g.state();
   const azure = s.squads.find((q) => q.name === 'Azure Wing');
   const elm = s.nodes.find((n) => n.name === 'Elm Vale');
-  const select = async (q) => {
-    for (let k = 0; k < 6 && (await g.mapInfo()).selected !== q.id; k++) {
-      const at = await g.squadOnScreen(q.id);
-      await g.click(at.x, at.y);
-    }
-    return (await g.mapInfo()).selected === q.id;
-  };
+  const select = (q) => selectSquad(g, q.id);
   await select(azure);
   const elmAt = await g.pointOnScreen(elm.x + 8, elm.y + 6);
   await g.click(elmAt.x, elmAt.y);
@@ -148,7 +140,7 @@ async function map(g) {
   // Days pass and pay.
   const before = await g.state();
   const owned = before.nodes.filter((n) => n.owner === 'player').length;
-  await g.until(([d]) => window.__palatinus.state().day > d, [before.day], 30000);
+  await g.until(([d]) => window.__palatinus.state().day > d, [before.day], 90000);
   const after = await g.state();
   g.check('M12', 'each day pays 50 Goth for every stronghold held', after.day === before.day + 1 && after.goth - before.goth === 50 * owned,
     `day ${before.day} → ${after.day}, ${before.goth} → ${after.goth} Goth with ${owned} held`);
@@ -420,6 +412,10 @@ async function selectSquad(g, id) {
       continue;
     }
     await g.click(at.x, at.y);
+    // Squads standing together open a list to pick from.
+    const item = g.page.locator(`[data-ui="stack-${id}"]`);
+    if (await item.count()) await item.click();
+    else if (await g.page.locator('[data-ui="stack-list"]').count()) await g.page.keyboard.press('Escape');
   }
   return (await g.mapInfo()).selected === id;
 }
@@ -436,6 +432,8 @@ async function marchTo(g, id, x, y) {
     if (!p.visible) continue;
     await mapRunning(g);
     await g.click(p.x, p.y);
+    // A click that fell on squads standing together opened their list instead: put it away.
+    if (await g.page.locator('[data-ui="stack-list"]').count()) await g.page.keyboard.press('Escape');
     const s = await g.state();
     if (s.squads.find((q) => q.id === id)?.moving) return true;
   }

@@ -53,7 +53,8 @@ meet, they fight.
 
 | | Mouse | Keyboard |
 |---|---|---|
-| Choose a squad | Click it, or its card on the left | **1** – **9** |
+| Choose a squad | Click it, or its card on the left; squads standing together open a list to pick from | **1** – **9** |
+| Let it go | Click it, or its card, again | **Esc** |
 | March | Click anywhere on the map (clicks near a stronghold snap onto it) | **M**: a list of strongholds, nearest first; arrows and **Enter** |
 | Look around | Drag to pan, wheel to zoom, right-drag to turn; click the small map to look there | **W A S D** or arrows to pan, **Q E** to turn, **Space** to find the chosen squad, **R** for the whole map |
 | The army screen | *Organize* | **O**, and **Esc** to close |

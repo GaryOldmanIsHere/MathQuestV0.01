@@ -280,6 +280,13 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .inspect-odds b.is-good { color: var(--good); }
 .inspect-odds b.is-bad { color: var(--bad); }
 
+.stack-list { position: absolute; width: 220px; display: grid; gap: 3px; padding: 8px; pointer-events: auto; z-index: 21; }
+.stack-item { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; text-align: left; padding: 5px 8px; text-transform: none; letter-spacing: 0; font: 600 0.95rem var(--body); }
+.stack-item.is-on { border-color: var(--gold-bright); }
+.stack-item.is-enemy .stack-name { color: var(--enemy); }
+.stack-strength { color: var(--ink-soft); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.map-screen.is-covered .stack-list { display: none; }
+
 /* The march list: the chosen squad's orders by keyboard (M). */
 .march-list { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); width: min(460px, calc(92vw / var(--ui-scale, 1))); max-height: calc(56vh / var(--ui-scale, 1)); display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: 14px 16px; pointer-events: auto; z-index: 20; animation: pop-up var(--slow) var(--ease); }
 .march-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

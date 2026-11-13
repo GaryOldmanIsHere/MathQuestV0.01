@@ -177,6 +177,9 @@ frame rate; the game picks one to suit the machine, and Settings changes it.
 | Raindrops / snowflakes | 1,500 | 4,000 | 8,000 | 14,000 |
 | Lighting | plain diffuse | physically based | physically based | physically based |
 
+* **Shadows** on the map are drawn afresh every fourth frame while the view
+  is still, and every frame while it pans or zooms: what casts them moves
+  slowly, so they look the same for a quarter of the cost.
 * **Adaptive resolution** (on unless turned off in Settings): while frames
   come slowly, the view draws fewer pixels, down to half, and more again as
   they come easily. The interface is HTML and stays sharp throughout.

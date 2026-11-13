@@ -65,7 +65,7 @@ export interface Shot {
 export const DIAGONAL = -0.24;
 
 /** The opening and resting view: the whole field, from the diagonal, a little above. */
-export const WIDE: Shot = { target: [0, 0.6, 0], azimuth: DIAGONAL, elevation: 0.5, distance: 17 };
+export const WIDE: Shot = { target: [0, 0.6, 0], azimuth: DIAGONAL, elevation: 0.5, distance: 15 };
 
 /** The battle camera's field of view, in degrees (vertical), and the screen's shape it is framed for by default. */
 export const FOV = 38;
@@ -89,7 +89,7 @@ export function frameAction(actor: Placement, targets: Placement[], aspect = ASP
   // side (more for great beasts), and for the spread in depth.
   const across = maxX - minX + (large ? 4.4 : 3);
   const half = Math.atan(Math.tan((FOV / 2) * (Math.PI / 180)) * aspect) * 0.8;
-  const distance = Math.min(WIDE.distance + 2, Math.max(9.5, across / 2 / Math.tan(half) + (maxZ - minZ) * 0.5 + 3));
+  const distance = Math.min(WIDE.distance + 2, Math.max(8.5, across / 2 / Math.tan(half) + (maxZ - minZ) * 0.5 + 3));
   return {
     target: [(minX + maxX) / 2, 0.8, (minZ + maxZ) / 2],
     azimuth: DIAGONAL,

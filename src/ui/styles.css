@@ -265,6 +265,7 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .guide-foot { display: flex; justify-content: flex-end; }
 .guide-foot .btn { padding: 4px 10px; font-size: 0.88rem; }
 .map-screen.is-covered .guide, .map-screen.is-covered .inspect { display: none; }
+.map-screen.is-covered.is-paused::after { display: none; }
 .inspect { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); width: min(460px, calc(92vw / var(--ui-scale, 1))); display: grid; gap: 8px; padding: 12px 16px; pointer-events: auto; z-index: 20; animation: pop-up var(--slow) var(--ease); }
 .inspect h3 { display: flex; align-items: center; gap: 6px; color: var(--enemy); }
 .inspect-kind { flex: 1; text-align: right; font-size: 0.88rem; color: var(--ink-soft); }
@@ -355,7 +356,11 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
   100% { opacity: 0; transform: translate(-50%, -30px) scale(0.96); }
 }
 /* The outcome. */
-.battle-outcome { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 22px 32px 24px; display: grid; gap: 12px; text-align: center; min-width: min(480px, 92vw); animation: pop-in 520ms var(--ease); }
+/* The outcome sits low, so the winners' cheer shows above it. */
+.battle-outcome { position: absolute; left: 50%; bottom: 7%; transform: translateX(-50%); padding: 16px 28px 18px; display: grid; gap: 8px; text-align: center; min-width: min(480px, 92vw); animation: pop-up 520ms var(--ease); }
+.battle-flash { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(255, 244, 214, 0.5), rgba(255, 244, 214, 0) 70%); animation: battle-flash 260ms ease-out forwards; }
+@keyframes battle-flash { from { opacity: 1; } to { opacity: 0; } }
+:root[data-motion="reduce"] .battle-flash { display: none; }
 .battle-outcome h2 { font-size: 1.9rem; }
 .battle-outcome.is-loss h2 { color: var(--bad); }
 .outcome-tally { display: flex; justify-content: center; gap: 22px; font-variant-numeric: tabular-nums; color: var(--ink-soft); }

@@ -183,12 +183,17 @@ export class Atmosphere {
     return flakes;
   }
 
+  /** Frames since the shadows were set up, and how far their frame last reached. */
+  private shadowFrame = 0;
+  private shadowReach = 0;
+
   /**
    * Advance the weather and set the light for the hour, the shadows about
    * the ground point the camera looks at, and the falling rain or snow about
-   * it too. `view` is how far back the camera stands.
+   * it too. `view` is how far back the camera stands; the shadows are drawn
+   * afresh every `shadowEvery`th frame, and whenever the view moves.
    */
-  update(dtMs: number, camera: THREE.Camera, focus: THREE.Vector3, view: number): void {
+  update(dtMs: number, camera: THREE.Camera, focus: THREE.Vector3, view: number, shadowEvery = 1): void {
     const dt = dtMs / 1000;
     // The weather eases toward what was set.
     const want = WEATHER[this.weather];
@@ -244,6 +249,13 @@ export class Atmosphere {
         cam.bottom = -reach;
         cam.updateProjectionMatrix();
       }
+      // The shadows are drawn afresh whenever their frame moves (the view
+      // pans or zooms), and otherwise only every `shadowEvery`th frame: what
+      // casts them (clouds, marching squads) moves slowly enough for that.
+      const moved = !this.sun.target.position.equals(snapped) || cam.right !== this.shadowReach;
+      this.shadowReach = cam.right;
+      this.sun.shadow.autoUpdate = false;
+      if (moved || this.shadowFrame++ % Math.max(1, shadowEvery) === 0) this.sun.shadow.needsUpdate = true;
       this.sun.target.position.copy(snapped);
       this.sun.position.copy(snapped).addScaledVector(dir, 90);
     } else {

@@ -274,8 +274,16 @@ export class MapScreen implements Screen {
     });
     on(canvas, 'pointermove', (e) => {
       const press = this.press;
-      if (!press || this.covered) return;
       const p = at(e);
+      if (!press && !this.covered) {
+        // The pointer shows what a click would reach: a squad to choose, or an enemy to look over.
+        const over = getState().squads.some((s) => {
+          const o = this.squadOnScreen(s);
+          return o.visible && Math.hypot(p.x - o.x, p.y - o.y) < 22;
+        });
+        canvas.style.cursor = over ? 'pointer' : '';
+      }
+      if (!press || this.covered) return;
       if (!press.dragging && Math.hypot(p.x - press.x, p.y - press.y) < DRAG_SLOP) return;
       press.dragging = true;
       if (press.button === 0) this.world.drag(press.lastX, press.lastY, p.x, p.y);
@@ -640,6 +648,7 @@ export class MapScreen implements Screen {
       }
       node.owner = sq.side;
       this.world.setOwner(node.id, sq.side);
+      this.world.celebrate(node.x, node.y, sq.side);
       this.toast(`${node.name} ${sq.side === 'player' ? 'liberated!' : 'has fallen!'}`, sq.side === 'player' ? 'good' : 'bad');
       if (sq.side === 'player') this.guide.note('capture');
       if (node.kind === 'hq-enemy' && sq.side === 'player') this.endCampaign('victory');
@@ -812,6 +821,7 @@ export class MapScreen implements Screen {
       world.setSquad(sq.id, p.x, p.y, sq.side, mapFigureFor(classOf(leader.classId), sq.side), sq.moving);
     }
     if (this.selected?.moving) world.refreshRoute(this.routeOf(this.selected));
+    world.held = this.paused;
     world.update(Math.min(deltaMs, 50 * SPEED));
     if (this.covered) return;
 

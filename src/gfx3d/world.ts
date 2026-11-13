@@ -86,7 +86,13 @@ interface SquadMesh {
 interface Pulse {
   mesh: THREE.Mesh;
   t: number;
+  /** How large it spreads, and over how long (ms). */
+  size: number;
+  ms: number;
 }
+
+/** The map's shadows are drawn afresh every this many frames while the view is still. */
+const SHADOW_EVERY = 4;
 
 function seeded(seed: number): () => number {
   let s = seed >>> 0 || 1;
@@ -134,6 +140,8 @@ export class WorldStage {
   private selectedId: number | null = null;
   private route: THREE.Line | null = null;
   private pulses: Pulse[] = [];
+  /** Whether the campaign's clock is held (the map sets it): marching figures then keep still. */
+  held = false;
   private clock = 0;
   /** Where the camera is headed, and where it is. */
   private wanted: MapView = OVERVIEW;
@@ -175,6 +183,7 @@ export class WorldStage {
     this.simple = simple;
     this.atmosphere = new Atmosphere(this.scene, { shadows, particles });
     this.field = heightField(grid, seed);
+    this.scene.add(this.border());
     const rand = seeded(seed * 9973 + 7);
 
     // Ground: a sheet over the map, one vertex every half tile, running on
@@ -473,6 +482,28 @@ export class WorldStage {
     this.dress(nodeId, owner);
   }
 
+  /** A fine gold line laid over the land along the map's edge: where the campaign ends. */
+  private border(): THREE.Line {
+    const points: THREE.Vector3[] = [];
+    const along = (x0: number, y0: number, x1: number, y1: number) => {
+      const steps = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (TILE / 2));
+      for (let k = 0; k < steps; k++) {
+        const x = x0 + ((x1 - x0) * k) / steps;
+        const y = y0 + ((y1 - y0) * k) / steps;
+        points.push(new THREE.Vector3(x / TILE, this.groundAt(x, y) + 0.07, y / TILE));
+      }
+    };
+    along(0, 0, MAP_W, 0);
+    along(MAP_W, 0, MAP_W, MAP_H);
+    along(MAP_W, MAP_H, 0, MAP_H);
+    along(0, MAP_H, 0, 0);
+    points.push(points[0].clone());
+    return new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(points),
+      new THREE.LineBasicMaterial({ color: 0xe8cf8a, transparent: true, opacity: 0.55, depthWrite: false }),
+    );
+  }
+
   /** The ground's height under a map point. */
   groundAt(x: number, y: number): number {
     return Math.max(WATER_LEVEL, heightAt(this.field, x, y));
@@ -555,14 +586,19 @@ export class WorldStage {
   }
 
   /** A ring that spreads on the ground where an order was given. */
-  ping(x: number, y: number): void {
+  ping(x: number, y: number, colour = 0xf0e090, size = 1, ms = 500): void {
     const mesh = new THREE.Mesh(
-      new THREE.RingGeometry(0.3, 0.42, 24).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: 0xf0e090, transparent: true, depthWrite: false }),
+      new THREE.RingGeometry(0.3, 0.42, 32).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: colour, transparent: true, depthWrite: false }),
     );
     mesh.position.set(x / TILE, this.groundAt(x, y) + 0.08, y / TILE);
     this.scene.add(mesh);
-    this.pulses.push({ mesh, t: 0 });
+    this.pulses.push({ mesh, t: 0, size, ms });
+  }
+
+  /** A stronghold changes hands: rings in the new holder's colour spread from it, one after another. */
+  celebrate(x: number, y: number, owner: Owner): void {
+    for (let k = 0; k < 3; k++) this.ping(x, y, OWNER_COLOUR[owner], 2.2 + k * 1.3, 700 + k * 260);
   }
 
   // ------------------------------------------------------------- the camera --
@@ -658,7 +694,7 @@ export class WorldStage {
     this.applyView();
     const focusX = this.shown.x * TILE;
     const focusY = this.shown.z * TILE;
-    this.atmosphere?.update(dtMs, this.camera, new THREE.Vector3(this.shown.x, this.groundAt(focusX, focusY), this.shown.z), this.shown.distance);
+    this.atmosphere?.update(dtMs, this.camera, new THREE.Vector3(this.shown.x, this.groundAt(focusX, focusY), this.shown.z), this.shown.distance, SHADOW_EVERY);
     this.tiltShift = THREE.MathUtils.mapLinear(THREE.MathUtils.clamp(this.shown.distance, 14, 56), 14, 56, 0.9, 0.4);
 
     // Flags stir in the wind, and the windmills turn.
@@ -671,7 +707,8 @@ export class WorldStage {
     const grow = figureScale(this.shown.distance);
     const flat = this.atmosphere?.flatLight;
     for (const s of this.squads.values()) {
-      s.t += dtMs;
+      // With the clock held, a marching squad stands mid-stride rather than walking on the spot.
+      if (!(this.held && s.moving)) s.t += dtMs;
       // Rings take the hour's light (the figures are lit by the scene's lights).
       if (flat) (s.base.material as THREE.MeshBasicMaterial).color.setHex(SIDE_COLOUR[s.side]).multiply(flat);
       const h = this.groundAt(s.x, s.y);
@@ -712,8 +749,9 @@ export class WorldStage {
 
     for (const p of [...this.pulses]) {
       p.t += dtMs;
-      const k = p.t / 500;
-      p.mesh.scale.setScalar(1 + k * 2.4);
+      const k = p.t / p.ms;
+      // Rings are drawn larger from afar, as the figures are.
+      p.mesh.scale.setScalar((1 + k * 2.4) * p.size * grow);
       (p.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - k);
       if (k >= 1) {
         this.scene.remove(p.mesh);

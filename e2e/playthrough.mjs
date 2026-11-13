@@ -767,6 +767,8 @@ async function edges(g) {
     await openOrganize(g);
     await org(g, 'back-to-map', 300);
     await g.until(() => !window.__palatinus.game.scene.isActive('Organize') && !window.__palatinus.game.scene.isPaused('Overworld'), null, 10000);
+    // Another pair of squads may meet just then: the map waits for their battle, and so does this.
+    await mapRunning(g);
     await g.wait(800);
     const after = (await g.state()).squads.find((q) => q.id === azure.id);
     const drawnIn = await g.page.evaluate(([k, id]) => window.__palatinus.battles.slice(k).some((b) => b.attackerId === id || b.defenderId === id), [fought0, azure.id]);

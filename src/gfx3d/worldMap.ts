@@ -200,7 +200,7 @@ export function panView(v: MapView, right: number, forward: number): MapView {
  * up close, and growing past `FIGURE_FULL_AT` so that a leader stays
  * legible from across the map, as Ogre Battle 64 keeps its map sprites.
  */
-export const FIGURE_FULL_AT = 20;
+export const FIGURE_FULL_AT = 15;
 export function figureScale(distance: number): number {
   return Math.max(1, distance / FIGURE_FULL_AT);
 }

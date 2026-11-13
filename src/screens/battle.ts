@@ -354,6 +354,12 @@ export class BattleScreen implements Screen {
         big: !heal && (crit || amount >= max * 0.25), hue: heal ? undefined : hue,
       });
       if (crit && p) this.floatNumber(p.x, p.headY - 40, 'Critical!', 'crit');
+      if (crit) {
+        // A critical blow lights the whole field for a moment.
+        const flash = el('div', { class: 'battle-flash' });
+        flash.addEventListener('animationend', () => flash.remove());
+        this.root.append(flash);
+      }
       if (l) {
         l.hp = heal ? Math.min(max, l.hp + amount) : Math.max(0, l.hp - amount);
         l.bar.set(l.hp / max);
@@ -461,6 +467,9 @@ export class BattleScreen implements Screen {
       const c = st.chars.get(id);
       return c ? [c] : [];
     });
+    if (ups.length) this.timers.after(1100, () => play('levelup'));
+    // The last blow's banner gives way to the outcome.
+    this.banner.hidden = true;
     this.root.append(el('div', { class: `battle-outcome panel ${lost ? 'is-loss' : ''}`, ui: 'battle-outcome', role: 'status' },
       el('h2', {}, msg),
       el('div', { class: 'outcome-tally' },

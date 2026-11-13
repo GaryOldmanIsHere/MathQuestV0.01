@@ -9,9 +9,9 @@ import type { Character, Element, Squad } from '../core/types';
 import type { BattleGround } from './map';
 import { classOf } from '../data/registry';
 import { weaponOf } from '../core/items';
-import { squadMemberIds } from '../core/squad';
+import { cellsOf, squadMemberIds } from '../core/squad';
 import { BattleStage } from '../gfx3d/stage';
-import { frameAction, placements, WIDE } from '../gfx3d/layout';
+import { frameAction, placements } from '../gfx3d/layout';
 import type { Placement } from '../gfx3d/layout';
 import { declutter } from '../gfx/declutter';
 import { spriteSetFor } from '../gfx3d/unitArt';
@@ -67,6 +67,8 @@ export class BattleScreen implements Screen {
   private banner: HTMLElement;
   /** Each side's whole strength, over the field: falling as its members are struck. */
   private sides: { facing: 1 | -1; bar: StrengthBar; fill: HTMLElement; chip: HTMLElement }[] = [];
+  /** Each unit's place on its side's formation board: its tile, its strength as a number, and the number last shown. */
+  private board = new Map<number, { unit: HTMLElement; num: HTMLElement; shown: number }>();
   private attacker: Squad;
   private defender: Squad;
   private disposed = false;
@@ -156,7 +158,10 @@ export class BattleScreen implements Screen {
     this.root.append(el('div', { class: 'battle-wipe' }));
 
     // Who fights whom, over the field, and the clash's name as the squads march on.
-    this.root.prepend(el('div', { class: 'battle-heads' }, this.sideCard(this.attacker, 1), this.sideCard(this.defender, -1)));
+    this.root.prepend(el('div', { class: 'battle-heads' },
+      el('div', { class: 'battle-side is-attacker' }, this.sideCard(this.attacker, 1), this.formationBoard(this.attacker, 1)),
+      el('div', { class: 'battle-side is-defender' }, this.sideCard(this.defender, -1), this.formationBoard(this.defender, -1)),
+    ));
     const versus = el('div', { class: 'versus', 'aria-hidden': 'true' },
       el('span', { class: 'versus-name is-attacker' }, this.attacker.name),
       el('span', { class: 'versus-mark' }, 'vs'),
@@ -167,8 +172,8 @@ export class BattleScreen implements Screen {
     this.root.append(versus);
     // The squads march on from either side as the camera sweeps down onto the field.
     for (const [id, p] of this.places) stage.marchIn(id, -p.facing * (6 + Math.random() * 1.5), MARCH_MS + Math.random() * 250);
-    stage.cut({ ...WIDE, distance: WIDE.distance + 8, elevation: 0.78, azimuth: -0.55 }, 0);
-    stage.cut(WIDE, MARCH_MS + 200);
+    stage.cut({ ...stage.wide, distance: stage.wide.distance + 8, elevation: 0.78, azimuth: -0.55 }, 0);
+    stage.cut(stage.wide, MARCH_MS + 200);
     this.timers.after(MARCH_MS, () => this.say('The squads clash!', 'sword'));
 
     const result = simulateBattle({ squad: this.attacker, chars: st.chars }, { squad: this.defender, chars: st.chars });
@@ -181,7 +186,8 @@ export class BattleScreen implements Screen {
     this.timers.after(MARCH_MS + 450, () => {
       this.playEvents(result.events, 0, () => {
         this.stage.highlight(null);
-        this.stage.cut(WIDE, 600);
+        this.spot(null);
+        this.stage.cut(this.stage.wide, 600);
         this.cheer(result.winner);
         const winnerName =
           result.winner === 'attacker' ? this.attacker.name :
@@ -222,6 +228,7 @@ export class BattleScreen implements Screen {
       l.chip.classList.toggle('is-gain', l.bar.chipKind === 'gain');
     });
     this.drawSides(ms);
+    this.drawBoards();
   }
 
   private headline(sq: Squad): string {
@@ -242,7 +249,8 @@ export class BattleScreen implements Screen {
     if (ev.kind === 'round') {
       // A breath between rounds: the camera draws back and the round is named.
       stage.highlight(null);
-      stage.cut(WIDE, 380);
+      this.spot(null);
+      stage.cut(stage.wide, 380);
       this.say(`Round ${ev.round}`, 'flag');
       play('round');
       this.timers.after(650, next);
@@ -261,6 +269,7 @@ export class BattleScreen implements Screen {
     const mark: IconName = attack.type === 'heal' ? 'heart' : attack.type === 'magic' ? (hue as IconName) : attack.type === 'ranged' ? (weapon?.type === 'bow' ? 'bow' : 'physical') : 'sword';
     this.say(`${actor.name}: ${attack.name}!`, mark, attack.type === 'heal' ? 'heal' : hue);
     stage.highlight(ev.actorId);
+    this.spot(ev.actorId);
     const targets = [...new Set(ev.targetIds)].filter((id) => stage.has(id));
     stage.cut(frameAction(place, targets.map((t) => this.places.get(t)!).filter(Boolean), stage.aspect), 320);
 
@@ -436,6 +445,54 @@ export class BattleScreen implements Screen {
       el('div', { class: 'side-name', title: this.headline(sq) }, this.headline(sq)),
       el('div', { class: 'bar' }, chip, fillBar),
     );
+  }
+
+  /**
+   * A side's formation as a small board, as it stands on the field: three
+   * rows by three ranks, the front rank toward the enemy, each unit on its
+   * tile with its strength as a number.
+   */
+  private formationBoard(sq: Squad, facing: 1 | -1): HTMLElement {
+    const tiles = el('div', { class: 'board-tiles' }, ...Array.from({ length: 9 }, () => el('i', {})));
+    const units = el('div', { class: 'board-units' });
+    for (const [id, l] of this.labels) {
+      if (this.places.get(id)?.facing !== facing) continue;
+      const cells = cellsOf(sq, id);
+      const row = Math.floor(cells[0] / 3);
+      // A cell's column runs from the back rank (0) to the front (2); the front stands toward the enemy.
+      const ranks = cells.map((c) => (facing === 1 ? c % 3 : 2 - (c % 3)));
+      const num = el('span', { class: 'board-hp' }, String(Math.max(0, Math.round(l.hp))));
+      const unit = el('div', { class: 'board-unit' }, unitIcon(classOf(l.char.classId).palette, 30), num);
+      unit.style.gridRow = String(row + 1);
+      unit.style.gridColumn = `${Math.min(...ranks) + 1} / span ${cells.length}`;
+      unit.style.setProperty('--row', String(row));
+      units.append(unit);
+      this.board.set(id, { unit, num, shown: Math.round(l.hp) });
+    }
+    return el('div', { class: `board is-${sq.side}-side`, 'aria-hidden': 'true' }, tiles, units);
+  }
+
+  /** Mark the unit acting on its board (none: no one). */
+  private spot(id: number | null): void {
+    for (const [unitId, b] of this.board) b.unit.classList.toggle('is-acting', unitId === id);
+  }
+
+  /** The boards' numbers, following each unit's strength as the blows land. */
+  private drawBoards(): void {
+    for (const [id, b] of this.board) {
+      const l = this.labels.get(id);
+      if (!l) continue;
+      const hp = Math.max(0, Math.round(l.hp));
+      if (hp === b.shown) continue;
+      b.num.textContent = String(hp);
+      // A number that has just changed shows it for a moment.
+      b.num.classList.remove('is-struck', 'is-mended');
+      void b.num.offsetWidth;
+      b.num.classList.add(hp < b.shown ? 'is-struck' : 'is-mended');
+      b.shown = hp;
+      b.unit.classList.toggle('is-down', hp <= 0);
+      b.unit.classList.toggle('is-low', hp > 0 && hp <= l.char.stats.hp * 0.3);
+    }
   }
 
   /** Each side's strength bar, following its members' as they are struck. */

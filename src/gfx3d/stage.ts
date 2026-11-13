@@ -3,7 +3,7 @@ import type { Terrain } from '../core/terrain';
 import type { Anim, SpriteFrame, SpriteSet } from './sprites';
 import { chooseView, frameAt } from './sprites';
 import type { Placement, Shot } from './layout';
-import { cameraPosition, FOV, lerpShot, WIDE } from './layout';
+import { cameraPosition, FOV, lerpShot, WIDE, wideShot } from './layout';
 import { outlineNormals } from '../art/normals';
 import { Arena } from './arena';
 import type { ArenaOptions } from './arena';
@@ -115,6 +115,11 @@ export class BattleStage implements FxHost {
   }
 
   /** The view's width over its height, for framing shots. */
+  /** The whole field, as near as this screen's shape shows all of it. */
+  get wide(): Shot {
+    return wideShot(this.aspect);
+  }
+
   get aspect(): number {
     return this.width / this.height;
   }

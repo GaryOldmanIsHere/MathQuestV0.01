@@ -228,6 +228,6 @@ export function paintedPortrait(def: ClassDef): HTMLCanvasElement {
  */
 export function paintPortraits(classes: ClassDef[]): void {
   for (const def of classes) {
-    if (!hasUnitImage(def.palette)) setUnitImage(def.palette, paintedPortrait(def));
+    if (!hasUnitImage(def.palette)) setUnitImage(def.palette, paintedPortrait(def), (PERSON_PX + 2) * DETAIL);
   }
 }

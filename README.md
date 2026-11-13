@@ -71,6 +71,11 @@ up again. A new campaign replaces it, and a campaign won or lost is cleared.
 thing to try and moves on as you do it. It never stops the game, and *Skip
 the guide* puts it away for good.
 
+**The battle screen.** Each side's formation is shown as a small board in
+its corner, as it stands on the field: every unit on its tile with its
+strength as a number, the one acting lit. The camera stands as near as shows
+the whole field on your screen.
+
 **Battles** are fought in rounds, and play themselves. What you decide is who
 fights, where each member stands, and whom the squad goes for:
 * On the army screen, a member's *column* on the 3x3 grid sets their battle

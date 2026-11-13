@@ -50,6 +50,9 @@ function seeded(seed: number): () => number {
   };
 }
 
+/** Boulders set close about any field. */
+const NEAR_ROCKS = 9;
+
 /** How many pines and boulders each kind of ground has, and how big the boulders run. */
 const SCENERY: Record<Terrain, { trees: number; rocks: number; rockSize: number }> = {
   plain: { trees: 26, rocks: 8, rockSize: 1 },
@@ -198,7 +201,7 @@ export class Arena {
       const close = rand() < near;
       const x = (rand() - 0.5) * (close ? 56 : 100);
       const z = close ? -24 + rand() * 30 : -40 + rand() * 54;
-      if (Math.abs(x) < 13 && Math.abs(z) < 8) continue;
+      if (Math.abs(x) < 10.5 && Math.abs(z) < 6.5) continue;
       // Nothing between the camera and the field.
       if (z > 6 && Math.abs(x) < 16) continue;
       if (this.theme === 'water' && z < SHORE_Z + 1) continue;
@@ -263,6 +266,19 @@ export class Arena {
     if (kinds.some((k) => !k)) return;
     const spots: [number, number][][] = kinds.map(() => []);
     for (let k = 0; k < n; k++) spots[Math.floor(rand() * kinds.length)].push(this.spotAway(rand));
+    // And a few set close about the field, behind it and at its flanks, so the
+    // fight has rock at its back as it is drawn near (never on the battle
+    // line, nor between it and the camera).
+    const near: [number, number][] = [];
+    for (let k = 0; k < NEAR_ROCKS; k++) {
+      const flank = k % 3 === 2;
+      const x = flank ? (k % 2 ? 1 : -1) * (9.2 + rand() * 2.2) : (rand() - 0.5) * 22;
+      const z = flank ? -3.5 + rand() * 5 : -5.6 - rand() * 2.6;
+      if (this.theme === 'water' && z < SHORE_Z + 1) continue;
+      if (this.theme === 'road' && Math.abs(z - ROAD_Z) < 2.2) continue;
+      near.push([x, z]);
+      spots[Math.floor(rand() * kinds.length)].push([x, z]);
+    }
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const up = new THREE.Vector3(0, 1, 0);
@@ -270,7 +286,8 @@ export class Arena {
       if (!spots[i].length) return;
       const rocks = new THREE.InstancedMesh(kind!.geometry, kind!.material, spots[i].length);
       spots[i].forEach(([x, z], k) => {
-        const s = (2 + rand() * 2.5) * rockSize;
+        // (Those set close are kept low enough not to hide the back rank.)
+        const s = near.some((p) => p[0] === x && p[1] === z) ? 2.4 + rand() * 1.8 : (2 + rand() * 2.5) * rockSize;
         q.setFromAxisAngle(up, rand() * Math.PI * 2);
         m.compose(new THREE.Vector3(x, this.heightAt(x, z) - 0.08 * s, z), q, new THREE.Vector3(s, s * (0.7 + rand() * 0.5), s));
         rocks.setMatrixAt(k, m);

@@ -315,6 +315,30 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .unit-tag.is-down { opacity: 0; }
 /* The two sides, across the top. */
 .battle-heads { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 12px max(14px, env(safe-area-inset-right)) 32px max(14px, env(safe-area-inset-left)); background: linear-gradient(180deg, rgba(6, 10, 24, 0.75), transparent); pointer-events: none !important; }
+.battle-side { display: grid; gap: 10px; justify-items: start; }
+.battle-side.is-defender { justify-items: end; }
+/* A side's formation board: tiles sheared as the field is, the units upright on them. */
+.board { position: relative; --cell-w: 46px; --cell-h: 42px; --gap: 3px; --shear: 11px; margin: 12px 14px 0; animation: side-in 700ms var(--ease) both; }
+.battle-side.is-defender .board { animation-name: side-in-right; }
+.board-tiles, .board-units { display: grid; grid-template-columns: repeat(3, var(--cell-w)); grid-template-rows: repeat(3, var(--cell-h)); gap: var(--gap); }
+.board-tiles { transform: skewX(14deg); filter: drop-shadow(0 6px 10px rgba(2, 4, 12, 0.55)); }
+.board-tiles i { border-radius: 4px; background: linear-gradient(180deg, rgba(86, 122, 220, 0.82), rgba(44, 66, 150, 0.82)); border: 1px solid rgba(190, 210, 255, 0.55); }
+.board-tiles i:nth-child(odd) { background: linear-gradient(180deg, rgba(110, 146, 236, 0.82), rgba(58, 84, 176, 0.82)); }
+.board.is-enemy-side .board-tiles i { background: linear-gradient(180deg, rgba(206, 86, 78, 0.82), rgba(134, 42, 46, 0.82)); border-color: rgba(255, 196, 186, 0.55); }
+.board.is-enemy-side .board-tiles i:nth-child(odd) { background: linear-gradient(180deg, rgba(226, 110, 96, 0.82), rgba(152, 54, 54, 0.82)); }
+.board-units { position: absolute; inset: 0; }
+.board-unit { position: relative; display: grid; justify-items: center; align-content: end; transform: translateX(calc((var(--row) - 1) * var(--shear))); transition: filter var(--fast); }
+.board-unit .unit-icon { margin-top: -14px; margin-bottom: -3px; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6)); max-width: none; }
+.board-hp { position: relative; z-index: 1; min-width: 24px; padding: 0 4px; border-radius: 999px; text-align: center; font: 700 0.8rem/1.25 var(--body); font-variant-numeric: tabular-nums; color: #fff; background: rgba(6, 10, 24, 0.82); border: 1px solid rgba(255, 255, 255, 0.28); }
+.board-unit.is-low .board-hp { color: #ffd76a; }
+.board-unit.is-down .unit-icon { filter: grayscale(1) brightness(0.45); }
+.board-unit.is-down .board-hp { color: var(--ink-soft); }
+.board-unit.is-acting .unit-icon { filter: drop-shadow(0 0 5px var(--gold-bright)) drop-shadow(0 0 2px var(--gold-bright)); }
+.board-unit.is-acting .board-hp { border-color: var(--gold-bright); }
+.board-hp.is-struck { animation: board-struck 420ms ease-out; }
+.board-hp.is-mended { animation: board-mended 420ms ease-out; }
+@keyframes board-struck { 0% { background: #c8322c; transform: scale(1.3); } 100% { background: rgba(6, 10, 24, 0.82); transform: none; } }
+@keyframes board-mended { 0% { background: #2f9a4c; transform: scale(1.3); } 100% { background: rgba(6, 10, 24, 0.82); transform: none; } }
 .side-card { display: grid; grid-template-columns: 52px minmax(0, 1fr); column-gap: 12px; row-gap: 4px; align-items: center; min-width: min(330px, 42vw); padding: 10px 14px 10px 10px; animation: side-in 600ms var(--ease) both; }
 .side-card.is-defender { grid-template-columns: minmax(0, 1fr) 52px; text-align: right; padding: 10px 10px 10px 14px; animation-name: side-in-right; }
 .side-card.is-defender .side-face { grid-column: 2; grid-row: 1 / span 3; }
@@ -472,6 +496,8 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
   .minimap { width: 170px; }
 }
 @media (max-width: 900px) {
+  .board { --cell-w: 36px; --cell-h: 34px; --shear: 9px; margin: 8px 10px 0; }
+  .board-hp { font-size: 0.7rem; min-width: 20px; }
   .organize-screen { grid-template-rows: auto auto; }
   .org-layout { grid-template-columns: 1fr; grid-template-rows: none; }
   .org-nav, .org-centre { overflow: visible; }
@@ -485,7 +511,7 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
   .pips { display: none; }
 }
 /* Reduced motion: the player's choice in Settings, or the system's (see comfort.ts). */
-:root[data-motion="reduce"] :is(.screen, .toast, .float-number, .versus, .battle-wipe, .side-card, .battle-outcome, .end-panel, .level-up, .settings, .march-list) { animation-duration: 1ms !important; }
+:root[data-motion="reduce"] :is(.screen, .toast, .float-number, .versus, .battle-wipe, .side-card, .board, .board-hp, .battle-outcome, .end-panel, .level-up, .settings, .march-list) { animation-duration: 1ms !important; }
 :root[data-motion="reduce"] .bar-fill { transition: none; }
 :root[data-motion="reduce"] .roster-card:hover { transform: none; }
 :root[data-motion="reduce"] .parade .unit-icon { animation: none; }

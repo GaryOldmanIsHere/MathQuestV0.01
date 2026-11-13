@@ -1,3 +1,4 @@
+import { FIELD_HALF } from './layout';
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { Arena } from './arena';
@@ -50,7 +51,8 @@ describe('battle arenas', () => {
       }
       expect(spots.length, theme).toBeGreaterThan(5);
       for (const p of spots) {
-        const onField = Math.abs(p.x) < 12 && Math.abs(p.z) < 7.5;
+        // The field itself, with room for a body and a charge across it.
+        const onField = Math.abs(p.x) < FIELD_HALF + 1.5 && Math.abs(p.z) < 5;
         const beforeCamera = p.z > 6 && Math.abs(p.x) < 15.5;
         expect(onField || beforeCamera, `${theme}: something at ${p.x.toFixed(1)},${p.z.toFixed(1)}`).toBe(false);
       }

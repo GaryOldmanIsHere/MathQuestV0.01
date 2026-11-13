@@ -8,9 +8,11 @@ import { cellsOf, squadMemberIds } from '../core/squad';
 // (positive), z toward the camera, y up. One unit of length is roughly a
 // soldier's height.
 
-export const CELL_X = 1.7; // spacing between battle columns
-export const CELL_Z = 2.4; // spacing between grid rows
-export const GAP = 1.9; // half the no man's land between the two front ranks
+// The squads stand close, so that drawn near enough to fill the screen they
+// all still fit on it.
+export const CELL_X = 1.5; // spacing between battle columns
+export const CELL_Z = 2.2; // spacing between grid rows
+export const GAP = 1.7; // half the no man's land between the two front ranks
 /**
  * How far each row nearer the camera stands to the right of the one behind
  * it. Ogre Battle 64 sets its formations on the diagonal, so that a unit
@@ -64,12 +66,26 @@ export interface Shot {
  */
 export const DIAGONAL = -0.24;
 
-/** The opening and resting view: the whole field, from the diagonal, a little above. */
-export const WIDE: Shot = { target: [0, 0.6, 0], azimuth: DIAGONAL, elevation: 0.5, distance: 15 };
-
 /** The battle camera's field of view, in degrees (vertical), and the screen's shape it is framed for by default. */
 export const FOV = 38;
 export const ASPECT = 800 / 600;
+
+/** How far the field reaches to either side of its middle: the back ranks, sheared, and a body's width to spare. */
+export const FIELD_HALF = GAP + 2 * CELL_X + ROW_SHEAR + 1.7;
+
+/**
+ * The opening and resting view: the whole field, from the diagonal, a little
+ * above, and as near as shows all of it on a screen `aspect` times as wide
+ * as it is tall (a wide screen stands closer, so the figures fill it).
+ */
+export function wideShot(aspect = ASPECT): Shot {
+  const half = Math.tan((FOV / 2) * (Math.PI / 180)) * aspect;
+  // (Aimed a little toward the attackers: from the diagonal, their back rank stands nearest the screen's edge.)
+  return { target: [-0.8, 0.7, 0], azimuth: DIAGONAL, elevation: 0.5, distance: Math.min(18, Math.max(10.5, FIELD_HALF / half)) };
+}
+
+/** The wide view on a screen of the default shape. */
+export const WIDE: Shot = wideShot();
 
 /**
  * A closer view on a unit about to act and the units it acts on, from the
@@ -89,7 +105,7 @@ export function frameAction(actor: Placement, targets: Placement[], aspect = ASP
   // side (more for great beasts), and for the spread in depth.
   const across = maxX - minX + (large ? 4.4 : 3);
   const half = Math.atan(Math.tan((FOV / 2) * (Math.PI / 180)) * aspect) * 0.8;
-  const distance = Math.min(WIDE.distance + 2, Math.max(8.5, across / 2 / Math.tan(half) + (maxZ - minZ) * 0.5 + 3));
+  const distance = Math.min(wideShot(aspect).distance + 1, Math.max(7.5, across / 2 / Math.tan(half) + (maxZ - minZ) * 0.5 + 2.6));
   return {
     target: [(minX + maxX) / 2, 0.8, (minZ + maxZ) / 2],
     azimuth: DIAGONAL,

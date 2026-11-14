@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <base href="/" />
+    <title>Palatinus style comparison</title>
+    <style>
+      body { margin: 0; padding: 16px; background: #56684f; color: #f0ead8; font: 13px system-ui; }
+      .grid { display: grid; grid-template-columns: repeat(var(--cols, 6), max-content); gap: 10px 18px; align-items: end; }
+      .cell { display: grid; justify-items: center; gap: 4px; }
+      .pair { display: flex; gap: 6px; align-items: flex-end; }
+      canvas { image-rendering: pixelated; }
+      small { opacity: 0.8; }
+    </style>
+  </head>
+  <body>
+    <div id="out" class="grid"></div>
+    <script type="module" src="/tools/style-compare.ts"></script>
+  </body>
+</html>

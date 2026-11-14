@@ -1,0 +1,4102 @@
+[
+ {
+  "name": "Fighter",
+  "group": "1",
+  "tier": 1,
+  "type": "Heavy Infantry",
+  "movement": "Heavy Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [
+   "Soldier",
+   "Spearman",
+   "Cavalier",
+   "Rogue",
+   "Skirmisher",
+   "Scout",
+   "Crossbowman",
+   "Archer",
+   "Apprentice"
+  ],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {
+   "hp": [
+    105,
+    360
+   ],
+   "weapon": [
+    20,
+    91
+   ],
+   "armor": [
+    25,
+    85
+   ],
+   "str": [
+    22,
+    46
+   ],
+   "mag": [
+    12,
+    23
+   ],
+   "skl": [
+    16,
+    40
+   ]
+  },
+  "battleOrder": "Heavy (10th)",
+  "area": null,
+  "traits": [
+   "Guardian"
+  ],
+  "attacks": [
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 1 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Bowman",
+  "group": "1",
+  "tier": 1,
+  "type": "Archery",
+  "movement": "Light Infantry Heavy Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [
+   "Archer",
+   "Crossbowman",
+   "Horsebow",
+   "Rogue",
+   "Skirmisher",
+   "Scout",
+   "Apprentice"
+  ],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "weapon": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "armor": {
+    "base": "None",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    88,
+    246
+   ],
+   "weapon": [
+    15,
+    61
+   ],
+   "armor": [
+    0,
+    35
+   ],
+   "str": [
+    22,
+    46
+   ],
+   "mag": [
+    12,
+    24
+   ],
+   "skl": [
+    17,
+    49
+   ]
+  },
+  "battleOrder": "Archery (8th)",
+  "area": null,
+  "traits": [],
+  "attacks": [
+   {
+    "kind": "ranged",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "ranged",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "ranged",
+    "element": null,
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 1 Units",
+   "Archery Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Militia",
+  "group": "1",
+  "tier": 1,
+  "type": "Light Infantry",
+  "movement": "Light Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [
+   "Acolyte",
+   "Swordfighter",
+   "Priestess",
+   "Hospitaller",
+   "Archer"
+  ],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    101,
+    287
+   ],
+   "weapon": [
+    18,
+    79
+   ],
+   "armor": [
+    10,
+    45
+   ],
+   "str": [
+    20,
+    48
+   ],
+   "mag": [
+    11,
+    24
+   ],
+   "skl": [
+    27,
+    60
+   ]
+  },
+  "battleOrder": "Light (9th)",
+  "area": null,
+  "traits": [],
+  "attacks": [
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 1 Units",
+   "Archery Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Medic",
+  "group": "1",
+  "tier": 1,
+  "type": "Support",
+  "movement": "Heavy Infantry Slow Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [
+   "Priestess",
+   "Hospitaller",
+   "Siren",
+   "Acolyte"
+  ],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "weapon": {
+    "base": "High",
+    "growth": "Low"
+   },
+   "armor": {
+    "base": "None",
+    "growth": "None"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "-"
+   },
+   "skl": {
+    "base": "Low",
+    "growth": "Med"
+   }
+  },
+  "levels": {
+   "hp": [
+    84,
+    237
+   ],
+   "weapon": [
+    30,
+    68
+   ],
+   "armor": [
+    9,
+    9
+   ],
+   "str": [
+    6,
+    31
+   ],
+   "skl": [
+    11,
+    41
+   ]
+  },
+  "battleOrder": "Healing (12th)",
+  "area": null,
+  "traits": [],
+  "attacks": [
+   {
+    "kind": "heal",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "heal",
+    "element": null,
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 1 Units",
+   "Support Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Drakeling",
+  "group": "1",
+  "tier": 1,
+  "type": "Dragon",
+  "movement": "Heavy Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [
+   "Dragon"
+  ],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "High",
+    "growth": "High"
+   },
+   "weapon": {
+    "base": "Low",
+    "growth": "None"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "skl": {
+    "base": "Low",
+    "growth": "Med"
+   }
+  },
+  "levels": {
+   "hp": [
+    152,
+    495
+   ],
+   "weapon": [
+    1,
+    1
+   ],
+   "armor": [
+    10,
+    54
+   ],
+   "str": [
+    20,
+    95
+   ],
+   "mag": [
+    24,
+    55
+   ],
+   "skl": [
+    15,
+    55
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": "area",
+  "traits": [
+   "Guardian"
+  ],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 1 Units",
+   "Dragon Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Acolyte",
+  "group": "2",
+  "tier": 2,
+  "type": "Heavy Infantry",
+  "movement": "Heavy Infantry",
+  "leader": true,
+  "reqs": {
+   "str": 18
+  },
+  "into": [
+   "Paladin",
+   "Valkyrie",
+   "Templar"
+  ],
+  "ancestors": {
+   "1": [
+    "Militia",
+    "Medic"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "Med"
+   }
+  },
+  "levels": {
+   "hp": [
+    120,
+    354
+   ],
+   "weapon": [
+    20,
+    91
+   ],
+   "armor": [
+    25,
+    90
+   ],
+   "str": [
+    25,
+    54
+   ],
+   "mag": [
+    12,
+    24
+   ],
+   "skl": [
+    27,
+    55
+   ]
+  },
+  "battleOrder": "Heavy (10th)",
+  "area": null,
+  "traits": [
+   "Guardian",
+   "Magic Armor"
+  ],
+  "attacks": [
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Dragon",
+  "group": "2",
+  "tier": 2,
+  "type": "Dragon",
+  "movement": "Heavy Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Blue Dragon",
+   "Red Dragon",
+   "Silver Dragon"
+  ],
+  "ancestors": {
+   "1": [
+    "Drakeling"
+   ]
+  },
+  "ratings": {
+   "weapon": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    179,
+    576
+   ],
+   "weapon": [
+    1,
+    1
+   ],
+   "armor": [
+    10,
+    54
+   ],
+   "str": [
+    25,
+    111
+   ],
+   "mag": [
+    31,
+    64
+   ],
+   "skl": [
+    19,
+    65
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": "area",
+  "traits": [
+   "Guardian",
+   "Colossal"
+  ],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Pages with broken file links",
+   "Tier 2 Units",
+   "Dragon Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Soldier",
+  "group": "2",
+  "tier": 2,
+  "type": "Heavy Infantry",
+  "movement": "Heavy Infantry",
+  "leader": true,
+  "reqs": {
+   "str": 25
+  },
+  "into": [
+   "Zweihander",
+   "Champion",
+   "Sentinel",
+   "Knight"
+  ],
+  "ancestors": {
+   "1": [
+    "Fighter"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {
+   "hp": [
+    125,
+    378
+   ],
+   "weapon": [
+    20,
+    91
+   ],
+   "armor": [
+    25,
+    90
+   ],
+   "str": [
+    27,
+    51
+   ],
+   "mag": [
+    12,
+    23
+   ],
+   "skl": [
+    17,
+    41
+   ]
+  },
+  "battleOrder": "Heavy (10th)",
+  "area": null,
+  "traits": [
+   "Guardian"
+  ],
+  "attacks": [
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Spearman",
+  "group": "2",
+  "tier": 2,
+  "type": "Heavy Infantry",
+  "movement": "Heavy Infantry",
+  "leader": true,
+  "reqs": {
+   "str": 21
+  },
+  "into": [
+   "Hussar",
+   "Sentinel",
+   "Centurion",
+   "Samurai"
+  ],
+  "ancestors": {
+   "1": [
+    "Fighter"
+   ]
+  },
+  "ratings": {},
+  "levels": {},
+  "battleOrder": "Heavy (10th)",
+  "area": null,
+  "traits": [
+   "Polearm Warrior"
+  ],
+  "attacks": [
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Archer",
+  "group": "2",
+  "tier": 2,
+  "type": "Archery",
+  "movement": "Infantry / Light infantry*",
+  "leader": true,
+  "reqs": {
+   "str": 18
+  },
+  "into": [
+   "Samurai",
+   "Warbow",
+   "Raider"
+  ],
+  "ancestors": {
+   "1": [
+    "Fighter",
+    "Bowman",
+    "Militia"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "5",
+  "area": null,
+  "traits": [
+   "Guerilla"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Archery Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Crossbowman",
+  "group": "2",
+  "tier": 1,
+  "type": "Archery",
+  "movement": "Light Infantry Heavy Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Arbalest",
+   "Warbow",
+   "Ranger"
+  ],
+  "ancestors": {
+   "1": [
+    "Demote",
+    "Fighter",
+    "Bowman"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "None",
+    "growth": "None"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    108,
+    273
+   ],
+   "weapon": [
+    55,
+    142
+   ],
+   "armor": [
+    11,
+    38
+   ],
+   "str": [
+    27,
+    50
+   ],
+   "skl": [
+    17,
+    49
+   ]
+  },
+  "battleOrder": "Archery (8th)",
+  "area": null,
+  "traits": [
+   "Guerilla",
+   "Archery General Tech",
+   "After Archery General tech"
+  ],
+  "attacks": [
+   {
+    "kind": "ranged",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "ranged",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "ranged",
+    "element": null,
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Archery Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Rogue",
+  "group": "2",
+  "tier": 2,
+  "type": "Light Infantry",
+  "movement": "Light Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Assassin",
+   "Ranger"
+  ],
+  "ancestors": {
+   "1": [
+    "Fighter",
+    "Bowman"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    105,
+    308
+   ],
+   "weapon": [
+    18,
+    79
+   ],
+   "armor": [
+    5,
+    40
+   ],
+   "str": [
+    22,
+    46
+   ],
+   "mag": [
+    12,
+    23
+   ],
+   "skl": [
+    22,
+    46
+   ]
+  },
+  "battleOrder": "Light (9th)",
+  "area": null,
+  "traits": [],
+  "attacks": [
+   {
+    "kind": "other",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "other",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Light Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Skirmisher",
+  "group": "2",
+  "tier": 2,
+  "type": "Light Infantry",
+  "movement": "Light Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Ranger",
+   "Zweihander"
+  ],
+  "ancestors": {
+   "1": [
+    "Fighter",
+    "Bowman"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    105,
+    308
+   ],
+   "weapon": [
+    18,
+    79
+   ],
+   "armor": [
+    5,
+    40
+   ],
+   "str": [
+    25,
+    49
+   ],
+   "mag": [
+    12,
+    23
+   ],
+   "skl": [
+    27,
+    51
+   ]
+  },
+  "battleOrder": "Light (9th)",
+  "area": null,
+  "traits": [],
+  "attacks": [
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Light Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Swordfighter",
+  "group": "2",
+  "tier": 2,
+  "type": "Light Infantry",
+  "movement": "Light Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Swordmaster"
+  ],
+  "ancestors": {
+   "1": [
+    "Militia"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    101,
+    284
+   ],
+   "weapon": [
+    18,
+    79
+   ],
+   "armor": [
+    5,
+    40
+   ],
+   "str": [
+    25,
+    54
+   ],
+   "mag": [
+    11,
+    24
+   ],
+   "skl": [
+    42,
+    70
+   ]
+  },
+  "battleOrder": "Light (9th)",
+  "area": null,
+  "traits": [],
+  "attacks": [
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Light Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Apprentice",
+  "group": "2",
+  "tier": 2,
+  "type": "Magician",
+  "movement": "Heavy Infantry Slow Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Fire Mage",
+   "Lightning Mage",
+   "Ice Mage",
+   "Oracle"
+  ],
+  "ancestors": {
+   "1": [
+    "Fighter",
+    "Bowman"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "None",
+    "growth": "None"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Low",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    80,
+    182
+   ],
+   "weapon": [
+    20,
+    91
+   ],
+   "armor": [
+    49,
+    49
+   ],
+   "str": [
+    4,
+    16
+   ],
+   "mag": [
+    27,
+    70
+   ],
+   "skl": [
+    16,
+    48
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": null,
+  "traits": [],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Magician Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Priestess",
+  "group": "2",
+  "tier": 2,
+  "type": "Support",
+  "movement": "Heavy Infantry Slow Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Templar",
+   "Valkyrie",
+   "Paladin",
+   "Oracle"
+  ],
+  "ancestors": {
+   "1": [
+    "Medic"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "weapon": {
+    "base": "High",
+    "growth": "Low"
+   },
+   "armor": {
+    "base": "None",
+    "growth": "None"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Low",
+    "growth": "Med"
+   }
+  },
+  "levels": {
+   "hp": [
+    94,
+    247
+   ],
+   "weapon": [
+    30,
+    68
+   ],
+   "armor": [
+    6,
+    6
+   ],
+   "str": [
+    6,
+    31
+   ],
+   "mag": [
+    32,
+    91
+   ],
+   "skl": [
+    11,
+    41
+   ]
+  },
+  "battleOrder": "Healing (12th)",
+  "area": null,
+  "traits": [],
+  "attacks": [
+   {
+    "kind": "heal",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "heal",
+    "element": null,
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Support Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Siren",
+  "group": "2",
+  "tier": 2,
+  "type": "Magician",
+  "movement": "Heavy Infantry Slow Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Sorceress",
+   "Oracle"
+  ],
+  "ancestors": {
+   "1": [
+    "Medic"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "None",
+    "growth": "None"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Low",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    84,
+    217
+   ],
+   "weapon": [
+    20,
+    91
+   ],
+   "armor": [
+    49,
+    49
+   ],
+   "str": [
+    6,
+    31
+   ],
+   "mag": [
+    27,
+    86
+   ],
+   "skl": [
+    16,
+    46
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": null,
+  "traits": [],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "dark",
+    "area": "Small AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "dark",
+    "area": "Small AoE",
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Magician Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Cavalier",
+  "group": "2",
+  "tier": 2,
+  "type": "Heavy Cavalry",
+  "movement": "Heavy Cavalry",
+  "leader": true,
+  "reqs": {
+   "str": 21
+  },
+  "into": [
+   "Knight",
+   "Hussar",
+   "Zweihander",
+   "Dragoon"
+  ],
+  "ancestors": {
+   "1": [
+    "Fighter"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "Med"
+   }
+  },
+  "levels": {
+   "hp": [
+    105,
+    418
+   ],
+   "weapon": [
+    20,
+    91
+   ],
+   "armor": [
+    25,
+    90
+   ],
+   "str": [
+    22,
+    51
+   ],
+   "mag": [
+    12,
+    23
+   ],
+   "skl": [
+    17,
+    41
+   ]
+  },
+  "battleOrder": "Heavy (10th)",
+  "area": null,
+  "traits": [],
+  "attacks": [
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": null,
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Heavy Cavalry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Horsebow",
+  "group": "2",
+  "tier": 2,
+  "type": "Archery Light Cavalry",
+  "movement": "Light Cavalry",
+  "leader": true,
+  "reqs": {
+   "str": 20
+  },
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Archery Units",
+   "Light Cavalry Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Hospitaller",
+  "group": "2",
+  "tier": 2,
+  "type": "Support",
+  "movement": "Cavalry",
+  "leader": true,
+  "reqs": {
+   "mag": 20
+  },
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Low",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Support Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Scout",
+  "group": "2",
+  "tier": 2,
+  "type": "Light Cavalry",
+  "movement": "Light Cavalry",
+  "leader": true,
+  "reqs": {
+   "skl": 22
+  },
+  "into": [
+   "Hussar",
+   "Ranger",
+   "Dragoon"
+  ],
+  "ancestors": {
+   "1": [
+    "Fighter",
+    "Bowman"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    107,
+    340
+   ],
+   "weapon": [
+    18,
+    79
+   ],
+   "armor": [
+    5,
+    40
+   ],
+   "str": [
+    22,
+    46
+   ],
+   "mag": [
+    12,
+    24
+   ],
+   "skl": [
+    27,
+    55
+   ]
+  },
+  "battleOrder": "Light (9th)",
+  "area": null,
+  "traits": [
+   "Hit and Run",
+   "Polearm Warrior"
+  ],
+  "attacks": [
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Melee Units",
+   "Light Cavalry Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Sentinel",
+  "group": "3",
+  "tier": 3,
+  "type": "Heavy Infantry",
+  "movement": "Infantry",
+  "leader": true,
+  "reqs": {
+   "str": 42
+  },
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Fighter"
+   ],
+   "2": [
+    "Spearman"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "High",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "8",
+  "area": null,
+  "traits": [
+   "Guardian",
+   "Polearm Warrior"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Champion",
+  "group": "3",
+  "tier": 3,
+  "type": "Heavy Infantry",
+  "movement": "Infantry",
+  "leader": true,
+  "reqs": {
+   "str": 47
+  },
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Fighter"
+   ],
+   "2": [
+    "Soldier"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "High",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "7.",
+  "area": "area",
+  "traits": [
+   "Guardian"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Zweihander",
+  "group": "3",
+  "tier": 3,
+  "type": "Heavy Infantry",
+  "movement": "Infantry",
+  "leader": true,
+  "reqs": {
+   "str": 42
+  },
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Fighter"
+   ],
+   "2": [
+    "Soldier",
+    "Cavalier",
+    "Skirmisher"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "High",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "7",
+  "area": null,
+  "traits": [
+   "Guardian"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Centurion",
+  "group": "3",
+  "tier": 3,
+  "type": "Heavy Infantry",
+  "movement": "Infantry",
+  "leader": true,
+  "reqs": {
+   "str": 45
+  },
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Fighter"
+   ],
+   "2": [
+    "Spearman"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "High",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "7.",
+  "area": null,
+  "traits": [
+   "Polearm Warrior"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Samurai",
+  "group": "3",
+  "tier": 3,
+  "type": "Heavy Infantry",
+  "movement": "Heavy Infantry",
+  "leader": true,
+  "reqs": {
+   "str": 45
+  },
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Fighter",
+    "Militia",
+    "Bowman"
+   ],
+   "2": [
+    "Spearman",
+    "Archer"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "High",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "Archery (8th) and 9th at melee range.",
+  "area": null,
+  "traits": [
+   "Polearm Warrior"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Paladin",
+  "group": "3",
+  "tier": 3,
+  "type": "Heavy Infantry",
+  "movement": "Infantry",
+  "leader": true,
+  "reqs": {
+   "str": 35
+  },
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "High",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [
+   "Magic Armor"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Blue Dragon",
+  "group": "3",
+  "tier": 3,
+  "type": "Dragon",
+  "movement": "Heavy Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Blue Dragon Rider"
+  ],
+  "ancestors": {
+   "1": [
+    "Dragon"
+   ]
+  },
+  "ratings": {
+   "weapon": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    224,
+    638
+   ],
+   "weapon": [
+    1,
+    1
+   ],
+   "armor": [
+    10,
+    54
+   ],
+   "str": [
+    30,
+    110
+   ],
+   "mag": [
+    33,
+    65
+   ],
+   "skl": [
+    53,
+    99
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": "area",
+  "traits": [
+   "Guardian",
+   "Colossal"
+  ],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "lightning",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "lightning",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "lightning",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Dragon Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Silver Dragon",
+  "group": "3",
+  "tier": 3,
+  "type": "Dragon",
+  "movement": "Heavy Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Silver Dragon Rider"
+  ],
+  "ancestors": {
+   "1": [
+    "Dragon"
+   ]
+  },
+  "ratings": {
+   "weapon": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Low",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    292,
+    706
+   ],
+   "weapon": [
+    1,
+    1
+   ],
+   "armor": [
+    10,
+    54
+   ],
+   "str": [
+    30,
+    110
+   ],
+   "mag": [
+    33,
+    65
+   ],
+   "skl": [
+    15,
+    61
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": "area",
+  "traits": [
+   "Guardian",
+   "Colossal"
+  ],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "ice",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "ice",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "ice",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Dragon Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Red Dragon",
+  "group": "3",
+  "tier": 3,
+  "type": "Dragon",
+  "movement": "Heavy Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Red Dragon Rider"
+  ],
+  "ancestors": {
+   "1": [
+    "Red Dragon"
+   ]
+  },
+  "ratings": {
+   "weapon": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    179,
+    593
+   ],
+   "weapon": [
+    1,
+    1
+   ],
+   "armor": [
+    10,
+    54
+   ],
+   "str": [
+    52,
+    132
+   ],
+   "mag": [
+    52,
+    84
+   ],
+   "skl": [
+    22,
+    67
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": "area",
+  "traits": [
+   "Guardian",
+   "Colossal"
+  ],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Dragon Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Ranger",
+  "group": "3",
+  "tier": 3,
+  "type": "Light Melee",
+  "movement": "Light Infantry",
+  "leader": true,
+  "reqs": {
+   "skl": 38
+  },
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Fighter",
+    "Bowman"
+   ],
+   "2": [
+    "Rogue",
+    "Skirmisher"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "High",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "Unknown.",
+  "area": null,
+  "traits": [
+   "Guerilla"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Light Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Assassin",
+  "group": "3",
+  "tier": 3,
+  "type": "Light Melee",
+  "movement": "Light Infantry",
+  "leader": true,
+  "reqs": {
+   "skl": 45
+  },
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Fighter",
+    "Bowman"
+   ],
+   "2": [
+    "Rogue"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "High",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [
+   "Stealth Attack",
+   "Thievery",
+   "Guerilla"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Light Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Swordmaster",
+  "group": "3",
+  "tier": 3,
+  "type": "Light Infantry",
+  "movement": "Light Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Militia"
+   ],
+   "2": [
+    "Swordfighter"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    101,
+    304
+   ],
+   "weapon": [
+    100,
+    22
+   ],
+   "armor": [
+    15,
+    50
+   ],
+   "str": [
+    30,
+    59
+   ],
+   "mag": [
+    11,
+    24
+   ],
+   "skl": [
+    52,
+    80
+   ]
+  },
+  "battleOrder": "Light (9th)",
+  "area": null,
+  "traits": [
+   "Guerilla"
+  ],
+  "attacks": [
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "melee",
+    "element": "light",
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Light Infantry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Warbow",
+  "group": "3",
+  "tier": 3,
+  "type": "Archery",
+  "movement": "Infantry",
+  "leader": true,
+  "reqs": {
+   "str": 38
+  },
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Militia",
+    "Fighter",
+    "Bowman"
+   ],
+   "2": [
+    "Archer",
+    "Crossbowman"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "High",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [
+   "Guerilla"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Archery Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Templar",
+  "group": "3",
+  "tier": 3,
+  "type": "Support",
+  "movement": "Slow Infantry",
+  "leader": true,
+  "reqs": {
+   "mag": 60
+  },
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "mag": {
+    "base": "High",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Low",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Support Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Fire Mage",
+  "group": "3",
+  "tier": 3,
+  "type": "Magician",
+  "movement": "Slow Infantry",
+  "leader": true,
+  "reqs": {
+   "mag": 45
+  },
+  "into": [
+   "Dark Mage",
+   "Necromancer"
+  ],
+  "ancestors": {
+   "1": [
+    "Fighter"
+   ],
+   "2": [
+    "Apprentice"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "mag": {
+    "base": "High",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "3",
+  "area": "row",
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Magician Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Lightning Mage",
+  "group": "3",
+  "tier": 3,
+  "type": "Magician",
+  "movement": "Slow Infantry",
+  "leader": true,
+  "reqs": {
+   "mag": 45
+  },
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "mag": {
+    "base": "High",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Magician Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Ice Mage",
+  "group": "3",
+  "tier": 3,
+  "type": "Magician",
+  "movement": "Slow Infantry",
+  "leader": true,
+  "reqs": {
+   "mag": 42
+  },
+  "into": [
+   "Dark Mage",
+   "Necromancer"
+  ],
+  "ancestors": {
+   "1": [
+    "Fighter"
+   ],
+   "2": [
+    "Apprentice"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "mag": {
+    "base": "High",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "3",
+  "area": "row",
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Magician Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Sorceress",
+  "group": "3",
+  "tier": 3,
+  "type": "Magician",
+  "movement": "Heavy Infantry Slow Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [
+   "Dark Mage",
+   "Necromancer"
+  ],
+  "ancestors": {
+   "2": [
+    "Siren"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "weapon": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "None",
+    "growth": "None"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    84,
+    217
+   ],
+   "weapon": [
+    20,
+    91
+   ],
+   "armor": [
+    49,
+    49
+   ],
+   "str": [
+    6,
+    31
+   ],
+   "mag": [
+    32,
+    91
+   ],
+   "skl": [
+    31,
+    61
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": null,
+  "traits": [
+   "AoE",
+   "Stun",
+   "Daze"
+  ],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "dark",
+    "area": "Large AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "dark",
+    "area": "Large AoE",
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Magician Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Knight",
+  "group": "3",
+  "tier": 3,
+  "type": "Heavy Cavalry",
+  "movement": "Cavalry",
+  "leader": true,
+  "reqs": {
+   "str": 45
+  },
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Fighter"
+   ],
+   "2": [
+    "Cavalier",
+    "Soldier"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "High",
+    "growth": "High"
+   },
+   "str": {
+    "base": "High",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "7.",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Heavy Cavalry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Hussar",
+  "group": "3",
+  "tier": 3,
+  "type": "Archery Light Cavalry",
+  "movement": "Light + Cavalry",
+  "leader": true,
+  "reqs": {
+   "skl": 42
+  },
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Melee Units",
+   "Light Cavalry Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Valkyrie",
+  "group": "3",
+  "tier": 3,
+  "type": "Heavy Cavalry",
+  "movement": "Cavalry",
+  "leader": true,
+  "reqs": {
+   "str": 25
+  },
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Medic"
+   ],
+   "2": [
+    "Acolyte",
+    "Hospitaller",
+    "Priestess"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "High",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "7 (fighting) or 9 (healing).",
+  "area": null,
+  "traits": [
+   "Magic Armor"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Heavy Cavalry Units",
+   "Melee Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Dragoon",
+  "group": "3",
+  "tier": 3,
+  "type": "Firearms",
+  "movement": "Cavalry",
+  "leader": true,
+  "reqs": {},
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Medic",
+    "Fighter",
+    "Bowman",
+    "Militia"
+   ],
+   "2": [
+    "Cavalier",
+    "Horsebow",
+    "Hospitaller",
+    "Scout"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "mag": {
+    "base": "None",
+    "growth": "None"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "4?",
+  "area": null,
+  "traits": [
+   "Hit and Run"
+  ],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Firearms Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Raider",
+  "group": "3",
+  "tier": 3,
+  "type": "Archery Light Cavalry",
+  "movement": "Light Cavalry",
+  "leader": true,
+  "reqs": {
+   "str": 38
+  },
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "High",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Archery Units",
+   "Light Cavalry Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Blue Dragon Rider",
+  "group": "4",
+  "tier": 4,
+  "type": "Dragon",
+  "movement": "Flying",
+  "leader": true,
+  "reqs": {},
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Blue Dragon"
+   ]
+  },
+  "ratings": {
+   "weapon": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    224,
+    638
+   ],
+   "weapon": [
+    1,
+    1
+   ],
+   "armor": [
+    10,
+    54
+   ],
+   "str": [
+    30,
+    110
+   ],
+   "mag": [
+    33,
+    65
+   ],
+   "skl": [
+    53,
+    99
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": "area",
+  "traits": [
+   "Guardian",
+   "Colossal"
+  ],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "lightning",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "lightning",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "lightning",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 4 Units",
+   "Dragon Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Silver Dragon Rider",
+  "group": "4",
+  "tier": 3,
+  "type": "Dragon",
+  "movement": "Flying",
+  "leader": true,
+  "reqs": {},
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Silver Dragon"
+   ]
+  },
+  "ratings": {
+   "weapon": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Low",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    292,
+    706
+   ],
+   "weapon": [
+    1,
+    1
+   ],
+   "armor": [
+    10,
+    54
+   ],
+   "str": [
+    30,
+    110
+   ],
+   "mag": [
+    33,
+    65
+   ],
+   "skl": [
+    15,
+    61
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": "area",
+  "traits": [
+   "Guardian",
+   "Colossal"
+  ],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "ice",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "ice",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "ice",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 4 Units",
+   "Dragon Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Red Dragon Rider",
+  "group": "4",
+  "tier": 4,
+  "type": "Dragon",
+  "movement": "Flying",
+  "leader": true,
+  "reqs": {},
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Demote",
+    "Red Dragon"
+   ]
+  },
+  "ratings": {
+   "weapon": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    179,
+    593
+   ],
+   "weapon": [
+    1,
+    1
+   ],
+   "armor": [
+    10,
+    54
+   ],
+   "str": [
+    52,
+    132
+   ],
+   "mag": [
+    52,
+    84
+   ],
+   "skl": [
+    22,
+    67
+   ]
+  },
+  "battleOrder": "Magic (7th)",
+  "area": "area",
+  "traits": [
+   "Guardian",
+   "Colossal"
+  ],
+  "attacks": [
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   },
+   {
+    "kind": "magic",
+    "element": "fire",
+    "area": "Small Diamond AoE",
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 4 Units",
+   "Dragon Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Necromancer",
+  "group": "dlc",
+  "tier": 4,
+  "type": "Magician",
+  "movement": "Slow Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "mag": {
+    "base": "High",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 4 Units",
+   "Magician Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Dark Mage",
+  "group": "dlc",
+  "tier": 4,
+  "type": "Magician",
+  "movement": "Slow Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [],
+  "ancestors": {
+   "2": [
+    "Apprentice",
+    "Siren"
+   ],
+   "3": [
+    "Fire Mage",
+    "Lightning Mage",
+    "Ice Mage",
+    "Sorceress",
+    "Oracle"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "7.",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 4 Units",
+   "Magician Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Risen Spearman",
+  "group": "risen",
+  "tier": 2,
+  "type": "Heavy Infantry",
+  "movement": "Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "None"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 1 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Risen Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Risen Soldier",
+  "group": "risen",
+  "tier": 2,
+  "type": "Heavy Infantry",
+  "movement": "Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "None"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 1 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Risen Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Risen Swordsman",
+  "group": "risen",
+  "tier": 2,
+  "type": "Light Infantry",
+  "movement": "Light Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "None"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 1 Units",
+   "Light Infantry Units",
+   "Melee Units",
+   "Risen Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Risen Archer",
+  "group": "risen",
+  "tier": 2,
+  "type": "Archery",
+  "movement": "Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "None"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 1 Units",
+   "Archery Units",
+   "Risen Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Risen Warrior",
+  "group": "risen",
+  "tier": 2,
+  "type": "Heavy Infantry",
+  "movement": "Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "None"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 1 Units",
+   "Heavy Infantry Units",
+   "Melee Units",
+   "Risen Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Risen Knight",
+  "group": "risen",
+  "tier": 3,
+  "type": "Heavy Infantry",
+  "movement": "Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [],
+  "ancestors": {},
+  "ratings": {},
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units"
+  ]
+ },
+ {
+  "name": "Risen Archmage",
+  "group": "risen",
+  "tier": 3,
+  "type": "Magician",
+  "movement": "Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [],
+  "ancestors": {},
+  "ratings": {},
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units"
+  ]
+ },
+ {
+  "name": "Arbalest",
+  "group": "other",
+  "tier": 3,
+  "type": "Archery",
+  "movement": "Light Infantry Heavy Infantry",
+  "leader": true,
+  "reqs": {},
+  "into": [],
+  "ancestors": {
+   "1": [
+    "Demote",
+    "Crossbowman",
+    "Soldier"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "armor": {
+    "base": "Low",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Med",
+    "growth": "High"
+   },
+   "mag": {
+    "base": "None",
+    "growth": "None"
+   },
+   "skl": {
+    "base": "Med",
+    "growth": "High"
+   }
+  },
+  "levels": {
+   "hp": [
+    128,
+    293
+   ],
+   "weapon": [
+    55,
+    142
+   ],
+   "armor": [
+    18,
+    50
+   ],
+   "str": [
+    27,
+    50
+   ],
+   "skl": [
+    17,
+    49
+   ]
+  },
+  "battleOrder": "Archery (8th)",
+  "area": null,
+  "traits": [
+   "Guerilla",
+   "Archery General Tech",
+   "After Archery General tech"
+  ],
+  "attacks": [
+   {
+    "kind": "ranged",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "ranged",
+    "element": null,
+    "area": null,
+    "range": "1"
+   },
+   {
+    "kind": "ranged",
+    "element": null,
+    "area": null,
+    "range": "1"
+   }
+  ],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Archery Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "War Cat",
+  "group": "other",
+  "tier": 2,
+  "type": "Light Melee",
+  "movement": "Light Infantry",
+  "leader": false,
+  "reqs": {},
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "High",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "High",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 2 Units",
+   "Light Infantry Units",
+   "Melee Units",
+   "Beast Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Behemoth",
+  "group": "other",
+  "tier": 3,
+  "type": "Light Melee",
+  "movement": "Light Infantry",
+  "leader": false,
+  "reqs": {
+   "str": 60,
+   "skl": 60
+  },
+  "into": [],
+  "ancestors": {},
+  "ratings": {
+   "hp": {
+    "base": "High",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "High",
+    "growth": "Med"
+   },
+   "mag": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "skl": {
+    "base": "High",
+    "growth": "High"
+   }
+  },
+  "levels": {},
+  "battleOrder": "",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Light Infantry Units",
+   "Melee Units",
+   "Beast Units",
+   "Gameplay"
+  ]
+ },
+ {
+  "name": "Oracle",
+  "group": "other",
+  "tier": 3,
+  "type": "Support",
+  "movement": "Slow Infantry",
+  "leader": true,
+  "reqs": {
+   "mag": 40
+  },
+  "into": [
+   "Dark Mage",
+   "Necromancer"
+  ],
+  "ancestors": {
+   "1": [
+    "Bowman",
+    "Fighter",
+    "Medic",
+    "Militia"
+   ],
+   "2": [
+    "Apprentice",
+    "Priestess",
+    "Hospitaller",
+    "Siren"
+   ]
+  },
+  "ratings": {
+   "hp": {
+    "base": "Med",
+    "growth": "Med"
+   },
+   "str": {
+    "base": "Low",
+    "growth": "Low"
+   },
+   "mag": {
+    "base": "High",
+    "growth": "High"
+   },
+   "skl": {
+    "base": "Low",
+    "growth": "Med"
+   }
+  },
+  "levels": {},
+  "battleOrder": "1",
+  "area": null,
+  "traits": [],
+  "attacks": [],
+  "categories": [
+   "Units",
+   "Tier 3 Units",
+   "Support Units",
+   "Gameplay"
+  ]
+ }
+]

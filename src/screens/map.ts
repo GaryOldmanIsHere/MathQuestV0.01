@@ -11,6 +11,8 @@ import { play } from '../audio/sound';
 import { Guide } from './guide';
 import { unitIcon } from '../gfx/unitIcon';
 import { enemyOrder, forecast, reinforce } from '../core/campaign';
+import type { Cache, Speech } from '../core/events';
+import { cacheInSight, cacheUnder, lineFor, openCache } from '../core/events';
 import { WorldStage, worldDetail } from '../gfx3d/world';
 import type { Weather } from '../gfx3d/sky';
 import { hourOf, OPENING_HOUR, weatherOn } from '../gfx3d/sky';
@@ -98,6 +100,14 @@ export class MapScreen implements Screen {
   private following = false;
   /** The chosen squad's commands, set about its feet. */
   private ring: HTMLElement;
+  /** What leaders are saying, over their heads, and until when (real time, ms). */
+  private bubbles = new Map<number, { el: HTMLElement; until: number }>();
+  /** Squads beaten in their last fight, and until when on the map's clock they show it. */
+  private beaten = new Map<number, number>();
+  /** Where squads fell, marked on the ground a while: map point, element, until when (real time). */
+  private graves: { x: number; y: number; el: HTMLElement; until: number }[] = [];
+  /** Caches some squad has already spotted glinting (so each is called out once). */
+  private glinted = new Set<Cache>();
   /** The two squads in a battle now, if one is being fought. */
   private fighting = new Set<number>();
   private selected: Squad | null = null;
@@ -739,6 +749,7 @@ export class MapScreen implements Screen {
       const siege = this.sieges.get(node.id);
       if (!siege || siege.side !== sq.side) {
         this.sieges.set(node.id, { side: sq.side, since: this.clock });
+        if (sq.side === 'enemy') this.speak(sq, 'siege');
         this.toast(
           sq.side === 'enemy' ? `${sq.name} is at the gates of ${node.name}! It falls in a day unless relieved.` : `${sq.name} lays siege to ${node.name}: hold it a day to take it.`,
           sq.side === 'enemy' ? 'bad' : 'warn', 8000,
@@ -763,7 +774,10 @@ export class MapScreen implements Screen {
       this.world.setOwner(node.id, sq.side);
       this.world.celebrate(node.x, node.y, sq.side);
       this.toast(`${node.name} ${sq.side === 'player' ? 'liberated!' : 'has fallen!'}`, sq.side === 'player' ? 'good' : 'bad');
-      if (sq.side === 'player') this.guide.note('capture');
+      if (sq.side === 'player') {
+        this.guide.note('capture');
+        this.speak(sq, 'capture');
+      }
       if (node.kind === 'hq-enemy' && sq.side === 'player') this.endCampaign('victory');
       if (node.kind === 'hq-player' && sq.side === 'enemy') this.endCampaign('defeat');
     }
@@ -856,12 +870,16 @@ export class MapScreen implements Screen {
       if (wiped) {
         if (sq.side === 'enemy') {
           st.squads.splice(st.squads.indexOf(sq), 1);
+          this.markFall(sq.x, sq.y);
+          const victor = st.squads.find((o) => o.id === payload[side === 'attackerId' ? 'defenderId' : 'attackerId']);
+          if (victor?.side === 'player') this.speak(victor, 'win');
           const loot = rollLoot(members);
           addLoot(loot, st.inventory, st);
           const found = loot.items.map((id) => itemOf(id).name);
           this.toast(`${sq.name} destroyed! Spoils: ${[`${loot.goth} Goth`, ...found].join(', ')}`, 'good');
         } else {
           // routed home: survivors crawl back to HQ at low strength
+          this.markFall(sq.x, sq.y);
           const hq = st.nodes.find((n) => n.kind === 'hq-player')!;
           sq.nodeId = hq.id;
           haltSquad(sq);
@@ -871,6 +889,8 @@ export class MapScreen implements Screen {
           // whoever routed it (perhaps camped on the keep itself).
           this.cooldowns.set(sq.id, now + REGROUP_MS);
           this.recovering.set(sq.id, now + REGROUP_MS);
+          this.beaten.set(sq.id, now + REGROUP_MS);
+          this.speak(sq, 'routed');
           this.toast(`${sq.name} routed! They regroup at the keep.`, 'warn');
         }
       } else {
@@ -887,6 +907,11 @@ export class MapScreen implements Screen {
           const foe = st.squads.find((o) => o.id === payload[side === 'attackerId' ? 'defenderId' : 'attackerId']);
           const away = retreatTarget(st.nodes, sq.side, sq.x, sq.y, foe?.x ?? sq.x, foe?.y ?? sq.y);
           orderTo(sq, away.x, away.y);
+          this.beaten.set(sq.id, now + REGROUP_MS);
+          if (sq.side === 'player') this.speak(sq, 'retreat');
+        } else if ((side === 'attackerId' && payload.winner === 'attacker') || (side === 'defenderId' && payload.winner === 'defender')) {
+          this.beaten.delete(sq.id);
+          if (sq.side === 'player') this.speak(sq, 'win');
         }
       }
     }
@@ -911,10 +936,98 @@ export class MapScreen implements Screen {
     if (this.selected) this.world.select(this.selected.id, this.routeOf(this.selected));
   }
 
+  /**
+   * Squads of ours out in the country: one that spots a cache glinting says
+   * so (and it is marked a moment on the ground); one that marches over a
+   * cache, or halts by it, digs it up.
+   */
+  private searchCountry(): void {
+    const st = getState();
+    for (const sq of st.squads) {
+      if (sq.side !== 'player' || this.isRecovering(sq)) continue;
+      const cache = cacheUnder(st, sq);
+      if (cache) {
+        const loot = openCache(st, cache);
+        const found = loot.items.map((id) => itemOf(id).name);
+        this.speak(sq, 'find');
+        this.world.celebrate(cache.x, cache.y, 'player');
+        play('coin');
+        this.toast(`${sq.name} dug up ${[...found, `${loot.goth} Goth`].join(' and ')}!`, 'good', 5000);
+        continue;
+      }
+      const near = cacheInSight(st, sq);
+      if (near && !this.glinted.has(near)) {
+        this.glinted.add(near);
+        this.speak(sq, 'glint');
+        this.world.ping(near.x, near.y, 0xffe9a0, 0.8, 1400);
+      }
+    }
+    // A cache already spotted keeps glinting now and then, until it is dug up.
+    if (Math.floor(this.clock / 2400) !== Math.floor((this.clock - STEP_MS) / 2400)) {
+      for (const c of this.glinted) if (!c.found) this.world.ping(c.x, c.y, 0xffe9a0, 0.6, 1100);
+    }
+  }
+
+  /** A squad's leader says something, over its head, for a few seconds (one line at a time each). */
+  private speak(sq: Squad, event: Speech): void {
+    const st = getState();
+    const leader = st.chars.get(sq.leaderId);
+    if (!leader) return;
+    this.bubbles.get(sq.id)?.el.remove();
+    const bubble = el('div', { class: `speech is-${sq.side}`, ui: `speech-${sq.id}`, role: 'status' },
+      el('div', { class: 'speech-face' }, unitIcon(classOf(leader.classId).palette, 34)),
+      el('div', { class: 'speech-text' }, el('b', {}, leader.name), lineFor(event)),
+    );
+    this.labels.append(bubble);
+    this.bubbles.set(sq.id, { el: bubble, until: performance.now() + 3200 });
+  }
+
+  /** Mark where a squad fell: a skull on the ground, fading over a few seconds. */
+  private markFall(x: number, y: number): void {
+    const mark = el('div', { class: 'grave', 'aria-hidden': 'true' }, icon('skull', 22));
+    this.labels.append(mark);
+    this.graves.push({ x, y, el: mark, until: performance.now() + 6000 });
+  }
+
+  /** Lay the speech bubbles and fallen marks over the map where they belong. */
+  private drawEvents(): void {
+    const st = getState();
+    const nowMs = performance.now();
+    for (const [id, b] of this.bubbles) {
+      const sq = st.squads.find((s) => s.id === id);
+      // Words said while a battle or the army screen stands over the map wait to be seen.
+      if (this.covered) b.until = Math.max(b.until, nowMs + 3200);
+      if (!sq || nowMs > b.until) {
+        b.el.remove();
+        this.bubbles.delete(id);
+        continue;
+      }
+      const p = this.shownAt(sq);
+      const at = this.world.project(p.x, p.y, this.world.squadHeight(sq.id) + 0.15);
+      b.el.hidden = this.covered || !at.visible;
+      const half = Math.min(150, (b.el.offsetWidth || 240) / 2);
+      const x = Math.max(half + 6, Math.min(this.width - half - 6, at.x));
+      b.el.style.transform = `translate(${Math.round(x - half)}px, ${Math.round(Math.max(6, at.y - 92))}px)`;
+      b.el.classList.toggle('is-leaving', b.until - nowMs < 400);
+    }
+    this.graves = this.graves.filter((g) => {
+      if (this.covered) g.until = Math.max(g.until, nowMs + 6000);
+      if (nowMs > g.until) {
+        g.el.remove();
+        return false;
+      }
+      const at = this.world.project(g.x, g.y, 0.2);
+      g.el.hidden = this.covered || !at.visible;
+      g.el.style.transform = `translate(${Math.round(at.x - 15)}px, ${Math.round(at.y - 15)}px)`;
+      g.el.style.opacity = String(Math.min(1, (g.until - nowMs) / 1500));
+      return true;
+    });
+  }
+
   private makeTag(sq: Squad): void {
     const fill = el('div', { class: 'bar-fill' });
     const root = el('div', { class: `squad-tag is-${sq.side}`, ui: `squad-${sq.id}` },
-      el('div', { class: 'squad-name' }, sq.name),
+      el('div', { class: 'squad-name' }, el('span', { class: 'squad-beaten', 'aria-label': 'beaten' }, icon('skull', 12)), sq.name),
       el('div', { class: 'bar' }, fill),
     );
     this.labels.append(root);
@@ -940,7 +1053,10 @@ export class MapScreen implements Screen {
     }
     world.held = this.paused;
     world.update(Math.min(deltaMs, 50 * SPEED));
-    if (this.covered) return;
+    if (this.covered) {
+      this.drawEvents();
+      return;
+    }
 
     const W = this.width;
     const H = this.height;
@@ -1002,7 +1118,9 @@ export class MapScreen implements Screen {
       tag.fill.style.width = `${Math.round(ratio * 100)}%`;
       tag.fill.style.background = hpColour(ratio);
       tag.root.classList.toggle('is-selected', this.selected === sq);
+      tag.root.classList.toggle('is-beaten', (this.beaten.get(sq.id) ?? 0) > this.clock);
     });
+    this.drawEvents();
   }
 
   private endCampaign(result: 'victory' | 'defeat'): void {
@@ -1036,6 +1154,7 @@ export class MapScreen implements Screen {
     const dt = stepMs / 1000;
     this.clock += stepMs;
     for (const sq of st.squads) this.stepSquad(sq, dt);
+    this.searchCountry();
     this.pressClaims();
     if (st.phase === 'playing') this.checkEncounters();
 

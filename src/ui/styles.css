@@ -287,6 +287,22 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
 .ring-btn { width: 30px; height: 30px; min-width: 0; padding: 0; border-radius: 50%; }
 .squad-ring:not(.is-marching) [data-ui="ring-halt"] { opacity: 0.4; }
 .map-screen.is-covered .squad-ring { display: none; }
+/* A leader speaking, over its squad: a portrait and a line, as a parchment note. */
+.speech { position: absolute; left: 0; top: 0; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; align-items: center; max-width: 300px; padding: 6px 12px 6px 6px; border-radius: 10px; background: linear-gradient(180deg, #f6ecd2, #e6d6b0); color: #2a2016; border: 2px solid #8a6a3a; box-shadow: 0 6px 16px rgba(2, 4, 12, 0.5); pointer-events: none; z-index: 4; transition: opacity 380ms; }
+.speech.is-enemy { border-color: #8e3a30; }
+.speech.is-leaving { opacity: 0; }
+.speech::after { content: ''; position: absolute; left: 50%; bottom: -9px; width: 14px; height: 14px; background: #e6d6b0; border-right: 2px solid #8a6a3a; border-bottom: 2px solid #8a6a3a; transform: translateX(-50%) rotate(45deg); }
+.speech.is-enemy::after { border-color: #8e3a30; }
+.speech-face { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 6px; background: rgba(42, 32, 22, 0.15); overflow: hidden; }
+.speech-text { font: 600 0.92rem/1.25 var(--body); }
+.speech-text b { display: block; font: 700 0.72rem var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: #7a5420; }
+.speech.is-enemy .speech-text b { color: #8e3a30; }
+/* Where a squad fell, and a squad beaten in its last fight. */
+.grave { position: absolute; left: 0; top: 0; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: #f2ece0; background: rgba(20, 12, 14, 0.7); border: 1px solid rgba(255, 255, 255, 0.35); pointer-events: none; }
+.squad-beaten { display: none; margin-right: 4px; color: #ffd0c8; vertical-align: -1px; }
+.squad-tag.is-beaten .squad-beaten { display: inline-block; }
+.squad-tag.is-beaten .squad-name { opacity: 0.85; }
+.map-screen.is-covered .speech, .map-screen.is-covered .grave { display: none; }
 .stack-list { position: absolute; width: 220px; display: grid; gap: 3px; padding: 8px; pointer-events: auto; z-index: 21; }
 .stack-item { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; text-align: left; padding: 5px 8px; text-transform: none; letter-spacing: 0; font: 600 0.95rem var(--body); }
 .stack-item.is-on { border-color: var(--gold-bright); }
@@ -518,7 +534,7 @@ h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg
   .pips { display: none; }
 }
 /* Reduced motion: the player's choice in Settings, or the system's (see comfort.ts). */
-:root[data-motion="reduce"] :is(.screen, .toast, .float-number, .versus, .battle-wipe, .side-card, .board, .board-hp, .battle-outcome, .end-panel, .level-up, .settings, .march-list) { animation-duration: 1ms !important; }
+:root[data-motion="reduce"] :is(.screen, .toast, .float-number, .versus, .battle-wipe, .side-card, .board, .board-hp, .speech, .battle-outcome, .end-panel, .level-up, .settings, .march-list) { animation-duration: 1ms !important; }
 :root[data-motion="reduce"] .bar-fill { transition: none; }
 :root[data-motion="reduce"] .roster-card:hover { transform: none; }
 :root[data-motion="reduce"] .parade .unit-icon { animation: none; }

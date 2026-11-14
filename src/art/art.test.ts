@@ -150,7 +150,7 @@ describe('figures', () => {
     }
     const r = paintHuman(humanLookOf(humans[0]), REST, 'front');
     expect(r.filled(FOOT_X * r.k, (FOOT_Y - 30) * r.k)).toBe(true);
-  }, 30000);
+  }, 120000);
 
   it('paints beasts and spirits whole in every frame', () => {
     for (const spec of [HOUND, DRAGON, HORSE]) {

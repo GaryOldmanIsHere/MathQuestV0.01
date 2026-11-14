@@ -28,7 +28,7 @@ These show the built-in data at the High preset.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 372 unit tests (355 without extracted ROM data)
+npm test         # 377 unit tests (360 without extracted ROM data)
 npm run build    # type-check + production bundle into dist/
 npm run e2e      # an automated playthrough in a real browser (needs npm run dev)
 npm run perf     # boot, frame times and GPU memory over a run of battles (needs npm run dev)
@@ -69,6 +69,16 @@ meet, they fight.
 move the view yourself. A dashed line and a flag show where it is bound. The
 clock reads the day and the hour: a campaign day runs from midnight to
 midnight, with one night in it, and its income comes at midnight.
+
+**Out in the country.** Caches lie buried in open ground, a few to a
+campaign. A squad of ours that comes near one says it saw something glint, and
+the spot glints now and then until it is dug up; marching over it, or halting
+by it, digs it up for some Goth and a supply, piece of gear or relic (better
+as the days go on). Leaders speak as things happen to them: on finding
+something, taking a town, winning, giving ground or being routed; the enemy
+taunts at the gates of your keep. A squad beaten in its last fight shows a
+skull by its name until it has regrouped, and where a squad falls a skull
+marks the ground a while.
 
 **Saving.** The campaign is kept in this browser at each day's end, after
 each battle and on leaving the army screen; *Continue* on the title takes it
@@ -391,7 +401,7 @@ docs/           ARCHITECTURE.md, TESTING.md, OB64.md, screenshots
 
 ## Tests
 
-`npm test` runs 372 tests (355 without extracted ROM data), mostly over the
+`npm test` runs 377 tests (360 without extracted ROM data), mostly over the
 rules, in Node without a browser:
 * battles, marching and terrain, the class tree, the expansion, equipment and
   items;

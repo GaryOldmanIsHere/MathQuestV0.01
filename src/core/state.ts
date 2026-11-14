@@ -1,6 +1,8 @@
 import type { Character, MapNode, Squad } from './types';
 import type { Inventory } from './items';
 import { starterInventory } from './items';
+import type { Cache } from './events';
+import { buryCaches } from './events';
 import { claimName, resetNames } from '../data/names';
 import { makeCharacter } from './character';
 import { autoPlace, makeSquad } from './squad';
@@ -16,6 +18,8 @@ export interface GameState {
   inventory: Inventory;
   day: number;
   phase: 'playing' | 'victory' | 'defeat';
+  /** Caches buried out in the country (older saves have none). */
+  caches?: Cache[];
 }
 
 export const NODE_DEFS: Omit<MapNode, 'owner'>[] = [
@@ -124,7 +128,7 @@ export function newCampaign(): GameState {
   enemyAt(8, 'Verlaine Guard', [['black-knight', 7], ['golem', 4], ['ghost', 6], ['wizard', 7]]);
   enemyAt(8, 'Dragon Wing', [['wyvern', 6], ['dragon-tamer', 6], ['archer', 6]]);
 
-  return { chars, squads, nodes, goth: 500, inventory: starterInventory(), day: 1, phase: 'playing' };
+  return { chars, squads, nodes, goth: 500, inventory: starterInventory(), day: 1, phase: 'playing', caches: buryCaches(nodes) };
 }
 
 // singleton

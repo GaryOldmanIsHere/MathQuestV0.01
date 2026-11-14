@@ -137,7 +137,8 @@ async function map(g) {
   g.check('M11', 'a click in open country marches to the ground under the pointer', a.moving && near({ x: a.tx, y: a.ty }, spot, 6),
     `aimed ${spot.x},${spot.y}, got ${a.tx?.toFixed(1)},${a.ty?.toFixed(1)}`);
 
-  // Days pass and pay.
+  // Days pass and pay. (Caches are set aside while the day's pay is counted: one dug up meanwhile would add its own Goth.)
+  await g.mutate(() => { window.__palatinus.state().caches = []; });
   const before = await g.state();
   const owned = before.nodes.filter((n) => n.owner === 'player').length;
   await g.until(([d]) => window.__palatinus.state().day > d, [before.day], 90000);

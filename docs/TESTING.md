@@ -4,7 +4,7 @@ Three kinds of check, from quickest to slowest:
 
 | | Command | What it runs | Where |
 |---|---|---|---|
-| Unit tests | `npm test` | 372 tests (355 without extracted ROM data), in Node, no browser | CI, every push |
+| Unit tests | `npm test` | 377 tests (360 without extracted ROM data), in Node, no browser | CI, every push |
 | Automated playthrough | `npm run e2e` | A real browser plays the game through its interface | By hand, with `npm run dev` running |
 | Performance probe | `npm run perf` | Boot time, frame times, GPU memory over a run of battles | By hand, with `npm run dev` running |
 
@@ -98,6 +98,9 @@ tests each type's ground.
   the day and its clock), new soldiers and squads take numbers and names no
   one holds, and a save that is damaged, from another dataset or already
   ended is refused.
+* Caches lie clear of the strongholds, the edge and each other; only a squad
+  of ours turns one up (marching over it or halting by it), and it gives its
+  Goth and item once. Every occasion a leader speaks on has a line.
 * A fight's forecast changes nothing in the campaign, and favours the fit
   over the badly hurt.
 * Every sound is short and within a speaker's range, and playing one where

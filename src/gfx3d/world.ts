@@ -617,7 +617,7 @@ export class WorldStage {
 
   /** A stronghold changes hands: rings in the new holder's colour spread from it, one after another. */
   celebrate(x: number, y: number, owner: Owner): void {
-    for (let k = 0; k < 3; k++) this.ping(x, y, OWNER_COLOUR[owner], 1.1 + k * 0.6, 700 + k * 260);
+    for (let k = 0; k < 3; k++) this.ping(x, y, OWNER_COLOUR[owner], 1.3 + k * 0.7, 700 + k * 260);
   }
 
   // ------------------------------------------------------------- the camera --
@@ -774,8 +774,8 @@ export class WorldStage {
     for (const p of [...this.pulses]) {
       p.t += dtMs;
       const k = p.t / p.ms;
-      // Rings are drawn larger from afar, as the figures are.
-      p.mesh.scale.setScalar((1 + k * 2.4) * p.size * grow);
+      // Rings are drawn larger from afar, though not as much larger as the figures (up close they would swamp a town).
+      p.mesh.scale.setScalar((1 + k * 2.4) * p.size * Math.sqrt(grow));
       (p.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - k);
       if (k >= 1) {
         this.scene.remove(p.mesh);
